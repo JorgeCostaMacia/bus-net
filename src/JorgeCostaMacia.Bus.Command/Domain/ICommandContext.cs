@@ -7,23 +7,22 @@ namespace JorgeCostaMacia.Bus.Command.Domain;
 public interface ICommandContext : IMessageContext { }
 
 /// <summary>
-/// The context a command handler receives: the typed envelope — domain trace, messaging trace,
-/// destination addresses, conversation and resilience — plus the transport-specific
-/// <see cref="Metadata"/> escape hatch. <typeparamref name="TMetadata"/> is bound by the transport
-/// (e.g. a Kafka metadata), so it never leaks onto the handler.
+/// The context a command handler receives: the two real objects of the delivery — the
+/// <typeparamref name="TCommand"/> and the <typeparamref name="TTransport"/> it arrived on — plus
+/// the read-only envelope facets projected over them (domain trace, messaging trace, destination
+/// addresses, conversation and resilience). <typeparamref name="TTransport"/> is bound by the
+/// transport (e.g. a Kafka transport), so it never leaks onto the handler unless it asks for it.
 /// </summary>
-/// <typeparam name="TMetadata">The transport's consume-metadata type.</typeparam>
 /// <typeparam name="TCommand">The command type.</typeparam>
-public interface ICommandContext<TMetadata, TCommand>
+/// <typeparam name="TTransport">The transport the command arrived on.</typeparam>
+public interface ICommandContext<TCommand, TTransport>
     : ICommandContext,
+      IMessageContext<TCommand, TTransport>,
       IAggregateTracedMessageContext<TCommand>,
       IAggregateFilteredMessageContext<TCommand>,
       ITracedMessageContext<TCommand>,
       IConversationMessageContext<TCommand>,
       IResilientMessageContext<TCommand>
-    where TMetadata : ITransportContext
     where TCommand : ICommand
-{
-    /// <summary>Transport-specific metadata for this delivery (headers, offset, …).</summary>
-    TMetadata Metadata { get; }
-}
+    where TTransport : ITransport
+{ }
