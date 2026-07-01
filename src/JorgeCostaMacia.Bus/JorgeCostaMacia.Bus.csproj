@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Transport-agnostic messaging contracts — messages, message contexts and send/publish buses — the root of the JorgeCostaMacia.Bus.* family</Description>
+		<PackageTags>bus,messaging,cqrs,contracts,message,ddd</PackageTags>
+	</PropertyGroup>
+
+</Project>
