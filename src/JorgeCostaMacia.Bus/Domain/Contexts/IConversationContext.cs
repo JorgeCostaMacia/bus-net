@@ -18,9 +18,3 @@ public interface IConversationContext : IContext
     /// <summary>UTC time when the conversation began — the first message's timestamp.</summary>
     DateTime ConversationOccurredAt { get; }
 }
-
-/// <summary>The conversation envelope facet labelled with a specific inbound message type.</summary>
-/// <typeparam name="TMessage">The type of the delivered message.</typeparam>
-public interface IConversationContext<TMessage> : IConversationContext
-    where TMessage : IMessage
-{ }

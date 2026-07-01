@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Domain.Contexts;
 /// Envelope facet surfacing the messaging-level trace assigned by the transport: the message's own
 /// id, type and type URNs (for polymorphic routing and versioning), origin/destination address and
 /// sent time. Distinct from <see cref="IAggregateTracedContext"/>, which carries the caller-set
-/// domain trace. Non-generic so it can be read without knowing the message type.
+/// domain trace.
 /// </summary>
 public interface ITracedContext : IContext
 {
@@ -31,9 +31,3 @@ public interface ITracedContext : IContext
     /// <summary>UTC time when the message was created/sent.</summary>
     DateTime MessageOccurredAt { get; }
 }
-
-/// <summary>The messaging-trace envelope facet labelled with a specific inbound message type.</summary>
-/// <typeparam name="TMessage">The type of the delivered message.</typeparam>
-public interface ITracedContext<TMessage> : ITracedContext
-    where TMessage : IMessage
-{ }

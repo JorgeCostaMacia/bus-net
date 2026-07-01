@@ -12,9 +12,3 @@ public interface IAggregateFilteredContext : IContext
     /// <summary>The destination addresses this message targets; empty means "no filtering".</summary>
     ImmutableList<string> AggregateDestinationAddresses { get; }
 }
-
-/// <summary>The filtered envelope facet labelled with a specific inbound message type.</summary>
-/// <typeparam name="TMessage">The type of the delivered message.</typeparam>
-public interface IAggregateFilteredContext<TMessage> : IAggregateFilteredContext
-    where TMessage : IMessage
-{ }

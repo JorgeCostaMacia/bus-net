@@ -1,5 +1,3 @@
-using JorgeCostaMacia.Bus.Domain.Contexts;
-
 namespace JorgeCostaMacia.Bus.Domain.Buses;
 
 /// <summary>
@@ -15,16 +13,5 @@ public interface IPublisherBus<TMessage> : IBus
     /// <param name="message">The message to publish.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task Publish<T>(T message, CancellationToken cancellationToken = default)
-        where T : TMessage;
-
-    /// <summary>
-    /// Publishes a message correlated with an inbound context, propagating its correlation (and
-    /// other envelope data) — use this when publishing from inside a handler.
-    /// </summary>
-    /// <typeparam name="T">The concrete message type.</typeparam>
-    /// <param name="message">The message to publish.</param>
-    /// <param name="correlateWith">The inbound context whose correlation is propagated.</param>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Publish<T>(T message, IAggregateTracedContext correlateWith, CancellationToken cancellationToken = default)
         where T : TMessage;
 }

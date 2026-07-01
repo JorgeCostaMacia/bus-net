@@ -3,7 +3,7 @@ namespace JorgeCostaMacia.Bus.Domain.Contexts;
 /// <summary>
 /// Envelope facet surfacing the inbound message's domain trace (id / correlation / timestamp) from
 /// the transport header — so it can be read for correlation-propagation, logging or tracing without
-/// deserializing the message body. Non-generic so any context can be used as a propagation source.
+/// deserializing the message body.
 /// </summary>
 public interface IAggregateTracedContext : IContext
 {
@@ -16,9 +16,3 @@ public interface IAggregateTracedContext : IContext
     /// <summary>UTC event-time of the inbound message.</summary>
     DateTime AggregateOccurredAt { get; }
 }
-
-/// <summary>The domain-trace envelope facet labelled with a specific inbound message type.</summary>
-/// <typeparam name="TMessage">The type of the delivered message.</typeparam>
-public interface IAggregateTracedContext<TMessage> : IAggregateTracedContext
-    where TMessage : IMessage
-{ }

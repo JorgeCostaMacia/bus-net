@@ -23,13 +23,12 @@ dotnet add package JorgeCostaMacia.Bus
 | `ITracedMessage` | + `AggregateId` / `AggregateCorrelationId` / `AggregateOccurredAt` |
 | `IFilteredMessage` | + `AggregateDestinationAddresses` (consumer-side filtering) |
 | `IContext` | marker for the read-only envelope a handler receives around a delivered message |
-| `IContext<T, TTransport>` | full delivery view: the two real objects — `Message` + `MessageTransport` — the facets project over |
-| context facets (base + `<T>`) | `ITracedContext` (messaging trace: id/type/URNs/addresses) · `IAggregateTracedContext` (domain trace) · `IAggregateFilteredContext` (addresses) · `IConversationContext` · `IResilientContext` — the typed envelope, surfaced from the header |
-| `ITransport` | marker for the transport a message arrived on (the per-delivery escape hatch a context carries as `MessageTransport`, alongside `Message`) |
+| `ITransport` | marker for the transport a message arrived on (a Kafka/RabbitMQ transport object; one of the two real objects of a delivery, alongside the message) |
+| context facets (each carries only what it needs) | `IMessageContext<T>` (the message) · `ITransportContext<TTransport>` (the transport) · `ITracedContext` (messaging trace: id/type/URNs/addresses) · `IAggregateTracedContext` (domain trace) · `IAggregateFilteredContext` (addresses) · `IConversationContext` · `IResilientContext` — a concrete context (command/event) composes the ones it exposes |
 | `IBus` | marker for a concrete bus (register/declare transports under it) |
-| `ISenderBus<TMessage>` | `Send` point-to-point (with optional `correlateWith` for propagation) |
-| `IPublisherBus<TMessage>` | `Publish` pub/sub (idem) |
-| `IHandler<TMessage, TContext>` | handle a delivered message |
+| `ISenderBus<TMessage>` / `ISenderTracedBus<TMessage>` | `Send` point-to-point — plain, or correlated with an inbound context for propagation |
+| `IPublisherBus<TMessage>` / `IPublisherTracedBus<TMessage>` | `Publish` pub/sub — plain, or correlated (idem) |
+| `IHandler<TMessage, TContext>` | handle a delivered message (`TContext : IContext`) |
 
 Ordering is a non-concern by design: transports partition freely and consumers resolve conflicts by `AggregateOccurredAt` (event-time last-writer-wins).
 
