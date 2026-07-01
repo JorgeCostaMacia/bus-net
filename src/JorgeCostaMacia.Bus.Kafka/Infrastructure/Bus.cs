@@ -1,3 +1,4 @@
+using System.Text;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Command.Domain;
 using JorgeCostaMacia.Bus.Domain;
@@ -11,9 +12,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The Kafka bus. Sends commands and publishes events through a shared
 /// <see cref="IProducer{TKey, TValue}"/> using <c>ProduceAsync</c> (a completed task means the broker
-/// acked; a failure throws). Each message's topic is resolved from the registered
-/// <see cref="IMessageConfiguration"/> set. Consuming (Start/Stop) and continuing from an inbound
-/// transport (propagation) are added in later phases.
+/// acked; a failure throws). Send/Publish orchestrate: they resolve the topic, prepare the envelope
+/// (fresh, or continued from an inbound transport) and produce. Consuming (Start/Stop) is added in a
+/// later phase.
 /// </summary>
 public sealed class Bus : IBus
 {
@@ -35,22 +36,38 @@ public sealed class Bus : IBus
     /// <inheritdoc />
     public Task Send<T>(T message, CancellationToken cancellationToken = default)
         where T : ICommand
-        => Produce(message, cancellationToken);
+    {
+        string topic = Topic(message);
+
+        return Produce(topic, Prepare(topic, message), cancellationToken);
+    }
 
     /// <inheritdoc />
     public Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : ICommand
-        => throw new NotImplementedException("Continuing from an inbound transport is built in a later phase.");
+    {
+        string topic = Topic(message);
+
+        return Produce(topic, Prepare(topic, message, transport), cancellationToken);
+    }
 
     /// <inheritdoc />
     public Task Publish<T>(T message, CancellationToken cancellationToken = default)
         where T : IEvent
-        => Produce(message, cancellationToken);
+    {
+        string topic = Topic(message);
+
+        return Produce(topic, Prepare(topic, message), cancellationToken);
+    }
 
     /// <inheritdoc />
     public Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : IEvent
-        => throw new NotImplementedException("Continuing from an inbound transport is built in a later phase.");
+    {
+        string topic = Topic(message);
+
+        return Produce(topic, Prepare(topic, message, transport), cancellationToken);
+    }
 
     /// <inheritdoc />
     public Task Start(CancellationToken cancellationToken = default)
@@ -60,24 +77,94 @@ public sealed class Bus : IBus
     public Task Stop(CancellationToken cancellationToken = default)
         => throw new NotImplementedException("The consumer is built in a later phase.");
 
-    private async Task Produce<TMessage>(TMessage message, CancellationToken cancellationToken)
-        where TMessage : ITracedMessage, IFilteredMessage
+    private string Topic<TMessage>(TMessage message)
     {
-        Type type = message.GetType();
+        Type type = message!.GetType();
 
         if (!_messages.TryGetValue(type, out IMessageConfiguration? configuration))
         {
             throw new InvalidOperationException($"No topic is configured for message type '{type.FullName}'.");
         }
 
-        string topic = configuration.TopicSpecification.Name;
+        return configuration.TopicSpecification.Name;
+    }
 
-        Message<Null, byte[]> kafkaMessage = new()
+    /// <summary>
+    /// Builds the message with a fresh envelope: a new message id, the conversation begins here (its
+    /// id/address/time mirror this message), no origin, counters at zero. The domain trace comes from
+    /// the message itself.
+    /// </summary>
+    private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message)
+        where TMessage : ITracedMessage, IFilteredMessage
+    {
+        Guid messageId = JorgeCostaMacia.GuidFactory.Domain.GuidFactory.Create();
+        string occurredAt = DateTime.UtcNow.ToString("O");
+        Type type = message.GetType();
+
+        Headers headers = new()
         {
-            Value = _serializer.Serialize(message),
-            Headers = HeadersFactory.CreateNew(topic, message)
+            { HeaderKeys.MessageId, Bytes(messageId) },
+            { HeaderKeys.MessageType, Bytes(type.FullName ?? type.Name) },
+            { HeaderKeys.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)) },
+            { HeaderKeys.MessageDestinationAddress, Bytes(topic) },
+            { HeaderKeys.MessageOccurredAt, Bytes(occurredAt) },
+            { HeaderKeys.ConversationId, Bytes(messageId) },
+            { HeaderKeys.ConversationAddress, Bytes(topic) },
+            { HeaderKeys.ConversationOccurredAt, Bytes(occurredAt) },
+            { HeaderKeys.AggregateId, Bytes(message.AggregateId) },
+            { HeaderKeys.AggregateCorrelationId, Bytes(message.AggregateCorrelationId) },
+            { HeaderKeys.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")) },
+            { HeaderKeys.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses) },
+            { HeaderKeys.RetryCount, Bytes("0") },
+            { HeaderKeys.RedeliveryCount, Bytes("0") }
         };
 
-        await _producer.ProduceAsync(topic, kafkaMessage, cancellationToken);
+        return new Message<Null, byte[]> { Value = _serializer.Serialize(message), Headers = headers };
     }
+
+    /// <summary>
+    /// Builds the message continuing an inbound flow: the inbound envelope is cloned from the
+    /// <paramref name="transport"/>, the message-level fields are re-stamped for this hop (new id/type/
+    /// urn/occurred-at, origin = the inbound destination, destination = this message's topic, domain
+    /// trace from the message), and the conversation and resilience counters are carried over unchanged.
+    /// </summary>
+    private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message, ITransport transport)
+        where TMessage : ITracedMessage, IFilteredMessage
+    {
+        Guid messageId = JorgeCostaMacia.GuidFactory.Domain.GuidFactory.Create();
+        Type type = message.GetType();
+        Transport inbound = (Transport)transport;
+
+        Headers headers = inbound.CloneHeaders();
+
+        Restamp(headers, HeaderKeys.MessageId, Bytes(messageId));
+        Restamp(headers, HeaderKeys.MessageType, Bytes(type.FullName ?? type.Name));
+        Restamp(headers, HeaderKeys.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)));
+        Restamp(headers, HeaderKeys.MessageOriginAddress, Bytes(inbound.GetString(HeaderKeys.MessageDestinationAddress)));
+        Restamp(headers, HeaderKeys.MessageDestinationAddress, Bytes(topic));
+        Restamp(headers, HeaderKeys.MessageOccurredAt, Bytes(DateTime.UtcNow.ToString("O")));
+        Restamp(headers, HeaderKeys.AggregateId, Bytes(message.AggregateId));
+        Restamp(headers, HeaderKeys.AggregateCorrelationId, Bytes(message.AggregateCorrelationId));
+        Restamp(headers, HeaderKeys.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
+        Restamp(headers, HeaderKeys.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses));
+
+        return new Message<Null, byte[]> { Value = _serializer.Serialize(message), Headers = headers };
+    }
+
+    private Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
+    {
+        return _producer.ProduceAsync(topic, message, cancellationToken);
+    }
+
+    private static void Restamp(Headers headers, string key, byte[] value)
+    {
+        headers.Remove(key);
+        headers.Add(key, value);
+    }
+
+    private static byte[] Bytes(string value) => Encoding.UTF8.GetBytes(value);
+
+    private static byte[] Bytes(Guid value) => value.ToByteArray();
+
+    private static byte[] Bytes(IEnumerable<string> values) => Encoding.UTF8.GetBytes(string.Join(',', values));
 }

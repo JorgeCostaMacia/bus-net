@@ -49,6 +49,23 @@ public sealed record Transport : ITransport
         Timestamp = timestamp;
     }
 
+    /// <summary>
+    /// Clones this delivery's headers, deep-copying each value's bytes, so the result can be re-stamped
+    /// for an outbound message without mutating the original delivery's headers.
+    /// </summary>
+    /// <returns>A new header set holding independent copies of every header's key and bytes.</returns>
+    public Headers CloneHeaders()
+    {
+        Headers clonedHeaders = new Headers();
+
+        foreach (IHeader header in Headers)
+        {
+            clonedHeaders.Add(header.Key, (byte[])header.GetValueBytes().Clone());
+        }
+
+        return clonedHeaders;
+    }
+
     /// <summary>Returns the raw bytes of the last header with the given <paramref name="key"/>.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value as bytes.</returns>
