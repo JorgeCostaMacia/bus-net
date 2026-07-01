@@ -17,7 +17,7 @@ public interface IContext { }
 /// </summary>
 /// <typeparam name="TMessage">The type of the delivered message.</typeparam>
 /// <typeparam name="TTransport">The transport this message arrived on.</typeparam>
-public interface IContext<TMessage, TTransport> : IContext
+public interface IContext<out TMessage, out TTransport> : IContext
     where TMessage : IMessage
     where TTransport : ITransport
 {
