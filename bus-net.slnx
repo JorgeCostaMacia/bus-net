@@ -2,4 +2,6 @@
   <Project Path="src/JorgeCostaMacia.Bus/JorgeCostaMacia.Bus.csproj" />
   <Project Path="src/JorgeCostaMacia.Bus.Command/JorgeCostaMacia.Bus.Command.csproj" />
   <Project Path="src/JorgeCostaMacia.Bus.Event/JorgeCostaMacia.Bus.Event.csproj" />
+  <Project Path="src/JorgeCostaMacia.Bus.UrnFactory/JorgeCostaMacia.Bus.UrnFactory.csproj" />
+  <Project Path="src/JorgeCostaMacia.Bus.Kafka/JorgeCostaMacia.Bus.Kafka.csproj" />
 </Solution>

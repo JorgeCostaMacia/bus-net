@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kafka transport for JorgeCostaMacia.Bus — the concrete command/event bus over Confluent.Kafka: message base records, contexts, handler/subscriber bases and the producer/consumer. Reference this one package to use the bus on Kafka.</Description>
+		<PackageTags>bus,kafka,confluent,messaging,cqrs,ddd</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../JorgeCostaMacia.Bus.Command/JorgeCostaMacia.Bus.Command.csproj" />
+		<ProjectReference Include="../JorgeCostaMacia.Bus.Event/JorgeCostaMacia.Bus.Event.csproj" />
+		<PackageReference Include="JorgeCostaMacia.GuidFactory" />
+		<PackageReference Include="Confluent.Kafka" />
+	</ItemGroup>
+
+</Project>
