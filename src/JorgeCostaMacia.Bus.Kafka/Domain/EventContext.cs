@@ -1,24 +1,24 @@
 using System.Collections.Immutable;
-using JorgeCostaMacia.Bus.Command.Domain;
+using JorgeCostaMacia.Bus.Event.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
-/// The Kafka command context a handler receives — implements
-/// <see cref="ICommandContext{TCommand, TTransport}"/> for <see cref="Transport"/>, carrying the
-/// command, the transport and the full read-only envelope. Built by the consumer from the delivered
-/// message and its headers; the <b>outbound</b> envelope (new flow / correlated) is computed by the
-/// bus when producing, not here.
+/// The Kafka event context a subscriber receives — implements
+/// <see cref="IEventContext{TEvent, TTransport}"/> for <see cref="Transport"/>, carrying the event,
+/// the transport and the full read-only envelope. Built by the consumer from the delivered message
+/// and its headers; the <b>outbound</b> envelope (new flow / correlated) is computed by the bus when
+/// producing, not here.
 /// </summary>
-/// <typeparam name="TCommand">The command type.</typeparam>
-public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transport>
-    where TCommand : Command
+/// <typeparam name="TEvent">The event type.</typeparam>
+public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
+    where TEvent : Event
 {
-    /// <summary>The transport this command arrived on (Kafka headers / offset / …).</summary>
+    /// <summary>The transport this event arrived on (Kafka headers / offset / …).</summary>
     public Transport Transport { get; init; }
 
-    /// <summary>The delivered command.</summary>
-    public TCommand Message { get; init; }
+    /// <summary>The delivered event.</summary>
+    public TEvent Message { get; init; }
 
     /// <summary>Unique id of this message, assigned by the messaging layer.</summary>
     public Guid MessageId { get; init; }
@@ -47,7 +47,7 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transp
     /// <summary>UTC time when the conversation began.</summary>
     public DateTime ConversationOccurredAt { get; init; }
 
-    /// <summary>Destination addresses this command targets; empty means no filtering.</summary>
+    /// <summary>Destination addresses this event targets; empty means no filtering.</summary>
     public ImmutableList<string> AggregateDestinationAddresses { get; init; }
 
     /// <summary>Unique id of the inbound message (domain trace).</summary>
@@ -70,7 +70,7 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transp
     /// it from the delivered message and its headers.
     /// </summary>
     /// <param name="transport">The Kafka transport for this delivery.</param>
-    /// <param name="message">The command payload.</param>
+    /// <param name="message">The event payload.</param>
     /// <param name="messageId">Unique id of this message.</param>
     /// <param name="messageType">Logical type name of the message.</param>
     /// <param name="messageTypeUrn">URNs of the message type and its base types/interfaces.</param>
@@ -80,13 +80,13 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transp
     /// <param name="conversationId">Conversation trace id.</param>
     /// <param name="conversationAddress">Address the conversation originated at.</param>
     /// <param name="conversationOccurredAt">UTC time the conversation began.</param>
-    /// <param name="aggregateDestinationAddresses">Destination addresses this command targets.</param>
+    /// <param name="aggregateDestinationAddresses">Destination addresses this event targets.</param>
     /// <param name="aggregateId">Domain id of the inbound message.</param>
     /// <param name="aggregateCorrelationId">Domain correlation id.</param>
     /// <param name="aggregateOccurredAt">UTC event-time of the inbound message.</param>
     /// <param name="retryCount">In-process retry attempts.</param>
     /// <param name="redeliveryCount">Transport redeliveries.</param>
-    public CommandContext(Transport transport, TCommand message, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateDestinationAddresses, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
+    public EventContext(Transport transport, TEvent message, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateDestinationAddresses, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
     {
         Transport = transport;
         Message = message;
