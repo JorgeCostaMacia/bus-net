@@ -101,20 +101,20 @@ public sealed class Bus : IBus
 
         Headers headers = new()
         {
-            { HeaderKeys.MessageId, Bytes(messageId) },
-            { HeaderKeys.MessageType, Bytes(type.FullName ?? type.Name) },
-            { HeaderKeys.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)) },
-            { HeaderKeys.MessageDestinationAddress, Bytes(topic) },
-            { HeaderKeys.MessageOccurredAt, Bytes(occurredAt) },
-            { HeaderKeys.ConversationId, Bytes(messageId) },
-            { HeaderKeys.ConversationAddress, Bytes(topic) },
-            { HeaderKeys.ConversationOccurredAt, Bytes(occurredAt) },
-            { HeaderKeys.AggregateId, Bytes(message.AggregateId) },
-            { HeaderKeys.AggregateCorrelationId, Bytes(message.AggregateCorrelationId) },
-            { HeaderKeys.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")) },
-            { HeaderKeys.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses) },
-            { HeaderKeys.RetryCount, Bytes("0") },
-            { HeaderKeys.RedeliveryCount, Bytes("0") }
+            { TransportHeaders.MessageId, Bytes(messageId) },
+            { TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name) },
+            { TransportHeaders.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)) },
+            { TransportHeaders.MessageDestinationAddress, Bytes(topic) },
+            { TransportHeaders.MessageOccurredAt, Bytes(occurredAt) },
+            { TransportHeaders.ConversationId, Bytes(messageId) },
+            { TransportHeaders.ConversationAddress, Bytes(topic) },
+            { TransportHeaders.ConversationOccurredAt, Bytes(occurredAt) },
+            { TransportHeaders.AggregateId, Bytes(message.AggregateId) },
+            { TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId) },
+            { TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")) },
+            { TransportHeaders.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses) },
+            { TransportHeaders.RetryCount, Bytes("0") },
+            { TransportHeaders.RedeliveryCount, Bytes("0") }
         };
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
@@ -135,16 +135,16 @@ public sealed class Bus : IBus
 
         Headers headers = inbound.CloneHeaders();
 
-        Restamp(headers, HeaderKeys.MessageId, Bytes(messageId));
-        Restamp(headers, HeaderKeys.MessageType, Bytes(type.FullName ?? type.Name));
-        Restamp(headers, HeaderKeys.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)));
-        Restamp(headers, HeaderKeys.MessageOriginAddress, Bytes(inbound.GetString(HeaderKeys.MessageDestinationAddress)));
-        Restamp(headers, HeaderKeys.MessageDestinationAddress, Bytes(topic));
-        Restamp(headers, HeaderKeys.MessageOccurredAt, Bytes(DateTime.UtcNow.ToString("O")));
-        Restamp(headers, HeaderKeys.AggregateId, Bytes(message.AggregateId));
-        Restamp(headers, HeaderKeys.AggregateCorrelationId, Bytes(message.AggregateCorrelationId));
-        Restamp(headers, HeaderKeys.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
-        Restamp(headers, HeaderKeys.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses));
+        Restamp(headers, TransportHeaders.MessageId, Bytes(messageId));
+        Restamp(headers, TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name));
+        Restamp(headers, TransportHeaders.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)));
+        Restamp(headers, TransportHeaders.MessageOriginAddress, Bytes(inbound.GetString(TransportHeaders.MessageDestinationAddress)));
+        Restamp(headers, TransportHeaders.MessageDestinationAddress, Bytes(topic));
+        Restamp(headers, TransportHeaders.MessageOccurredAt, Bytes(DateTime.UtcNow.ToString("O")));
+        Restamp(headers, TransportHeaders.AggregateId, Bytes(message.AggregateId));
+        Restamp(headers, TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId));
+        Restamp(headers, TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
+        Restamp(headers, TransportHeaders.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses));
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
     }
