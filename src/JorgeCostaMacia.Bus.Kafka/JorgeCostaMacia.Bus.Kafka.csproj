@@ -8,6 +8,7 @@
 	<ItemGroup>
 		<ProjectReference Include="../JorgeCostaMacia.Bus.Command/JorgeCostaMacia.Bus.Command.csproj" />
 		<ProjectReference Include="../JorgeCostaMacia.Bus.Event/JorgeCostaMacia.Bus.Event.csproj" />
+		<ProjectReference Include="../JorgeCostaMacia.Bus.UrnFactory/JorgeCostaMacia.Bus.UrnFactory.csproj" />
 		<PackageReference Include="JorgeCostaMacia.GuidFactory" />
 		<PackageReference Include="Confluent.Kafka" />
 	</ItemGroup>
