@@ -1,0 +1,18 @@
+<Project>
+
+	<!-- Central Package Management: all third-party package versions live here, in one place.
+	     The cross-repo dep on the shared-net foundation (JorgeCostaMacia.DomainEvent) is a
+	     PackageReference versioned here too; so are the transport clients (RabbitMQ.Client,
+	     Confluent.Kafka). Inter-package JorgeCostaMacia.Bus.* deps (same repo) are
+	     ProjectReferences (lockstep versioning), so CPM doesn't manage them. -->
+	<PropertyGroup>
+		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
+		<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+		<PackageVersion Include="xunit.v3" Version="3.2.2" />
+	</ItemGroup>
+
+</Project>
