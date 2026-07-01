@@ -37,9 +37,14 @@ public sealed class Bus : IBus
         => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public Task Send<T>(T message, IAggregateTracedContext context, CancellationToken cancellationToken = default)
+    public Task Send<T>(T message, IConversationContext conversation, CancellationToken cancellationToken = default)
         where T : ICommand
-        => throw new NotImplementedException("Correlated send is built in a later phase.");
+        => throw new NotImplementedException("Conversation send is built in a later phase.");
+
+    /// <inheritdoc />
+    public Task Send<T>(T message, IConversationContext conversation, IResilientContext resilient, CancellationToken cancellationToken = default)
+        where T : ICommand
+        => throw new NotImplementedException("Conversation send is built in a later phase.");
 
     /// <inheritdoc />
     public Task Publish<T>(T message, CancellationToken cancellationToken = default)
@@ -47,9 +52,14 @@ public sealed class Bus : IBus
         => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public Task Publish<T>(T message, IAggregateTracedContext context, CancellationToken cancellationToken = default)
+    public Task Publish<T>(T message, IConversationContext conversation, CancellationToken cancellationToken = default)
         where T : IEvent
-        => throw new NotImplementedException("Correlated publish is built in a later phase.");
+        => throw new NotImplementedException("Conversation publish is built in a later phase.");
+
+    /// <inheritdoc />
+    public Task Publish<T>(T message, IConversationContext conversation, IResilientContext resilient, CancellationToken cancellationToken = default)
+        where T : IEvent
+        => throw new NotImplementedException("Conversation publish is built in a later phase.");
 
     /// <inheritdoc />
     public Task Start(CancellationToken cancellationToken = default)
