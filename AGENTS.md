@@ -1,0 +1,81 @@
+# bus-net — working in this repo
+
+Messaging building blocks — CQRS **command** and **event** buses and message abstractions over pluggable transports (**RabbitMQ**, **Kafka**), each scoped to a single concern and shipped independently on NuGet under `JorgeCostaMacia.Bus.*`. Part of the `JorgeCostaMacia.*` family, on top of the **shared-net** foundation (consumed as published NuGet packages). **No MassTransit** in the bus itself.
+
+## Layout
+
+- `src/<Package>/` — one package per folder. `test/<Package>.Tests/` — its tests. `assets/` — icons + social preview.
+- **3-tier `Directory.Build.props`**: **root** (repo identity + the single lockstep `VersionPrefix`; TFMs `net8.0;net9.0;net10.0`; ImplicitUsings, Nullable, AnalysisLevel, EnforceCodeStyleInBuild) → **`src/`** (package-output: icon / readme / license, SourceLink, symbols, `GenerateDocumentationFile`, pack of LICENSE/COPYRIGHT/icon/README) → **`test/`** (test settings). Each `src` csproj declares **only** `Description` / `PackageTags`; everything else is inherited.
+
+## Architecture — the 5-package design (locked)
+
+```
+JorgeCostaMacia.Bus            root: IMessage / ITracedMessage / IFilteredMessage + IBus core (NO requester / request-response)
+├─ Bus.Command                ICommand + command bus (Send, point-to-point)
+├─ Bus.Event                  IEvent (: IDomainEvent) + event bus (Publish, pub/sub)
+├─ Bus.RabbitMq               own implementation on the official RabbitMQ.Client (NOT MassTransit)
+└─ Bus.Kafka                  own implementation on Confluent.Kafka
+```
+
+- **No requester** — the RabbitMQ-only request/response bus is dropped (it was the only hard-to-port piece). **No query bus** — dropped.
+- **Ordering is a non-concern by design**: Kafka partitions on its own (no message key); consumers resolve conflicts by **`ITracedMessage.AggregateOccurredAt`** (event-time last-writer-wins), so out-of-order / reprocessed messages never overwrite a newer applied one. `AggregateId` is internal domain/tracing metadata, **not** a partition key.
+- **MassTransit** stays out of the bus. A temporary `Bus.MassTransit.RabbitMq` bridge (apps' current dependency) may be kept until the own transports work — that decision is deferred to the end; if kept, it must implement the same `Bus.Command` / `Bus.Event` contracts so apps swap transport with zero code change.
+
+## Dependencies
+
+- **Cross-repo, on shared-net**: `Bus.Event` → `JorgeCostaMacia.DomainEvent` (`IEvent : IDomainEvent`) — **`PackageReference`** to the published package, pinned in `Directory.Packages.props`. Never `ProjectReference` across repos.
+- **Intra-repo, between `Bus.*` packages** (`Command`/`Event` → `Bus`; `RabbitMq`/`Kafka` → `Command`+`Event`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
+- **Transport clients**: `RabbitMQ.Client`, `Confluent.Kafka` — third-party `PackageReference`, versioned in `Directory.Packages.props`.
+
+## Dependencies — Central Package Management
+
+Third-party **and** the cross-repo shared-net versions are centralized in **`Directory.Packages.props`** (`ManagePackageVersionsCentrally=true`): add/bump as `<PackageVersion>`, reference in csproj **without** a `Version`. Intra-repo `Bus.*` deps are `ProjectReference`, not managed by CPM.
+
+## Versioning — lockstep
+
+A single **`<VersionPrefix>`** lives in the **root `Directory.Build.props`** — bump once, everything moves together. Never put `VersionPrefix` back in individual csproj.
+
+## CI / publishing
+
+- `main.yml`: push to `main` → build → test → `dotnet pack bus-net.slnx` → `dotnet nuget push` (nuget.org via Trusted Publishing / OIDC). **The central `VersionPrefix` is the publish gate.**
+- `develop.yml`: build/test on develop + PRs (no publish).
+- `release.yml`: on a pushed `v*` tag → creates the GitHub Release.
+- All three declare **top-level** `permissions:`.
+
+## Branching & releases — GitFlow
+
+Use the **`gitflow` skill** for any branch/release work.
+
+- Feature/bugfix → `feature/`|`bugfix/<name>-<ts>` from develop → finish `--no-ff` into develop.
+- Release → `release/<version>` from develop → bump the **single** `VersionPrefix` in the **root** props → Release Finish (merge develop+main, annotated tag `v<version>`, atomic push).
+- git's **default merge message** (`--no-ff --no-edit`, never `-m`). Branch prefixes only: `feature` / `bugfix` / `release` / `hotfix`.
+
+## Git etiquette
+
+- Commit under **your own identity** — don't hardcode anyone's name/email.
+- Keep history clean — **no** `Co-Authored-By` / AI-assistant trailers.
+- Merges use git's **default** message.
+
+## Relevant skills
+
+`gitflow` is from `jorgecostamacia-agent-skills`; the rest from `dotnet-agent-skills`.
+
+- **`gitflow`** — all branch/release work.
+- **`dotnet`** — C# language server + general .NET development (the transport implementations live here).
+- **`dotnet-msbuild`** — `Directory.Build.props`, project-file quality, CPM.
+- **`dotnet-nuget`** — dependency management.
+- **`dotnet-test`** / **`dotnet-test-migration`** — tests; the xUnit.v3 / MTP setup.
+- **`dotnet-upgrade`** — target-framework migrations.
+
+*(Not relevant here: `dotnet-aspnetcore` — that's http-net.)*
+
+## Build & test
+
+```
+dotnet format bus-net.slnx                  # apply .editorconfig (using order, whitespace) — run before committing
+dotnet build  bus-net.slnx -c Release
+dotnet test   bus-net.slnx -c Release --logger "console;verbosity=minimal"
+dotnet pack   bus-net.slnx -c Release        # packs all packable; tests are IsPackable=false
+```
+
+Run **`dotnet format` before committing** — it applies the `.editorconfig` (using ordering, whitespace), the CLI equivalent of Visual Studio's *Code Cleanup*, so generated code doesn't drift from what the IDE would produce.
