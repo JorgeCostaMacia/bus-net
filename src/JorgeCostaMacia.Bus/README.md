@@ -23,7 +23,8 @@ dotnet add package JorgeCostaMacia.Bus
 | `ITracedMessage` | + `AggregateId` / `AggregateCorrelationId` / `AggregateOccurredAt` |
 | `IFilteredMessage` | + `AggregateDestinationAddresses` (consumer-side filtering) |
 | `IMessageContext<T>` | read-only envelope around a delivered message (`Message` + facets) |
-| context facets (base + `<T>`) | `ITracedMessageContext` (messaging trace: id/type/URNs/addresses) · `IAggregateTracedMessageContext` (domain trace) · `IAggregateFilteredMessageContext` (addresses) · `IConversationMessageContext` · `IHeadersMessageContext<THeadersKey, THeadersValue>` · `IResilientMessageContext` · `IAckMessageContext<TAck>` — all surfaced from the header, read without deserializing the body |
+| context facets (base + `<T>`) | `ITracedMessageContext` (messaging trace: id/type/URNs/addresses) · `IAggregateTracedMessageContext` (domain trace) · `IAggregateFilteredMessageContext` (addresses) · `IConversationMessageContext` · `IResilientMessageContext` — the typed envelope, surfaced from the header |
+| `ITransportContext` | marker for a transport's consume metadata (the per-delivery escape hatch a context carries as `Metadata`) |
 | `IBus` | marker for a concrete bus (register/declare transports under it) |
 | `ISenderBus<TMessage>` | `Send` point-to-point (with optional `correlateWith` for propagation) |
 | `IPublisherBus<TMessage>` | `Publish` pub/sub (idem) |
