@@ -1,9 +1,10 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Command.Domain;
-using JorgeCostaMacia.Bus.Domain.Contexts;
+using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Domain.Messages;
 using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
@@ -11,8 +12,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// The Kafka bus. Sends commands and publishes events through a shared
 /// <see cref="IProducer{TKey, TValue}"/> using <c>ProduceAsync</c> (a completed task means the broker
 /// acked; a failure throws). Each message's topic is resolved from the registered
-/// <see cref="IMessageConfiguration"/> set. Consuming (Start/Stop) and correlated send/publish are
-/// added in later phases.
+/// <see cref="IMessageConfiguration"/> set. Consuming (Start/Stop) and continuing from an inbound
+/// transport (propagation) are added in later phases.
 /// </summary>
 public sealed class Bus : IBus
 {
@@ -37,14 +38,9 @@ public sealed class Bus : IBus
         => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public Task Send<T>(T message, IConversationContext conversation, CancellationToken cancellationToken = default)
+    public Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : ICommand
-        => throw new NotImplementedException("Conversation send is built in a later phase.");
-
-    /// <inheritdoc />
-    public Task Send<T>(T message, IConversationContext conversation, IResilientContext resilient, CancellationToken cancellationToken = default)
-        where T : ICommand
-        => throw new NotImplementedException("Conversation send is built in a later phase.");
+        => throw new NotImplementedException("Continuing from an inbound transport is built in a later phase.");
 
     /// <inheritdoc />
     public Task Publish<T>(T message, CancellationToken cancellationToken = default)
@@ -52,14 +48,9 @@ public sealed class Bus : IBus
         => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public Task Publish<T>(T message, IConversationContext conversation, CancellationToken cancellationToken = default)
+    public Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : IEvent
-        => throw new NotImplementedException("Conversation publish is built in a later phase.");
-
-    /// <inheritdoc />
-    public Task Publish<T>(T message, IConversationContext conversation, IResilientContext resilient, CancellationToken cancellationToken = default)
-        where T : IEvent
-        => throw new NotImplementedException("Conversation publish is built in a later phase.");
+        => throw new NotImplementedException("Continuing from an inbound transport is built in a later phase.");
 
     /// <inheritdoc />
     public Task Start(CancellationToken cancellationToken = default)
