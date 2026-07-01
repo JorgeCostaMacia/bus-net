@@ -4,10 +4,10 @@ using Confluent.Kafka;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default consumer settings applied to a handler configuration (command handler / event subscriber)
+/// Default consumer settings applied to a <see cref="CommandHandlerConfiguration{TCommand, TCommandHandler}"/>
 /// when not supplied.
 /// </summary>
-public static class HandlerConfigurationDefaults
+public static class CommandHandlerConfigurationDefaults
 {
     /// <summary>Number of concurrent consumer instances. Default: <c>1</c>.</summary>
     public const int CONSUMERS = 1;

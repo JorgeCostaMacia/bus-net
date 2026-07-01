@@ -109,29 +109,29 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         MessageType = typeof(TEvent);
         HandlerType = typeof(TEventSubscriber);
         Topic = topic;
-        Consumers = consumers ?? HandlerConfigurationDefaults.CONSUMERS;
-        RetryAttempts = retryAttempts ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS;
-        RetryAttemptsExcludeExceptionTypes = retryAttemptsExcludeExceptionTypes ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS_EXCLUDE_EXCEPTION_TYPES;
-        RedeliveryAttempts = redeliveryAttempts ?? HandlerConfigurationDefaults.REDELIVERY_ATTEMPTS;
-        RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? HandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES;
+        Consumers = consumers ?? EventSubscriberConfigurationDefaults.CONSUMERS;
+        RetryAttempts = retryAttempts ?? EventSubscriberConfigurationDefaults.RETRY_ATTEMPTS;
+        RetryAttemptsExcludeExceptionTypes = retryAttemptsExcludeExceptionTypes ?? EventSubscriberConfigurationDefaults.RETRY_ATTEMPTS_EXCLUDE_EXCEPTION_TYPES;
+        RedeliveryAttempts = redeliveryAttempts ?? EventSubscriberConfigurationDefaults.REDELIVERY_ATTEMPTS;
+        RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? EventSubscriberConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES;
 
         _bootstrapServers = bootstrapServers;
         _saslUsername = saslUsername;
         _saslPassword = saslPassword;
-        _securityProtocol = securityProtocol ?? HandlerConfigurationDefaults.SECURITY_PROTOCOL;
-        _saslMechanism = saslMechanism ?? HandlerConfigurationDefaults.SASL_MECHANISM;
-        _enableAutoCommit = enableAutoCommit ?? HandlerConfigurationDefaults.ENABLE_AUTO_COMMIT;
-        _allowAutoCreateTopics = allowAutoCreateTopics ?? HandlerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS;
-        _autoOffsetReset = autoOffsetReset ?? HandlerConfigurationDefaults.AUTO_OFFSET_RESET;
-        _socketTimeoutMs = socketTimeoutMs ?? HandlerConfigurationDefaults.SOCKET_TIMEOUT_MS;
-        _maxPollIntervalMs = maxPollIntervalMs ?? HandlerConfigurationDefaults.MAX_POLL_INTERVAL_MS;
-        _sessionTimeoutMs = sessionTimeoutMs ?? HandlerConfigurationDefaults.SESSION_TIMEOUT_MS;
-        _heartbeatIntervalMs = heartbeatIntervalMs ?? HandlerConfigurationDefaults.HEARTBEAT_INTERVAL_MS;
-        _retryBackoffMs = retryBackoffMs ?? HandlerConfigurationDefaults.RETRY_BACKOFF_MS;
-        _retryBackoffMaxMs = retryBackoffMaxMs ?? HandlerConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
-        _clientId = clientId ?? HandlerConfigurationDefaults.CLIENT_ID;
+        _securityProtocol = securityProtocol ?? EventSubscriberConfigurationDefaults.SECURITY_PROTOCOL;
+        _saslMechanism = saslMechanism ?? EventSubscriberConfigurationDefaults.SASL_MECHANISM;
+        _enableAutoCommit = enableAutoCommit ?? EventSubscriberConfigurationDefaults.ENABLE_AUTO_COMMIT;
+        _allowAutoCreateTopics = allowAutoCreateTopics ?? EventSubscriberConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS;
+        _autoOffsetReset = autoOffsetReset ?? EventSubscriberConfigurationDefaults.AUTO_OFFSET_RESET;
+        _socketTimeoutMs = socketTimeoutMs ?? EventSubscriberConfigurationDefaults.SOCKET_TIMEOUT_MS;
+        _maxPollIntervalMs = maxPollIntervalMs ?? EventSubscriberConfigurationDefaults.MAX_POLL_INTERVAL_MS;
+        _sessionTimeoutMs = sessionTimeoutMs ?? EventSubscriberConfigurationDefaults.SESSION_TIMEOUT_MS;
+        _heartbeatIntervalMs = heartbeatIntervalMs ?? EventSubscriberConfigurationDefaults.HEARTBEAT_INTERVAL_MS;
+        _retryBackoffMs = retryBackoffMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MS;
+        _retryBackoffMaxMs = retryBackoffMaxMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
+        _clientId = clientId ?? EventSubscriberConfigurationDefaults.CLIENT_ID;
         _groupId = $"{topic}.subscriber";
-        _groupInstanceId = groupInstanceId ?? HandlerConfigurationDefaults.GROUP_INSTANCE_ID;
+        _groupInstanceId = groupInstanceId ?? EventSubscriberConfigurationDefaults.GROUP_INSTANCE_ID;
     }
 
     /// <inheritdoc />

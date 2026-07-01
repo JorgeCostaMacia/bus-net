@@ -109,29 +109,29 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
         MessageType = typeof(TCommand);
         HandlerType = typeof(TCommandHandler);
         Topic = topic;
-        Consumers = consumers ?? HandlerConfigurationDefaults.CONSUMERS;
-        RetryAttempts = retryAttempts ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS;
-        RetryAttemptsExcludeExceptionTypes = retryAttemptsExcludeExceptionTypes ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS_EXCLUDE_EXCEPTION_TYPES;
-        RedeliveryAttempts = redeliveryAttempts ?? HandlerConfigurationDefaults.REDELIVERY_ATTEMPTS;
-        RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? HandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES;
+        Consumers = consumers ?? CommandHandlerConfigurationDefaults.CONSUMERS;
+        RetryAttempts = retryAttempts ?? CommandHandlerConfigurationDefaults.RETRY_ATTEMPTS;
+        RetryAttemptsExcludeExceptionTypes = retryAttemptsExcludeExceptionTypes ?? CommandHandlerConfigurationDefaults.RETRY_ATTEMPTS_EXCLUDE_EXCEPTION_TYPES;
+        RedeliveryAttempts = redeliveryAttempts ?? CommandHandlerConfigurationDefaults.REDELIVERY_ATTEMPTS;
+        RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? CommandHandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES;
 
         _bootstrapServers = bootstrapServers;
         _saslUsername = saslUsername;
         _saslPassword = saslPassword;
-        _securityProtocol = securityProtocol ?? HandlerConfigurationDefaults.SECURITY_PROTOCOL;
-        _saslMechanism = saslMechanism ?? HandlerConfigurationDefaults.SASL_MECHANISM;
-        _enableAutoCommit = enableAutoCommit ?? HandlerConfigurationDefaults.ENABLE_AUTO_COMMIT;
-        _allowAutoCreateTopics = allowAutoCreateTopics ?? HandlerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS;
-        _autoOffsetReset = autoOffsetReset ?? HandlerConfigurationDefaults.AUTO_OFFSET_RESET;
-        _socketTimeoutMs = socketTimeoutMs ?? HandlerConfigurationDefaults.SOCKET_TIMEOUT_MS;
-        _maxPollIntervalMs = maxPollIntervalMs ?? HandlerConfigurationDefaults.MAX_POLL_INTERVAL_MS;
-        _sessionTimeoutMs = sessionTimeoutMs ?? HandlerConfigurationDefaults.SESSION_TIMEOUT_MS;
-        _heartbeatIntervalMs = heartbeatIntervalMs ?? HandlerConfigurationDefaults.HEARTBEAT_INTERVAL_MS;
-        _retryBackoffMs = retryBackoffMs ?? HandlerConfigurationDefaults.RETRY_BACKOFF_MS;
-        _retryBackoffMaxMs = retryBackoffMaxMs ?? HandlerConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
-        _clientId = clientId ?? HandlerConfigurationDefaults.CLIENT_ID;
+        _securityProtocol = securityProtocol ?? CommandHandlerConfigurationDefaults.SECURITY_PROTOCOL;
+        _saslMechanism = saslMechanism ?? CommandHandlerConfigurationDefaults.SASL_MECHANISM;
+        _enableAutoCommit = enableAutoCommit ?? CommandHandlerConfigurationDefaults.ENABLE_AUTO_COMMIT;
+        _allowAutoCreateTopics = allowAutoCreateTopics ?? CommandHandlerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS;
+        _autoOffsetReset = autoOffsetReset ?? CommandHandlerConfigurationDefaults.AUTO_OFFSET_RESET;
+        _socketTimeoutMs = socketTimeoutMs ?? CommandHandlerConfigurationDefaults.SOCKET_TIMEOUT_MS;
+        _maxPollIntervalMs = maxPollIntervalMs ?? CommandHandlerConfigurationDefaults.MAX_POLL_INTERVAL_MS;
+        _sessionTimeoutMs = sessionTimeoutMs ?? CommandHandlerConfigurationDefaults.SESSION_TIMEOUT_MS;
+        _heartbeatIntervalMs = heartbeatIntervalMs ?? CommandHandlerConfigurationDefaults.HEARTBEAT_INTERVAL_MS;
+        _retryBackoffMs = retryBackoffMs ?? CommandHandlerConfigurationDefaults.RETRY_BACKOFF_MS;
+        _retryBackoffMaxMs = retryBackoffMaxMs ?? CommandHandlerConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
+        _clientId = clientId ?? CommandHandlerConfigurationDefaults.CLIENT_ID;
         _groupId = $"{topic}.handler";
-        _groupInstanceId = groupInstanceId ?? HandlerConfigurationDefaults.GROUP_INSTANCE_ID;
+        _groupInstanceId = groupInstanceId ?? CommandHandlerConfigurationDefaults.GROUP_INSTANCE_ID;
     }
 
     /// <inheritdoc />
