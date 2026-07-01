@@ -14,5 +14,5 @@ public interface ICommandHandler : IHandler { }
 /// <typeparam name="TContext">The context shape the handler requires for that command.</typeparam>
 public interface ICommandHandler<TCommand, TContext> : ICommandHandler, IHandler<TCommand, TContext>
     where TCommand : ICommand
-    where TContext : ICommandContext, IContext<IMessage, ITransport>
+    where TContext : ICommandContext, IContext<TCommand, ITransport>
 { }

@@ -16,7 +16,7 @@ public interface IHandler { }
 /// <typeparam name="TContext">The context shape the handler requires for that message.</typeparam>
 public interface IHandler<TMessage, TContext> : IHandler
     where TMessage : IMessage
-    where TContext : IContext<IMessage, ITransport>
+    where TContext : IContext<TMessage, ITransport>
 {
     /// <summary>Handles the message carried by <paramref name="context"/>.</summary>
     /// <param name="context">The inbound message context.</param>
