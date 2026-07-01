@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Command.Domain;
 using JorgeCostaMacia.Bus.Domain;
@@ -20,17 +21,14 @@ public sealed class Bus : IBus
 {
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IReadOnlyDictionary<Type, IMessageConfiguration> _messages;
-    private readonly ISerializer _serializer;
 
-    /// <summary>Creates the bus over a shared producer, the message topic configurations and a serializer.</summary>
+    /// <summary>Creates the bus over a shared producer and the message topic configurations.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
     /// <param name="messages">The per-message topic configurations (command and event).</param>
-    /// <param name="serializer">The message body serializer.</param>
-    public Bus(IProducer<Null, byte[]> producer, IEnumerable<IMessageConfiguration> messages, ISerializer serializer)
+    public Bus(IProducer<Null, byte[]> producer, IEnumerable<IMessageConfiguration> messages)
     {
         _producer = producer;
         _messages = messages.ToDictionary(configuration => configuration.MessageType);
-        _serializer = serializer;
     }
 
     /// <inheritdoc />
@@ -119,7 +117,7 @@ public sealed class Bus : IBus
             { HeaderKeys.RedeliveryCount, Bytes("0") }
         };
 
-        return new Message<Null, byte[]> { Value = _serializer.Serialize(message), Headers = headers };
+        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
     }
 
     /// <summary>
@@ -148,7 +146,7 @@ public sealed class Bus : IBus
         Restamp(headers, HeaderKeys.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
         Restamp(headers, HeaderKeys.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses));
 
-        return new Message<Null, byte[]> { Value = _serializer.Serialize(message), Headers = headers };
+        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
     }
 
     private Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
