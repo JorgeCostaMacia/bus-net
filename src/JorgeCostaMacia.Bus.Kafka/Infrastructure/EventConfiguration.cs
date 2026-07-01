@@ -5,8 +5,8 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The Kafka topic configuration for an event type — its topic and partition/replication spec.
-/// Feeds routing (type → topic) and topic provisioning. The producer connection and tuning are
+/// The Kafka topic configuration for an event type. Feeds routing (type → topic) and topic
+/// provisioning through its <see cref="TopicSpecification"/>. The producer connection and tuning are
 /// global (shared), not here.
 /// </summary>
 /// <typeparam name="TEvent">The event type.</typeparam>
@@ -16,14 +16,8 @@ public sealed record EventConfiguration<TEvent> : IMessageConfiguration
     /// <summary>The CLR type of the event.</summary>
     public Type MessageType { get; init; }
 
-    /// <summary>The Kafka topic the event is published to / consumed from.</summary>
-    public string Topic { get; init; }
-
-    /// <summary>Number of partitions for the topic.</summary>
-    public int NumPartitions { get; init; }
-
-    /// <summary>Replication factor for the topic.</summary>
-    public short ReplicationFactor { get; init; }
+    /// <summary>The Kafka topic specification (name / partitions / replication).</summary>
+    public TopicSpecification TopicSpecification { get; init; }
 
     /// <summary>Configures the event's topic; partitions/replication fall back to the defaults.</summary>
     /// <param name="topic">The Kafka topic.</param>
@@ -32,16 +26,11 @@ public sealed record EventConfiguration<TEvent> : IMessageConfiguration
     public EventConfiguration(string topic, int? numPartitions = null, short? replicationFactor = null)
     {
         MessageType = typeof(TEvent);
-        Topic = topic;
-        NumPartitions = numPartitions ?? EventConfigurationDefaults.NUM_PARTITIONS;
-        ReplicationFactor = replicationFactor ?? EventConfigurationDefaults.REPLICATION_FACTOR;
+        TopicSpecification = new()
+        {
+            Name = topic,
+            NumPartitions = numPartitions ?? EventConfigurationDefaults.NUM_PARTITIONS,
+            ReplicationFactor = replicationFactor ?? EventConfigurationDefaults.REPLICATION_FACTOR
+        };
     }
-
-    /// <summary>The Kafka topic specification, for topic creation / validation.</summary>
-    public TopicSpecification TopicSpecification => new()
-    {
-        Name = Topic,
-        NumPartitions = NumPartitions,
-        ReplicationFactor = ReplicationFactor
-    };
 }
