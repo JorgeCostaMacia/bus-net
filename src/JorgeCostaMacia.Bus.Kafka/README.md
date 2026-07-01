@@ -1,6 +1,6 @@
 # JorgeCostaMacia.Bus.Kafka
 
-**Kafka transport for `JorgeCostaMacia.Bus`** — the concrete command/event bus over [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka/): the `Command`/`Event` base records, the `KafkaTransport`, the `CommandContext<T>`/`EventContext<T>`, the ergonomic `CommandHandler<T>`/`EventSubscriber<T>` bases, and the producer/consumer wiring. **Reference this one package** to run the bus on Kafka — it brings the `JorgeCostaMacia.Bus.*` contracts transitively.
+**Kafka transport for `JorgeCostaMacia.Bus`** — the concrete command/event bus over [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka/): the `Command`/`Event` base records, the `Transport`, the `CommandContext<T>`/`EventContext<T>`, the ergonomic `CommandHandler<T>`/`EventSubscriber<T>` bases, and the producer/consumer wiring. **Reference this one package** to run the bus on Kafka — it brings the `JorgeCostaMacia.Bus.*` contracts transitively.
 
 [![NuGet](https://img.shields.io/nuget/v/JorgeCostaMacia.Bus.Kafka.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Kafka/)
 [![Downloads](https://img.shields.io/nuget/dt/JorgeCostaMacia.Bus.Kafka.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Kafka/)

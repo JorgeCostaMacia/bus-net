@@ -1,6 +1,6 @@
 using Confluent.Kafka;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
 /// The global Kafka configuration shared by every message: the producer and admin-client settings

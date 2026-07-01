@@ -1,24 +1,23 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using JorgeCostaMacia.Bus.Command.Domain;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
 /// The Kafka command context a handler receives — implements
-/// <see cref="ICommandContext{TCommand, TTransport}"/> for <see cref="KafkaTransport"/>, carrying the
+/// <see cref="ICommandContext{TCommand, TTransport}"/> for <see cref="Transport"/>, carrying the
 /// command, the transport and the full read-only envelope. Three constructors: the full one
 /// (<see cref="JsonConstructorAttribute"/>, for deserialization / replay), one that derives an
 /// outbound message from an inbound context (propagating correlation and conversation), and one that
 /// starts a brand-new flow.
 /// </summary>
 /// <typeparam name="TCommand">The command type.</typeparam>
-public sealed record CommandContext<TCommand> : ICommandContext<TCommand, KafkaTransport>
+public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transport>
     where TCommand : Command
 {
     /// <summary>The transport this command arrived on (Kafka headers / offset / …).</summary>
-    public KafkaTransport Transport { get; init; }
+    public Transport Transport { get; init; }
 
     /// <summary>The delivered command.</summary>
     public TCommand Message { get; init; }
@@ -87,7 +86,7 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, KafkaT
     /// <param name="retryCount">In-process retry attempts.</param>
     /// <param name="redeliveryCount">Transport redeliveries.</param>
     [JsonConstructor]
-    public CommandContext(KafkaTransport transport, TCommand message, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateDestinationAddresses, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
+    public CommandContext(Transport transport, TCommand message, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateDestinationAddresses, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
     {
         Transport = transport;
         Message = message;
@@ -121,7 +120,7 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, KafkaT
     /// <param name="aggregateDestinationAddresses">Destination addresses, or <see langword="null"/> for none.</param>
     /// <param name="retryCount">Retry count, or <see langword="null"/> for zero.</param>
     /// <param name="redeliveryCount">Redelivery count, or <see langword="null"/> for zero.</param>
-    public CommandContext(KafkaTransport transport, TCommand message, string messageDestinationAddress, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string>? aggregateDestinationAddresses, int? retryCount, int? redeliveryCount)
+    public CommandContext(Transport transport, TCommand message, string messageDestinationAddress, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string>? aggregateDestinationAddresses, int? retryCount, int? redeliveryCount)
     {
         Transport = transport;
         Message = message;
@@ -150,7 +149,7 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, KafkaT
     /// <param name="message">The command payload.</param>
     /// <param name="messageDestinationAddress">Primary destination address.</param>
     /// <param name="aggregateDestinationAddresses">Destination addresses, or <see langword="null"/> for none.</param>
-    public CommandContext(KafkaTransport transport, TCommand message, string messageDestinationAddress, ImmutableList<string>? aggregateDestinationAddresses)
+    public CommandContext(Transport transport, TCommand message, string messageDestinationAddress, ImmutableList<string>? aggregateDestinationAddresses)
     {
         Transport = transport;
         Message = message;

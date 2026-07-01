@@ -4,7 +4,7 @@ using System.Text;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
 /// The Kafka transport for a delivered message — the concrete <see cref="ITransport"/> a context
@@ -12,7 +12,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// epoch, timestamp) and exposes typed header getters, so a context implementation can read the
 /// envelope it stored in headers without re-deserializing the message body.
 /// </summary>
-public sealed record KafkaTransport : ITransport
+public sealed record Transport : ITransport
 {
     /// <summary>Message headers provided by the broker.</summary>
     public ImmutableList<IHeader> Headers { get; init; }
@@ -39,7 +39,7 @@ public sealed record KafkaTransport : ITransport
     /// <param name="offset">The offset within the partition.</param>
     /// <param name="leaderEpoch">The leader epoch, when available.</param>
     /// <param name="timestamp">The Kafka timestamp.</param>
-    public KafkaTransport(ImmutableList<IHeader> headers, string topic, Partition partition, Offset offset, int? leaderEpoch, Timestamp timestamp)
+    public Transport(ImmutableList<IHeader> headers, string topic, Partition partition, Offset offset, int? leaderEpoch, Timestamp timestamp)
     {
         Headers = headers;
         Topic = topic;

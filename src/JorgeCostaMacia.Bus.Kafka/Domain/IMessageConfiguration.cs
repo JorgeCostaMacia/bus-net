@@ -1,6 +1,6 @@
 using Confluent.Kafka.Admin;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
 /// Per-message Kafka topic configuration (the producer / provisioning side): the message type, its

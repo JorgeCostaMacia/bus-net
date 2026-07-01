@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 

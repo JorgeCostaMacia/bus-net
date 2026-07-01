@@ -1,16 +1,15 @@
 using JorgeCostaMacia.Bus.Command.Domain;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
 /// Ergonomic base for a Kafka command handler: fixes the context
-/// (<see cref="CommandContext{TCommand}"/>) and the transport (<see cref="KafkaTransport"/>), so a
+/// (<see cref="CommandContext{TCommand}"/>) and the transport (<see cref="Transport"/>), so a
 /// concrete handler declares only its command type and gets fully-typed access to the message,
 /// transport and envelope.
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler processes.</typeparam>
-public abstract class CommandHandler<TCommand> : ICommandHandler<TCommand, CommandContext<TCommand>, KafkaTransport>
+public abstract class CommandHandler<TCommand> : ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
     where TCommand : Command
 {
     /// <summary>Handles the delivered command.</summary>
