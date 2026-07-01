@@ -14,11 +14,11 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
     where TEvent : Event
 {
-    /// <summary>The transport this event arrived on (Kafka headers / offset / …).</summary>
-    public Transport Transport { get; init; }
-
     /// <summary>The delivered event.</summary>
     public TEvent Message { get; init; }
+
+    /// <summary>The transport this event arrived on (Kafka headers / offset / …).</summary>
+    public Transport Transport { get; init; }
 
     /// <summary>Unique id of this message, assigned by the messaging layer.</summary>
     public Guid MessageId { get; init; }
@@ -69,8 +69,8 @@ public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
     /// Builds the context with every envelope value supplied — used by the consumer to reconstruct
     /// it from the delivered message and its headers.
     /// </summary>
-    /// <param name="transport">The Kafka transport for this delivery.</param>
     /// <param name="message">The event payload.</param>
+    /// <param name="transport">The Kafka transport for this delivery.</param>
     /// <param name="messageId">Unique id of this message.</param>
     /// <param name="messageType">Logical type name of the message.</param>
     /// <param name="messageTypeUrn">URNs of the message type and its base types/interfaces.</param>
@@ -86,10 +86,10 @@ public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
     /// <param name="aggregateOccurredAt">UTC event-time of the inbound message.</param>
     /// <param name="retryCount">In-process retry attempts.</param>
     /// <param name="redeliveryCount">Transport redeliveries.</param>
-    public EventContext(Transport transport, TEvent message, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateDestinationAddresses, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
+    public EventContext(TEvent message, Transport transport, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateDestinationAddresses, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
     {
-        Transport = transport;
         Message = message;
+        Transport = transport;
         MessageId = messageId;
         MessageType = messageType;
         MessageTypeUrn = messageTypeUrn;
