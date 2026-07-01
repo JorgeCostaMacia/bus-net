@@ -151,7 +151,7 @@ public sealed class Bus : IBus
         return new Message<Null, byte[]> { Value = _serializer.Serialize(message), Headers = headers };
     }
 
-    private Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
+    private Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
     {
         return _producer.ProduceAsync(topic, message, cancellationToken);
     }
