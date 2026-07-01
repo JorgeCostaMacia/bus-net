@@ -5,9 +5,9 @@ namespace JorgeCostaMacia.Bus.Domain.Contexts;
 /// start time set by the first message of a conversation and propagated to every message that
 /// follows, so the whole chain is traceable back to where and when it began. Assigned by the
 /// messaging layer, not the domain — distinct from
-/// <see cref="IAggregateTracedMessageContext.AggregateCorrelationId"/>.
+/// <see cref="IAggregateTracedContext.AggregateCorrelationId"/>.
 /// </summary>
-public interface IConversationMessageContext : IMessageContext
+public interface IConversationContext : IContext
 {
     /// <summary>Conversation trace id, shared by the whole chain; equals the first message's id.</summary>
     Guid ConversationId { get; }
@@ -19,8 +19,8 @@ public interface IConversationMessageContext : IMessageContext
     DateTime ConversationOccurredAt { get; }
 }
 
-/// <summary>The conversation envelope facet bound to a specific inbound message type.</summary>
+/// <summary>The conversation envelope facet labelled with a specific inbound message type.</summary>
 /// <typeparam name="TMessage">The type of the delivered message.</typeparam>
-public interface IConversationMessageContext<TMessage> : IConversationMessageContext, IMessageContext<TMessage>
+public interface IConversationContext<TMessage> : IConversationContext
     where TMessage : IMessage
 { }

@@ -25,6 +25,6 @@ public interface IPublisherBus<TMessage> : IBus
     /// <param name="message">The message to publish.</param>
     /// <param name="correlateWith">The inbound context whose correlation is propagated.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Publish<T>(T message, IAggregateTracedMessageContext correlateWith, CancellationToken cancellationToken = default)
+    Task Publish<T>(T message, IAggregateTracedContext correlateWith, CancellationToken cancellationToken = default)
         where T : TMessage;
 }

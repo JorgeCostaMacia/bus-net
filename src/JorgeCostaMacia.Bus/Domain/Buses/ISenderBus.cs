@@ -25,6 +25,6 @@ public interface ISenderBus<TMessage> : IBus
     /// <param name="message">The message to send.</param>
     /// <param name="correlateWith">The inbound context whose correlation is propagated.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Send<T>(T message, IAggregateTracedMessageContext correlateWith, CancellationToken cancellationToken = default)
+    Task Send<T>(T message, IAggregateTracedContext correlateWith, CancellationToken cancellationToken = default)
         where T : TMessage;
 }

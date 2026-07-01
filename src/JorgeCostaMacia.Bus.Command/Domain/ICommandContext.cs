@@ -4,7 +4,7 @@ using JorgeCostaMacia.Bus.Domain.Contexts;
 namespace JorgeCostaMacia.Bus.Command.Domain;
 
 /// <summary>Marker for a command handler context.</summary>
-public interface ICommandContext : IMessageContext { }
+public interface ICommandContext : IContext { }
 
 /// <summary>
 /// The context a command handler receives: the two real objects of the delivery — the
@@ -17,12 +17,12 @@ public interface ICommandContext : IMessageContext { }
 /// <typeparam name="TTransport">The transport the command arrived on.</typeparam>
 public interface ICommandContext<TCommand, TTransport>
     : ICommandContext,
-      IMessageContext<TCommand, TTransport>,
-      IAggregateTracedMessageContext<TCommand>,
-      IAggregateFilteredMessageContext<TCommand>,
-      ITracedMessageContext<TCommand>,
-      IConversationMessageContext<TCommand>,
-      IResilientMessageContext<TCommand>
+      IContext<TCommand, TTransport>,
+      IAggregateTracedContext<TCommand>,
+      IAggregateFilteredContext<TCommand>,
+      ITracedContext<TCommand>,
+      IConversationContext<TCommand>,
+      IResilientContext<TCommand>
     where TCommand : ICommand
     where TTransport : ITransport
 { }

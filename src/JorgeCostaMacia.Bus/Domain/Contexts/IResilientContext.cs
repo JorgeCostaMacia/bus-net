@@ -5,7 +5,7 @@ namespace JorgeCostaMacia.Bus.Domain.Contexts;
 /// cross-cutting middleware) can react to retries/redeliveries — e.g. log, branch, or give up on the
 /// last attempt. Non-generic so it can be read without knowing the message type.
 /// </summary>
-public interface IResilientMessageContext : IMessageContext
+public interface IResilientContext : IContext
 {
     /// <summary>Number of in-process retry attempts made for this delivery.</summary>
     int RetryCount { get; }
@@ -14,8 +14,8 @@ public interface IResilientMessageContext : IMessageContext
     int RedeliveryCount { get; }
 }
 
-/// <summary>The resilience envelope facet bound to a specific inbound message type.</summary>
+/// <summary>The resilience envelope facet labelled with a specific inbound message type.</summary>
 /// <typeparam name="TMessage">The type of the delivered message.</typeparam>
-public interface IResilientMessageContext<TMessage> : IResilientMessageContext, IMessageContext<TMessage>
+public interface IResilientContext<TMessage> : IResilientContext
     where TMessage : IMessage
 { }

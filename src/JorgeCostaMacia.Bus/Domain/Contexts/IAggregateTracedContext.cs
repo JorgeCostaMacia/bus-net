@@ -5,7 +5,7 @@ namespace JorgeCostaMacia.Bus.Domain.Contexts;
 /// the transport header — so it can be read for correlation-propagation, logging or tracing without
 /// deserializing the message body. Non-generic so any context can be used as a propagation source.
 /// </summary>
-public interface IAggregateTracedMessageContext : IMessageContext
+public interface IAggregateTracedContext : IContext
 {
     /// <summary>Unique id of the inbound message.</summary>
     Guid AggregateId { get; }
@@ -17,8 +17,8 @@ public interface IAggregateTracedMessageContext : IMessageContext
     DateTime AggregateOccurredAt { get; }
 }
 
-/// <summary>The traced envelope facet bound to a specific inbound message type.</summary>
+/// <summary>The domain-trace envelope facet labelled with a specific inbound message type.</summary>
 /// <typeparam name="TMessage">The type of the delivered message.</typeparam>
-public interface IAggregateTracedMessageContext<TMessage> : IAggregateTracedMessageContext, IMessageContext<TMessage>
+public interface IAggregateTracedContext<TMessage> : IAggregateTracedContext
     where TMessage : IMessage
 { }

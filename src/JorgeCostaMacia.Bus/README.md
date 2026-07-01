@@ -22,10 +22,10 @@ dotnet add package JorgeCostaMacia.Bus
 | `IMessage` | root marker for anything on the bus |
 | `ITracedMessage` | + `AggregateId` / `AggregateCorrelationId` / `AggregateOccurredAt` |
 | `IFilteredMessage` | + `AggregateDestinationAddresses` (consumer-side filtering) |
-| `IMessageContext<T>` | read-only envelope around a delivered message (`Message` + facets) |
-| `IMessageContext<T, TTransport>` | full delivery view: the two real objects — `Message` + `Transport` — the facets project over |
-| context facets (base + `<T>`) | `ITracedMessageContext` (messaging trace: id/type/URNs/addresses) · `IAggregateTracedMessageContext` (domain trace) · `IAggregateFilteredMessageContext` (addresses) · `IConversationMessageContext` · `IResilientMessageContext` — the typed envelope, surfaced from the header |
-| `ITransport` | marker for the transport a message arrived on (the per-delivery escape hatch a context carries as `Transport`, alongside `Message`) |
+| `IContext` | marker for the read-only envelope a handler receives around a delivered message |
+| `IContext<T, TTransport>` | full delivery view: the two real objects — `Message` + `MessageTransport` — the facets project over |
+| context facets (base + `<T>`) | `ITracedContext` (messaging trace: id/type/URNs/addresses) · `IAggregateTracedContext` (domain trace) · `IAggregateFilteredContext` (addresses) · `IConversationContext` · `IResilientContext` — the typed envelope, surfaced from the header |
+| `ITransport` | marker for the transport a message arrived on (the per-delivery escape hatch a context carries as `MessageTransport`, alongside `Message`) |
 | `IBus` | marker for a concrete bus (register/declare transports under it) |
 | `ISenderBus<TMessage>` | `Send` point-to-point (with optional `correlateWith` for propagation) |
 | `IPublisherBus<TMessage>` | `Publish` pub/sub (idem) |

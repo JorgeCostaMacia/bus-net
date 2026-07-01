@@ -22,7 +22,7 @@ dotnet add package JorgeCostaMacia.Bus.Command
 | `ICommand` | marker — a command (`: ITracedMessage, IFilteredMessage`) |
 | `Command` | `abstract record` base: id / correlation / UTC time / addresses, id defaulted via GuidFactory |
 | `ICommandBus` | `: ISenderBus<ICommand>` — sends commands point-to-point (compiler enforces command-only) |
-| `ICommandContext<TCommand, TTransport>` | the command handler context — `Command` + `Transport` (`TTransport : ITransport`) plus the typed envelope facets |
+| `ICommandContext<TCommand, TTransport>` | the command handler context — `Message` + `MessageTransport` (`TTransport : ITransport`) plus the typed envelope facets |
 | `ICommandHandler` / `ICommandHandler<TCommand, TContext>` | handle a command with the context shape it needs |
 
 ```csharp
