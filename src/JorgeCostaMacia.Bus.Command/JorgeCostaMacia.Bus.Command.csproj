@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Command bus contracts — ICommand, the Command base record, ICommandBus and ICommandHandler — for point-to-point CQRS commands over JorgeCostaMacia.Bus</Description>
+		<PackageTags>bus,command,cqrs,messaging,ddd</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../JorgeCostaMacia.Bus/JorgeCostaMacia.Bus.csproj" />
+		<PackageReference Include="JorgeCostaMacia.GuidFactory" />
+	</ItemGroup>
+
+</Project>
