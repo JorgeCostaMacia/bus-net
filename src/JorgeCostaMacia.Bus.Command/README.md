@@ -1,6 +1,6 @@
 # JorgeCostaMacia.Bus.Command
 
-**Command bus contracts** — the CQRS command side of `JorgeCostaMacia.Bus`: `ICommand`, the `Command` base record, a command-only `ICommandBus` and `ICommandHandler`. Point-to-point: one command, one handler. Transport-agnostic — the RabbitMQ/Kafka implementations live in sibling packages.
+**Command bus contracts** — the CQRS command side of `JorgeCostaMacia.Bus`: the `ICommand` marker, a command-only `ICommandBus`, `ICommandContext` and `ICommandHandler`. Point-to-point: one command, one handler. **Interface-only working contract** — the concrete `Command` base record, context and handler bases live in each transport (RabbitMQ/Kafka), co-located so a dev finds everything for "commands on transport X" in one place.
 
 [![NuGet](https://img.shields.io/nuget/v/JorgeCostaMacia.Bus.Command.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Command/)
 [![Downloads](https://img.shields.io/nuget/dt/JorgeCostaMacia.Bus.Command.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Command/)
@@ -20,21 +20,27 @@ dotnet add package JorgeCostaMacia.Bus.Command
 | Type | For |
 | --- | --- |
 | `ICommand` | marker — a command (`: ITracedMessage, IFilteredMessage`) |
-| `Command` | `abstract record` base: id / correlation / UTC time / addresses, id defaulted via GuidFactory |
-| `ICommandBus` | `: ISenderBus<ICommand>` — sends commands point-to-point (compiler enforces command-only) |
-| `ICommandContext<TCommand, TTransport>` | the command handler context — the glue: composes `IMessageContext<TCommand>` + `ITransportContext<TTransport>` + the envelope facets |
-| `ICommandHandler` / `ICommandHandler<TCommand, TContext>` | handle a command with the context shape it needs |
+| `ICommandBus` | `: ISenderBus<ICommand>, ISenderTracedBus<ICommand>` — sends commands point-to-point, plain or correlated (compiler enforces command-only) |
+| `ICommandContext` / `ICommandContext<TCommand, TTransport>` | the command handler context — the glue: composes `IMessageContext<TCommand>` + `ITransportContext<TTransport>` + the envelope facets |
+| `ICommandHandler` / `ICommandHandler<TCommand, TContext, TTransport>` | handle a command with the exact context shape it needs |
+
+The concrete `Command` base record and the ergonomic `CommandContext<T>` / `CommandHandler<T>` bases live in each transport, so an end handler declares only its command type:
 
 ```csharp
-public sealed record CreateOrderCommand(Guid OrderId)
-    : Command(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateDestinationAddresses: null);
+// in your service, over a transport package (e.g. Kafka):
+public sealed record CreateOrderCommand(Guid OrderId) : Command(/* id … */);
+
+public sealed class CreateOrderHandler : CommandHandler<CreateOrderCommand>
+{
+    public override Task Handle(CommandContext<CreateOrderCommand> ctx, CancellationToken ct = default) { /* … */ }
+}
 ```
 
 ## Requirements
 
 One of the following SDKs: **.NET 8 / 9 / 10** *(.NET 10 recommended)*.
 
-Depends on [JorgeCostaMacia.Bus](https://www.nuget.org/packages/JorgeCostaMacia.Bus/) and [JorgeCostaMacia.GuidFactory](https://www.nuget.org/packages/JorgeCostaMacia.GuidFactory/).
+Depends on [JorgeCostaMacia.Bus](https://www.nuget.org/packages/JorgeCostaMacia.Bus/).
 
 ## About
 

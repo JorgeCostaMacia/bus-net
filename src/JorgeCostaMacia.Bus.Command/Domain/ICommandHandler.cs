@@ -1,5 +1,4 @@
 using JorgeCostaMacia.Bus.Domain;
-using JorgeCostaMacia.Bus.Domain.Contexts;
 
 namespace JorgeCostaMacia.Bus.Command.Domain;
 
@@ -7,13 +6,17 @@ namespace JorgeCostaMacia.Bus.Command.Domain;
 public interface ICommandHandler : IHandler { }
 
 /// <summary>
-/// Handles a <typeparamref name="TCommand"/>, receiving a context of the exact shape
-/// (<typeparamref name="TContext"/>) it needs — composed from the facets in
-/// <c>JorgeCostaMacia.Bus.Domain.Contexts</c>.
+/// Handles a <typeparamref name="TCommand"/>, receiving the exact context shape
+/// (<typeparamref name="TContext"/>) it needs — the command context for
+/// <typeparamref name="TTransport"/>, composed from the facets in
+/// <c>JorgeCostaMacia.Bus.Domain.Contexts</c>. Concrete transports wrap this in an ergonomic base
+/// (fixing the context and transport) so a handler declares only its command type.
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler processes.</typeparam>
 /// <typeparam name="TContext">The context shape the handler requires for that command.</typeparam>
-public interface ICommandHandler<TCommand, TContext> : ICommandHandler, IHandler<TCommand, TContext>
+/// <typeparam name="TTransport">The transport the command arrived on.</typeparam>
+public interface ICommandHandler<TCommand, TContext, TTransport> : ICommandHandler, IHandler<TCommand, TContext>
     where TCommand : ICommand
-    where TContext : ICommandContext, IMessageContext<TCommand>
+    where TTransport : ITransport
+    where TContext : ICommandContext<TCommand, TTransport>
 { }
