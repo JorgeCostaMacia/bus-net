@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace JorgeCostaMacia.Bus.Domain.Contexts;
 
 /// <summary>
@@ -19,7 +21,7 @@ public interface IHeadersMessageContext<THeadersKey, THeadersValue> : IMessageCo
     /// <param name="key">The header key.</param>
     /// <param name="value">The header value, when present.</param>
     /// <returns><see langword="true"/> if the header exists; otherwise <see langword="false"/>.</returns>
-    bool TryGetHeadersValue(THeadersKey key, out THeadersValue value);
+    bool TryGetHeadersValue(THeadersKey key, [MaybeNullWhen(false)] out THeadersValue value);
 }
 
 /// <summary>The headers envelope facet bound to a specific inbound message type.</summary>
