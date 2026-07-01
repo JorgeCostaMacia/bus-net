@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// the <see cref="ProducerConfig"/> and <see cref="AdminClientConfig"/> from the supplied connection
 /// details and tuning overrides, falling back to <see cref="BusConfigurationDefaults"/>.
 /// </summary>
-public sealed class BusConfiguration : IBusConfiguration
+public sealed class BusConfiguration : IProducerConfiguration, IAdminConfiguration
 {
     private readonly string _bootstrapServers;
     private readonly string? _saslUsername;
