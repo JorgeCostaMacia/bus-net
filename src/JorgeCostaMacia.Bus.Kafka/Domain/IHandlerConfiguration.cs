@@ -20,6 +20,9 @@ public interface IHandlerConfiguration
     /// <summary>The Kafka topic the handler subscribes to.</summary>
     string Topic { get; }
 
+    /// <summary>The consumer group id — the handler's identity for offsets and consumer-side filtering.</summary>
+    string GroupId { get; }
+
     /// <summary>
     /// Delays between in-process retry attempts when handling fails — one entry per attempt, waited
     /// before it (empty means no retries).

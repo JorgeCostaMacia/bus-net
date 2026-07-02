@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Event.Domain;
@@ -67,8 +68,8 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     }
 
     /// <summary>
-    /// The consumer loop: consume → handle → store the offset (the store is the ack; the background
-    /// thread commits it without blocking the loop). The loop only stops on cancellation: a consume
+    /// The consumer loop: consume → filter → handle → store the offset (the store is the ack; the
+    /// background thread commits it without blocking the loop). The loop only stops on cancellation: a consume
     /// error is logged and retried (the client reconnects on its own), and a failed delivery
     /// (retries exhausted, poison message) is logged and not acked — redelivered after a
     /// restart/rebalance until the resilience policy (redelivery / error topic) lands in the next
@@ -98,6 +99,13 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
                 try
                 {
                     ConsumeResult<Null, byte[]> result = consumer.Consume(cancellationToken);
+
+                    if (Filtered(result))
+                    {
+                        Store(consumer, result);
+
+                        continue;
+                    }
 
                     await Handle(result, cancellationToken);
 
@@ -174,6 +182,25 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
                 context = context with { RetryCount = context.RetryCount + 1 };
             }
         }
+    }
+
+    /// <summary>
+    /// Consumer-side filtering: when the message targets specific consumers
+    /// (<c>AggregateConsumers</c> header non-empty) and this group is not among them, the delivery is
+    /// skipped (and acked) without deserializing the body.
+    /// </summary>
+    private bool Filtered(ConsumeResult<Null, byte[]> result)
+    {
+        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header)) return false;
+
+        string consumers = Encoding.UTF8.GetString(header);
+
+        if (string.IsNullOrWhiteSpace(consumers)) return false;
+
+        return !consumers
+            .Split(',')
+            .Select(consumer => consumer.Trim())
+            .Contains(_configuration.GroupId);
     }
 
     private void Store(IConsumer<Null, byte[]> consumer, ConsumeResult<Null, byte[]> result)

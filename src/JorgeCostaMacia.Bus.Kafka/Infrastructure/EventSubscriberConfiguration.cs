@@ -37,7 +37,6 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     private readonly int _retryBackoffMs;
     private readonly int _retryBackoffMaxMs;
     private readonly string _clientId;
-    private readonly string _groupId;
     private readonly string _groupInstanceId;
 
     /// <inheritdoc />
@@ -48,6 +47,9 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
 
     /// <inheritdoc />
     public string Topic { get; init; }
+
+    /// <inheritdoc />
+    public string GroupId { get; init; }
 
     /// <inheritdoc />
     public ImmutableList<TimeSpan> RetryIntervals { get; init; }
@@ -137,7 +139,7 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         _retryBackoffMs = retryBackoffMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MS;
         _retryBackoffMaxMs = retryBackoffMaxMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
         _clientId = clientId ?? EventSubscriberConfigurationDefaults.CLIENT_ID;
-        _groupId = groupId;
+        GroupId = groupId;
         _groupInstanceId = groupInstanceId ?? EventSubscriberConfigurationDefaults.GROUP_INSTANCE_ID;
     }
 
@@ -161,7 +163,7 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         RetryBackoffMs = _retryBackoffMs,
         RetryBackoffMaxMs = _retryBackoffMaxMs,
         ClientId = _clientId,
-        GroupId = _groupId,
+        GroupId = GroupId,
         GroupInstanceId = _groupInstanceId
     };
 }

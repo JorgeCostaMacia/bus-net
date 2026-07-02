@@ -35,7 +35,6 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
     private readonly int _retryBackoffMs;
     private readonly int _retryBackoffMaxMs;
     private readonly string _clientId;
-    private readonly string _groupId;
     private readonly string _groupInstanceId;
 
     /// <inheritdoc />
@@ -46,6 +45,9 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
 
     /// <inheritdoc />
     public string Topic { get; init; }
+
+    /// <inheritdoc />
+    public string GroupId { get; init; }
 
     /// <inheritdoc />
     public ImmutableList<TimeSpan> RetryIntervals { get; init; }
@@ -135,7 +137,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
         _retryBackoffMs = retryBackoffMs ?? CommandHandlerConfigurationDefaults.RETRY_BACKOFF_MS;
         _retryBackoffMaxMs = retryBackoffMaxMs ?? CommandHandlerConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
         _clientId = clientId ?? CommandHandlerConfigurationDefaults.CLIENT_ID;
-        _groupId = groupId;
+        GroupId = groupId;
         _groupInstanceId = groupInstanceId ?? CommandHandlerConfigurationDefaults.GROUP_INSTANCE_ID;
     }
 
@@ -159,7 +161,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
         RetryBackoffMs = _retryBackoffMs,
         RetryBackoffMaxMs = _retryBackoffMaxMs,
         ClientId = _clientId,
-        GroupId = _groupId,
+        GroupId = GroupId,
         GroupInstanceId = _groupInstanceId
     };
 }
