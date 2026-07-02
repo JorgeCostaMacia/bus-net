@@ -15,7 +15,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <see cref="IProducer{TKey, TValue}"/> using <c>ProduceAsync</c> (a completed task means the broker
 /// acked; a failure throws). Send/Publish orchestrate: they resolve the topic, prepare the envelope
 /// (fresh, or continued from an inbound transport) and produce. The consume side lives in the
-/// <see cref="Worker"/>, hosted in the application lifecycle.
+/// per-handler consumers (<c>CommandConsumer</c> / <c>EventConsumer</c>), hosted in the application
+/// lifecycle.
 /// </summary>
 public sealed class Bus : IBus
 {
