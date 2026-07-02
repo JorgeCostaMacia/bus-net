@@ -25,14 +25,6 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 internal abstract class Consumer<TContext, THandler> : IHostedService
     where THandler : IHandler
 {
-    private static readonly ImmutableList<string> GuidHeaders =
-    [
-        TransportHeaders.MessageId,
-        TransportHeaders.ConversationId,
-        TransportHeaders.AggregateId,
-        TransportHeaders.AggregateCorrelationId
-    ];
-
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
@@ -294,7 +286,7 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
         {
             byte[] value = header.GetValueBytes();
 
-            logContext[header.Key] = GuidHeaders.Contains(header.Key) && value.Length == 16
+            logContext[header.Key] = TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
                 ? new Guid(value)
                 : Encoding.UTF8.GetString(value);
         }

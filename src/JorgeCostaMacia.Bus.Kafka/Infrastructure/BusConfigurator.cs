@@ -102,7 +102,6 @@ public sealed class BusConfigurator
             _saslMechanism,
             autoCommitIntervalMs: autoCommitIntervalMs);
 
-        _services.AddSingleton<IHandlerConfiguration>(configuration);
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider => new CommandConsumer<TCommand, TCommandHandler>(
             configuration,
@@ -152,7 +151,6 @@ public sealed class BusConfigurator
             _saslMechanism,
             autoCommitIntervalMs: autoCommitIntervalMs);
 
-        _services.AddSingleton<IHandlerConfiguration>(configuration);
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider => new EventConsumer<TEvent, TEventSubscriber>(
             configuration,

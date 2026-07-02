@@ -6,6 +6,7 @@ using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Domain.Messages;
 using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using Microsoft.Extensions.Logging;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -22,50 +23,53 @@ public sealed class Bus : IBus
 {
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IReadOnlyDictionary<Type, IMessageConfiguration> _messages;
+    private readonly ILogger<Bus> _logger;
 
-    /// <summary>Creates the bus over a shared producer and the message topic configurations.</summary>
+    /// <summary>Creates the bus over a shared producer, the message topic configurations and the logger.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
     /// <param name="messages">The per-message topic configurations (command and event).</param>
-    public Bus(IProducer<Null, byte[]> producer, IEnumerable<IMessageConfiguration> messages)
+    /// <param name="logger">The logger for produce failures.</param>
+    public Bus(IProducer<Null, byte[]> producer, IEnumerable<IMessageConfiguration> messages, ILogger<Bus> logger)
     {
         _producer = producer;
         _messages = messages.ToDictionary(configuration => configuration.MessageType);
+        _logger = logger;
     }
 
     /// <inheritdoc />
-    public Task Send<T>(T message, CancellationToken cancellationToken = default)
+    public async Task Send<T>(T message, CancellationToken cancellationToken = default)
         where T : ICommand
     {
         string topic = Topic(message);
 
-        return Produce(topic, Prepare(topic, message), cancellationToken);
+        await Produce(topic, Prepare(topic, message), cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    public async Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : ICommand
     {
         string topic = Topic(message);
 
-        return Produce(topic, Prepare(topic, message, transport), cancellationToken);
+        await Produce(topic, Prepare(topic, message, transport), cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task Publish<T>(T message, CancellationToken cancellationToken = default)
+    public async Task Publish<T>(T message, CancellationToken cancellationToken = default)
         where T : IEvent
     {
         string topic = Topic(message);
 
-        return Produce(topic, Prepare(topic, message), cancellationToken);
+        await Produce(topic, Prepare(topic, message), cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    public async Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : IEvent
     {
         string topic = Topic(message);
 
-        return Produce(topic, Prepare(topic, message, transport), cancellationToken);
+        await Produce(topic, Prepare(topic, message, transport), cancellationToken);
     }
 
     private string Topic<TMessage>(TMessage message)
@@ -142,9 +146,47 @@ public sealed class Bus : IBus
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
     }
 
-    private Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
+    /// <summary>
+    /// Produces the prepared message. A failure is logged with the outbound delivery attached (topic,
+    /// body and envelope — inspectable and reinjectable from the log platform) and rethrown: the
+    /// caller's task still faults, awaiting still means broker-acked.
+    /// </summary>
+    private async Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
     {
-        return _producer.ProduceAsync(topic, message, cancellationToken);
+        try
+        {
+            return await _producer.ProduceAsync(topic, message, cancellationToken);
+        }
+        catch (ProduceException<Null, byte[]> exception)
+        {
+            using (LogContext(topic, message)) _logger.LogError(exception, "Produce failed.");
+
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Logging scope carrying the outbound delivery — topic, raw body and every header — so a failed
+    /// send can be inspected and reprocessed from the log platform.
+    /// </summary>
+    private IDisposable? LogContext(string topic, Message<Null, byte[]> message)
+    {
+        Dictionary<string, object?> logContext = new()
+        {
+            ["Topic"] = topic,
+            ["Body"] = message.Value is null ? null : Encoding.UTF8.GetString(message.Value)
+        };
+
+        foreach (IHeader header in message.Headers)
+        {
+            byte[] value = header.GetValueBytes();
+
+            logContext[header.Key] = TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
+                ? new Guid(value)
+                : Encoding.UTF8.GetString(value);
+        }
+
+        return _logger.BeginScope(logContext);
     }
 
     private static void Restamp(Headers headers, string key, byte[] value)

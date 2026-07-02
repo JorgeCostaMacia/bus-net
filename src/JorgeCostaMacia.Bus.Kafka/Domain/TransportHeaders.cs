@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>The <c>jcm_</c>-prefixed Kafka header keys that carry the message envelope on the transport.</summary>
@@ -21,4 +23,13 @@ internal static class TransportHeaders
     public const string AggregateConsumers = Prefix + "aggregate_consumers";
     public const string RetryCount = Prefix + "retry_count";
     public const string RedeliveryCount = Prefix + "redelivery_count";
+
+    /// <summary>The keys whose values travel as 16 raw <see cref="Guid"/> bytes.</summary>
+    public static readonly ImmutableList<string> GuidHeaders =
+    [
+        MessageId,
+        ConversationId,
+        AggregateId,
+        AggregateCorrelationId
+    ];
 }

@@ -28,9 +28,9 @@ internal static class BusInfrastructureContext
         services.AddHostedService<BusProducer>();
 
         services.AddSingleton<Bus>();
-        services.AddSingleton<IBus>(provider => provider.GetRequiredService<Bus>());
-        services.AddSingleton<ICommandBus>(provider => provider.GetRequiredService<Bus>());
-        services.AddSingleton<IEventBus>(provider => provider.GetRequiredService<Bus>());
+        services.AddSingleton<IBus>(static provider => provider.GetRequiredService<Bus>());
+        services.AddSingleton<ICommandBus>(static provider => provider.GetRequiredService<Bus>());
+        services.AddSingleton<IEventBus>(static provider => provider.GetRequiredService<Bus>());
 
         return services;
     }
