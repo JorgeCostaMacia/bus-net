@@ -73,9 +73,17 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
-        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(_configuration.ConsumerConfig)
-            .SetErrorHandler((_, error) => _logger.LogError("Kafka consumer error on '{Topic}' ({Code}): {Reason}", _configuration.Topic, error.Code, error.Reason))
-            .SetLogHandler((_, log) => _logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "{Name}: {Message}", log.Name, log.Message))
+        ConsumerConfig configuration = _configuration.ConsumerConfig;
+
+        using IDisposable? scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Topic"] = _configuration.Topic,
+            ["GroupId"] = configuration.GroupId
+        });
+
+        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(configuration)
+            .SetErrorHandler((_, error) => LogError(error))
+            .SetLogHandler((_, log) => Log(log))
             .Build();
 
         consumer.Subscribe(_configuration.Topic);
@@ -112,6 +120,14 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
         Transport transport = CreateTransport(result);
         EventContext<TEvent> context = CreateContext(result, transport);
 
+        using IDisposable? logging = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["MessageId"] = context.MessageId,
+            ["ConversationId"] = context.ConversationId,
+            ["AggregateId"] = context.AggregateId,
+            ["AggregateCorrelationId"] = context.AggregateCorrelationId
+        });
+
         for (int attempt = 0; ; attempt++)
         {
             try
@@ -128,12 +144,44 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
                 && attempt < _configuration.RetryIntervals.Count
                 && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
             {
-                _logger.LogWarning(exception, "Handling '{Topic}' failed; retrying in {Interval} (retry {Retry}).", _configuration.Topic, _configuration.RetryIntervals[attempt], context.RetryCount + 1);
+                using (_logger.BeginScope(new Dictionary<string, object?>
+                {
+                    ["Interval"] = _configuration.RetryIntervals[attempt],
+                    ["Retry"] = context.RetryCount + 1
+                }))
+                {
+                    _logger.LogWarning(exception, "Handling failed; retrying.");
+                }
 
                 await Task.Delay(_configuration.RetryIntervals[attempt], cancellationToken);
 
                 context = context with { RetryCount = context.RetryCount + 1 };
             }
+        }
+    }
+
+    private void LogError(Error error)
+    {
+        using (_logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Code"] = error.Code,
+            ["Reason"] = error.Reason,
+            ["IsFatal"] = error.IsFatal
+        }))
+        {
+            _logger.LogError("Consumer error.");
+        }
+    }
+
+    private void Log(LogMessage log)
+    {
+        using (_logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Name"] = log.Name,
+            ["Facility"] = log.Facility
+        }))
+        {
+            _logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "{Message}", log.Message);
         }
     }
 
