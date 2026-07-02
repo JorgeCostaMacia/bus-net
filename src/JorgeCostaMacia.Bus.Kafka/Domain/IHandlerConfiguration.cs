@@ -20,9 +20,6 @@ public interface IHandlerConfiguration
     /// <summary>The Kafka topic the handler subscribes to.</summary>
     string Topic { get; }
 
-    /// <summary>Number of concurrent consumer instances for this handler.</summary>
-    int Consumers { get; }
-
     /// <summary>
     /// Delays between in-process retry attempts when handling fails — one entry per attempt, waited
     /// before it (empty means no retries).

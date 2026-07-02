@@ -9,9 +9,6 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 public static class CommandHandlerConfigurationDefaults
 {
-    /// <summary>Number of concurrent consumer instances. Default: <c>1</c>.</summary>
-    public const int CONSUMERS = 1;
-
     /// <summary>Delays between in-process retry attempts. Default: empty (no retries).</summary>
     public static ImmutableList<TimeSpan> RETRY_INTERVALS => [];
 

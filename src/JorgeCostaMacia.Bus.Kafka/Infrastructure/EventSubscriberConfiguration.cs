@@ -45,9 +45,6 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     public string Topic { get; init; }
 
     /// <inheritdoc />
-    public int Consumers { get; init; }
-
-    /// <inheritdoc />
     public ImmutableList<TimeSpan> RetryIntervals { get; init; }
 
     /// <inheritdoc />
@@ -64,7 +61,6 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     /// <param name="bootstrapServers">Comma-separated Kafka brokers.</param>
     /// <param name="saslUsername">SASL username, when authenticating.</param>
     /// <param name="saslPassword">SASL password, when authenticating.</param>
-    /// <param name="consumers">Concurrent consumer instances, or <see langword="null"/> for the default.</param>
     /// <param name="retryIntervals">Delays between in-process retry attempts (one entry per attempt), or <see langword="null"/> for the default (no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
     /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
@@ -89,7 +85,6 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         string bootstrapServers,
         string saslUsername,
         string saslPassword,
-        int? consumers = null,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
@@ -113,7 +108,6 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         MessageType = typeof(TEvent);
         HandlerType = typeof(TEventSubscriber);
         Topic = topic;
-        Consumers = consumers ?? EventSubscriberConfigurationDefaults.CONSUMERS;
         RetryIntervals = retryIntervals ?? EventSubscriberConfigurationDefaults.RETRY_INTERVALS;
         RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? EventSubscriberConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
         RedeliveryAttempts = redeliveryAttempts ?? EventSubscriberConfigurationDefaults.REDELIVERY_ATTEMPTS;
