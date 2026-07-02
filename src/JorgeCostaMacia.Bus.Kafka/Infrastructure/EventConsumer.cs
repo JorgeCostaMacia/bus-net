@@ -5,6 +5,7 @@ using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
@@ -23,16 +24,19 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
 {
     private readonly IHandlerConfiguration _configuration;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<EventConsumer<TEvent, TEventSubscriber>> _logger;
     private Task? _consumer;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the consumer over its subscriber configuration and the scope factory.</summary>
+    /// <summary>Creates the consumer over its subscriber configuration, the scope factory and the logger.</summary>
     /// <param name="configuration">The subscriber's consumer configuration.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
-    public EventConsumer(IHandlerConfiguration configuration, IServiceScopeFactory scopeFactory)
+    /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
+    public EventConsumer(IHandlerConfiguration configuration, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
     {
         _configuration = configuration;
         _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     /// <summary>Launches the consumer loop.</summary>
@@ -69,12 +73,10 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
-        ConsumerBuilder<Null, byte[]> builder = new(_configuration.ConsumerConfig);
-
-        if (_configuration.ErrorHandler is not null) builder.SetErrorHandler(_configuration.ErrorHandler);
-        if (_configuration.LogHandler is not null) builder.SetLogHandler(_configuration.LogHandler);
-
-        using IConsumer<Null, byte[]> consumer = builder.Build();
+        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(_configuration.ConsumerConfig)
+            .SetErrorHandler((_, error) => _logger.LogError("Kafka consumer error on '{Topic}' ({Code}): {Reason}", _configuration.Topic, error.Code, error.Reason))
+            .SetLogHandler((_, log) => _logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "{Name}: {Message}", log.Name, log.Message))
+            .Build();
 
         consumer.Subscribe(_configuration.Topic);
 
@@ -126,6 +128,8 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
                 && attempt < _configuration.RetryIntervals.Count
                 && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
             {
+                _logger.LogWarning(exception, "Handling '{Topic}' failed; retrying in {Interval} (retry {Retry}).", _configuration.Topic, _configuration.RetryIntervals[attempt], context.RetryCount + 1);
+
                 await Task.Delay(_configuration.RetryIntervals[attempt], cancellationToken);
 
                 context = context with { RetryCount = context.RetryCount + 1 };
