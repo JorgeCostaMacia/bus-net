@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
@@ -8,7 +6,6 @@ using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Domain.Messages;
 using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-using Microsoft.Extensions.DependencyInjection;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -17,33 +14,21 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// The Kafka bus. Sends commands and publishes events through a shared
 /// <see cref="IProducer{TKey, TValue}"/> using <c>ProduceAsync</c> (a completed task means the broker
 /// acked; a failure throws). Send/Publish orchestrate: they resolve the topic, prepare the envelope
-/// (fresh, or continued from an inbound transport) and produce. Start launches the consumers — one
-/// loop per handler configuration and concurrency slot — each delivery handled in its own service
-/// scope and acked by committing the offset; Stop cancels the loops and closes the consumers.
+/// (fresh, or continued from an inbound transport) and produce. The consume side lives in the
+/// <see cref="Worker"/>, hosted in the application lifecycle.
 /// </summary>
 public sealed class Bus : IBus
 {
-    private static readonly MethodInfo HandleCommandMethod = typeof(Bus).GetMethod(nameof(HandleCommand), BindingFlags.Instance | BindingFlags.NonPublic)!;
-    private static readonly MethodInfo HandleEventMethod = typeof(Bus).GetMethod(nameof(HandleEvent), BindingFlags.Instance | BindingFlags.NonPublic)!;
-
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IReadOnlyDictionary<Type, IMessageConfiguration> _messages;
-    private readonly IReadOnlyList<IHandlerConfiguration> _handlers;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly List<Task> _consumers = [];
-    private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the bus over a shared producer, the message and handler configurations and the scope factory.</summary>
+    /// <summary>Creates the bus over a shared producer and the message topic configurations.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
     /// <param name="messages">The per-message topic configurations (command and event).</param>
-    /// <param name="handlers">The per-handler consumer configurations (command handler and event subscriber).</param>
-    /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
-    public Bus(IProducer<Null, byte[]> producer, IEnumerable<IMessageConfiguration> messages, IEnumerable<IHandlerConfiguration> handlers, IServiceScopeFactory scopeFactory)
+    public Bus(IProducer<Null, byte[]> producer, IEnumerable<IMessageConfiguration> messages)
     {
         _producer = producer;
         _messages = messages.ToDictionary(configuration => configuration.MessageType);
-        _handlers = handlers.ToList();
-        _scopeFactory = scopeFactory;
     }
 
     /// <inheritdoc />
@@ -80,38 +65,6 @@ public sealed class Bus : IBus
         string topic = Topic(message);
 
         return Produce(topic, Prepare(topic, message, transport), cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public Task Start(CancellationToken cancellationToken = default)
-    {
-        _cancellation = new CancellationTokenSource();
-
-        foreach (IHandlerConfiguration configuration in _handlers)
-        {
-            MethodInfo dispatch = Dispatch(configuration);
-
-            for (int consumer = 0; consumer < configuration.Consumers; consumer++)
-            {
-                _consumers.Add(Task.Run(() => Consume(configuration, dispatch, _cancellation.Token), CancellationToken.None));
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public async Task Stop(CancellationToken cancellationToken = default)
-    {
-        if (_cancellation is null) return;
-
-        _cancellation.Cancel();
-
-        await Task.WhenAll(_consumers).WaitAsync(cancellationToken);
-
-        _cancellation.Dispose();
-        _cancellation = null;
-        _consumers.Clear();
     }
 
     private string Topic<TMessage>(TMessage message)
@@ -192,118 +145,6 @@ public sealed class Bus : IBus
     {
         return _producer.ProduceAsync(topic, message, cancellationToken);
     }
-
-    /// <summary>
-    /// One consumer loop: consume → dispatch → commit (the offset commit is the ack). A failed
-    /// delivery is not committed; the resilience policy (retry / redelivery / error topic) is built
-    /// in the next phase.
-    /// </summary>
-    private async Task Consume(IHandlerConfiguration configuration, MethodInfo dispatch, CancellationToken cancellationToken)
-    {
-        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(configuration.ConsumerConfig).Build();
-
-        consumer.Subscribe(configuration.Topic);
-
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                ConsumeResult<Null, byte[]> result = consumer.Consume(cancellationToken);
-
-                await (Task)dispatch.Invoke(this, [configuration, result, cancellationToken])!;
-
-                consumer.Commit(result);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Graceful stop.
-        }
-        finally
-        {
-            consumer.Close();
-        }
-    }
-
-    private async Task HandleCommand<TCommand>(IHandlerConfiguration configuration, ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
-        where TCommand : Domain.Command
-    {
-        Transport transport = CreateTransport(result);
-        TCommand message = JsonSerializer.Deserialize<TCommand>(result.Message.Value)!;
-
-        CommandContext<TCommand> context = new(
-            message,
-            transport,
-            transport.GetGuid(TransportHeaders.MessageId),
-            transport.GetString(TransportHeaders.MessageType),
-            transport.GetStringList(TransportHeaders.MessageTypeUrn),
-            transport.GetString(TransportHeaders.MessageDestinationAddress),
-            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
-            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
-            transport.GetGuid(TransportHeaders.ConversationId),
-            transport.GetString(TransportHeaders.ConversationAddress),
-            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateDestinationAddresses),
-            transport.GetGuid(TransportHeaders.AggregateId),
-            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
-            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RetryCount),
-            transport.GetInt(TransportHeaders.RedeliveryCount));
-
-        using IServiceScope scope = _scopeFactory.CreateScope();
-
-        ICommandHandler<TCommand, CommandContext<TCommand>, Transport> handler =
-            (ICommandHandler<TCommand, CommandContext<TCommand>, Transport>)scope.ServiceProvider.GetRequiredService(configuration.HandlerType);
-
-        await handler.Handle(context, cancellationToken);
-    }
-
-    private async Task HandleEvent<TEvent>(IHandlerConfiguration configuration, ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
-        where TEvent : Domain.Event
-    {
-        Transport transport = CreateTransport(result);
-        TEvent message = JsonSerializer.Deserialize<TEvent>(result.Message.Value)!;
-
-        EventContext<TEvent> context = new(
-            message,
-            transport,
-            transport.GetGuid(TransportHeaders.MessageId),
-            transport.GetString(TransportHeaders.MessageType),
-            transport.GetStringList(TransportHeaders.MessageTypeUrn),
-            transport.GetString(TransportHeaders.MessageDestinationAddress),
-            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
-            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
-            transport.GetGuid(TransportHeaders.ConversationId),
-            transport.GetString(TransportHeaders.ConversationAddress),
-            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateDestinationAddresses),
-            transport.GetGuid(TransportHeaders.AggregateId),
-            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
-            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RetryCount),
-            transport.GetInt(TransportHeaders.RedeliveryCount));
-
-        using IServiceScope scope = _scopeFactory.CreateScope();
-
-        IEventSubscriber<TEvent, EventContext<TEvent>, Transport> subscriber =
-            (IEventSubscriber<TEvent, EventContext<TEvent>, Transport>)scope.ServiceProvider.GetRequiredService(configuration.HandlerType);
-
-        await subscriber.Handle(context, cancellationToken);
-    }
-
-    private static MethodInfo Dispatch(IHandlerConfiguration configuration)
-        => typeof(ICommand).IsAssignableFrom(configuration.MessageType)
-            ? HandleCommandMethod.MakeGenericMethod(configuration.MessageType)
-            : HandleEventMethod.MakeGenericMethod(configuration.MessageType);
-
-    private static Transport CreateTransport(ConsumeResult<Null, byte[]> result)
-        => new(
-            result.Message.Headers.ToImmutableList(),
-            result.Topic,
-            result.Partition,
-            result.Offset,
-            result.LeaderEpoch,
-            result.Message.Timestamp);
 
     private static void Restamp(Headers headers, string key, byte[] value)
     {
