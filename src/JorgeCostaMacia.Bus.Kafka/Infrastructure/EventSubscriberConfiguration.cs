@@ -23,8 +23,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     private readonly string _bootstrapServers;
     private readonly SecurityProtocol _securityProtocol;
     private readonly SaslMechanism _saslMechanism;
-    private readonly string _saslUsername;
-    private readonly string _saslPassword;
+    private readonly string? _saslUsername;
+    private readonly string? _saslPassword;
     private readonly bool _enableAutoCommit;
     private readonly bool _enableAutoOffsetStore;
     private readonly int _autoCommitIntervalMs;
@@ -90,8 +90,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         string topic,
         string groupId,
         string bootstrapServers,
-        string saslUsername,
-        string saslPassword,
+        string? saslUsername = null,
+        string? saslPassword = null,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
