@@ -85,11 +85,15 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     }
 
     /// <summary>
-    /// The consumer loop: consume → filter → handle → store the offset (the store is the ack; the
-    /// background thread commits it without blocking the loop). The loop only stops on cancellation:
-    /// a consume error is logged and retried (the client reconnects on its own); a failed delivery is
-    /// requeued to the topic when retryable — the requeue is the ack — and otherwise logged and not
-    /// acked, until the resilience policy (redelivery / error topic) lands in the next phase.
+    /// The consumer loop — the whole delivery flow and its error policy in one place: consume →
+    /// filter (skip and ack deliveries targeting other consumers, straight off the raw header) →
+    /// rebuild transport/context → handle in its own service scope (envelope trace in the logging
+    /// scope) → store the offset (the store is the ack; the background thread commits it without
+    /// blocking). Each failure has its own lane: our shutdown exits through the while condition;
+    /// consume errors back off (the client reconnects on its own); a retryable failure requeues to
+    /// the topic targeted to this group (the requeue is the ack); everything else — produce failures,
+    /// malformed deliveries, handling errors — is logged with the delivery attached and left unacked,
+    /// until the redelivery / error-topic policy lands.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -101,9 +105,14 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
 
         while (!cancellationToken.IsCancellationRequested)
         {
+            ConsumeResult<Null, byte[]>? result = null;
+            IDisposable? delivery = null;
+
             try
             {
-                ConsumeResult<Null, byte[]> result = _consumer!.Consume(cancellationToken);
+                result = _consumer!.Consume(cancellationToken);
+
+                delivery = Delivery(result);
 
                 if (Filtered(result))
                 {
@@ -112,7 +121,15 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
                     continue;
                 }
 
-                await Handle(result, cancellationToken);
+                Transport transport = CreateTransport(result);
+                EventContext<TEvent> context = CreateContext(result, transport);
+
+                using (IServiceScope services = _scopeFactory.CreateScope())
+                {
+                    await services.ServiceProvider
+                        .GetRequiredService<TEventSubscriber>()
+                        .Handle(context, cancellationToken);
+                }
 
                 Store(result);
             }
@@ -142,73 +159,19 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             {
                 _logger.LogError(exception, "Malformed delivery; an envelope header is invalid.");
             }
+            catch (Exception exception) when (Retryable(result, exception))
+            {
+                if (await Retry(result!, exception, cancellationToken)) Store(result!);
+            }
             catch (Exception exception)
             {
                 _logger.LogError(exception, "Handling failed; the delivery is not acked.");
             }
+            finally
+            {
+                delivery?.Dispose();
+            }
         }
-    }
-
-    /// <summary>
-    /// Handles one delivery: rebuilds the context from the transport's headers and invokes the
-    /// subscriber in its own service scope, with the envelope trace in the logging scope. A retryable
-    /// failure is requeued here (the return then acks the original); a non-retryable one propagates
-    /// (no ack).
-    /// </summary>
-    private async Task Handle(ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
-    {
-        Transport transport = CreateTransport(result);
-        EventContext<TEvent> context = CreateContext(result, transport);
-
-        using IDisposable? logging = _logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["MessageId"] = context.MessageId,
-            ["ConversationId"] = context.ConversationId,
-            ["AggregateId"] = context.AggregateId,
-            ["AggregateCorrelationId"] = context.AggregateCorrelationId
-        });
-
-        try
-        {
-            using IServiceScope scope = _scopeFactory.CreateScope();
-
-            TEventSubscriber subscriber = scope.ServiceProvider.GetRequiredService<TEventSubscriber>();
-
-            await subscriber.Handle(context, cancellationToken);
-        }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested
-            && context.RetryCount < _configuration.RetryAttempts
-            && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
-        {
-            await Retry(transport, result, exception, cancellationToken);
-        }
-    }
-
-    /// <summary>
-    /// Retries through the topic itself: the delivery is requeued at the tail with the envelope
-    /// cloned, <c>RetryCount</c> incremented and targeted to this group only — the other subscriber
-    /// groups already handled the original, so they filter the retry out. The user's original
-    /// targeting stays in the message body; the header is this copy's delivery instruction. Nothing
-    /// is held in memory and the retry survives a restart.
-    /// </summary>
-    private async Task Retry(Transport transport, ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
-    {
-        int retry = transport.GetInt(TransportHeaders.RetryCount) + 1;
-
-        Headers headers = transport.CloneHeaders();
-
-        Restamp(headers, TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(retry.ToString()));
-        Restamp(headers, TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(_configuration.GroupId));
-
-        using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["Retry"] = retry
-        }))
-        {
-            _logger.LogWarning(exception, "Handling failed; requeued to retry.");
-        }
-
-        await _producer.ProduceAsync(_configuration.Topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
     }
 
     /// <summary>
@@ -230,6 +193,64 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             .Contains(_configuration.GroupId);
     }
 
+    /// <summary>
+    /// Whether a failed delivery is requeued: the envelope's <c>RetryCount</c> has attempts left and
+    /// the exception type is not excluded. Malformed deliveries never reach this lane — retrying the
+    /// same bytes is pointless.
+    /// </summary>
+    private bool Retryable(ConsumeResult<Null, byte[]>? result, Exception exception)
+    {
+        if (result is null || !result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
+
+        return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
+            && retries < _configuration.RetryAttempts
+            && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
+    }
+
+    /// <summary>
+    /// Retries through the topic itself: the delivery is requeued at the tail with the envelope
+    /// cloned, <c>RetryCount</c> incremented and targeted to this group only — the other subscriber
+    /// groups already handled the original, so they filter the retry out; the user's original
+    /// targeting stays in the message body. Returns whether the requeue succeeded (the caller then
+    /// acks the original); a failed requeue is logged and leaves the delivery unacked — nothing
+    /// thrown here can escape the loop.
+    /// </summary>
+    private async Task<bool> Retry(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    {
+        Transport transport = CreateTransport(result);
+        int retry = transport.GetInt(TransportHeaders.RetryCount) + 1;
+
+        Headers headers = transport.CloneHeaders();
+
+        Restamp(headers, TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(retry.ToString()));
+        Restamp(headers, TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(_configuration.GroupId));
+
+        try
+        {
+            await _producer.ProduceAsync(_configuration.Topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
+
+            using (_logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["Retry"] = retry
+            }))
+            {
+                _logger.LogWarning(exception, "Handling failed; requeued to retry.");
+            }
+
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (ProduceException<Null, byte[]> produce)
+        {
+            _logger.LogError(produce, "Produce failed; the delivery is not acked.");
+
+            return false;
+        }
+    }
+
     private void Store(ConsumeResult<Null, byte[]> result)
     {
         try
@@ -241,6 +262,41 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             _logger.LogWarning("Partition lost in a rebalance; its new owner will handle the message again.");
         }
     }
+
+    /// <summary>
+    /// Logging scope carrying the whole delivery — the partition/offset pointer to refetch it, the
+    /// raw body and every header — opened right after consume and disposed in the iteration's
+    /// finally, so every log of the iteration (the subscriber's own included, and the failure lanes)
+    /// is fully traced and a failed message can be inspected and reprocessed from the log platform.
+    /// </summary>
+    private IDisposable? Delivery(ConsumeResult<Null, byte[]> result)
+    {
+        Dictionary<string, object?> delivery = new()
+        {
+            ["Partition"] = result.Partition.Value,
+            ["Offset"] = result.Offset.Value,
+            ["Body"] = result.Message.Value is null ? null : Encoding.UTF8.GetString(result.Message.Value)
+        };
+
+        foreach (IHeader header in result.Message.Headers)
+        {
+            byte[] value = header.GetValueBytes();
+
+            delivery[header.Key] = GuidHeaders.Contains(header.Key) && value.Length == 16
+                ? new Guid(value)
+                : Encoding.UTF8.GetString(value);
+        }
+
+        return _logger.BeginScope(delivery);
+    }
+
+    private static readonly ImmutableList<string> GuidHeaders =
+    [
+        TransportHeaders.MessageId,
+        TransportHeaders.ConversationId,
+        TransportHeaders.AggregateId,
+        TransportHeaders.AggregateCorrelationId
+    ];
 
     private void LogError(Error error)
     {
