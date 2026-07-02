@@ -3,23 +3,23 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Command.Domain;
 using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-using Microsoft.Extensions.Configuration;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka;
 
 /// <summary>
 /// Registers the bus's messages and handlers. The Kafka consumer settings come from the
 /// <c>Bus:Consumer</c> configuration section (declared once, never repeated); each handler declares
 /// only its own contract — topic, group id and resilience policy. Each context maps its own pieces
-/// through it (<c>Map*BusContext(this BusConfigurator)</c> extensions): messages it sends
+/// through it (<c>Map*BusContext(this BusContextConfigurator)</c> extensions): messages it sends
 /// (<see cref="AddCommand{TCommand}"/> / <see cref="AddEvent{TEvent}"/>) and messages it consumes
 /// (<see cref="AddCommandHandler{TCommand, TCommandHandler}"/> /
 /// <see cref="AddEventSubscriber{TEvent, TEventSubscriber}"/> — each hosting its own consumer).
 /// </summary>
-public sealed class BusConfigurator
+public sealed class BusContextConfigurator
 {
     private readonly IServiceCollection _services;
     private readonly KafkaConsumerConfiguration _consumer;
@@ -28,17 +28,17 @@ public sealed class BusConfigurator
     /// <summary>The type → topic routing map accumulated by the contexts.</summary>
     internal IReadOnlyDictionary<Type, string> Messages => _messages;
 
-    internal BusConfigurator(IServiceCollection services, IConfiguration configuration)
+    internal BusContextConfigurator(IServiceCollection services, KafkaConsumerConfiguration consumer)
     {
         _services = services;
-        _consumer = KafkaConsumerConfiguration.Create(configuration);
+        _consumer = consumer;
     }
 
     /// <summary>Registers a command this service sends, mapping its type to a topic.</summary>
     /// <typeparam name="TCommand">The command type.</typeparam>
     /// <param name="topic">The Kafka topic the command is sent to.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public BusConfigurator AddCommand<TCommand>(string topic)
+    public BusContextConfigurator AddCommand<TCommand>(string topic)
         where TCommand : ICommand
     {
         _messages.Add(typeof(TCommand), topic);
@@ -50,7 +50,7 @@ public sealed class BusConfigurator
     /// <typeparam name="TEvent">The event type.</typeparam>
     /// <param name="topic">The Kafka topic the event is published to.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public BusConfigurator AddEvent<TEvent>(string topic)
+    public BusContextConfigurator AddEvent<TEvent>(string topic)
         where TEvent : IEvent
     {
         _messages.Add(typeof(TEvent), topic);
@@ -71,7 +71,7 @@ public sealed class BusConfigurator
     /// <param name="redeliveryIntervals">Delays between scheduled redeliveries (one entry per redelivery), or <see langword="null"/> for the default (none).</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public BusConfigurator AddCommandHandler<TCommand, TCommandHandler>(
+    public BusContextConfigurator AddCommandHandler<TCommand, TCommandHandler>(
         string topic,
         string groupId,
         int? retryAttempts = null,
@@ -123,7 +123,7 @@ public sealed class BusConfigurator
     /// <param name="redeliveryIntervals">Delays between scheduled redeliveries (one entry per redelivery), or <see langword="null"/> for the default (none).</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public BusConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
+    public BusContextConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
         string topic,
         string groupId,
         int? retryAttempts = null,

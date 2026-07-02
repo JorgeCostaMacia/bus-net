@@ -1,5 +1,4 @@
 using Confluent.Kafka;
-using Microsoft.Extensions.Configuration;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
@@ -12,18 +11,6 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 public sealed class KafkaConsumerConfiguration
 {
-    private const string SECTION = "Bus:Consumer";
-
-    /// <summary>
-    /// Maps the <c>Bus:Consumer</c> section onto a <see cref="KafkaConsumerConfiguration"/>. The
-    /// connection is validated lazily by <see cref="ConsumerConfig"/> — a producer-only service needs
-    /// no <c>Bus:Consumer</c> section.
-    /// </summary>
-    /// <param name="configuration">The application configuration.</param>
-    /// <returns>The global consumer configuration.</returns>
-    internal static KafkaConsumerConfiguration Create(IConfiguration configuration)
-        => configuration.GetSection(SECTION).Get<KafkaConsumerConfiguration>() ?? new KafkaConsumerConfiguration();
-
     /// <summary>Comma-separated list of Kafka brokers. Required when the service consumes.</summary>
     public string? BootstrapServers { get; init; }
 
