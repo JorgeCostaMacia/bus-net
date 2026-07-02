@@ -87,7 +87,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     /// <summary>
     /// The consumer loop — the whole delivery flow and its error policy in one place: consume →
     /// filter (skip and ack deliveries targeting other consumers, straight off the raw header) →
-    /// rebuild transport/context → handle in its own service scope (envelope trace in the logging
+    /// rebuild transport/context → handle in its own service scope (the whole delivery in the logging
     /// scope) → store the offset (the store is the ack; the background thread commits it without
     /// blocking). Each failure has its own lane: our shutdown exits through the while condition;
     /// consume errors back off (the client reconnects on its own); a retryable failure requeues to

@@ -86,7 +86,7 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
 
     /// <summary>
     /// The consumer loop — the whole delivery flow and its error policy in one place: consume →
-    /// rebuild transport/context → handle in its own service scope (envelope trace in the logging
+    /// rebuild transport/context → handle in its own service scope (the whole delivery in the logging
     /// scope) → store the offset (the store is the ack; the background thread commits it without
     /// blocking). Commands are point-to-point (one group), so there is no consumer-side filtering —
     /// the command's <c>AggregateConsumers</c> is data for the events it generates. Each failure has
