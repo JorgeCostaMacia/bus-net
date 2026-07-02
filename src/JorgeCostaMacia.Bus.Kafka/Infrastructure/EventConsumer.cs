@@ -164,9 +164,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     {
         using (_logger.BeginScope(new Dictionary<string, object?>
         {
-            ["Code"] = error.Code,
-            ["Reason"] = error.Reason,
-            ["IsFatal"] = error.IsFatal
+            ["@Error"] = error
         }))
         {
             _logger.LogError("Consumer error.");
