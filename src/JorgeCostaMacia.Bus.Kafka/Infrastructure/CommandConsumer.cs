@@ -85,9 +85,11 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     }
 
     /// <summary>
-    /// The consumer loop: consume → filter → handle → store the offset (the store is the ack; the
-    /// background thread commits it without blocking the loop). The loop only stops on cancellation:
-    /// a consume error is logged and retried (the client reconnects on its own); a failed delivery is
+    /// The consumer loop: consume → handle → store the offset (the store is the ack; the background
+    /// thread commits it without blocking the loop). Commands are point-to-point (one group), so
+    /// there is no consumer-side filtering — the command's <c>AggregateConsumers</c> is data for the
+    /// events it generates, not a delivery instruction. The loop only stops on cancellation: a
+    /// consume error is logged and retried (the client reconnects on its own); a failed delivery is
     /// requeued to the topic when retryable — the requeue is the ack — and otherwise logged and not
     /// acked, until the resilience policy (redelivery / error topic) lands in the next phase.
     /// </summary>
@@ -106,13 +108,6 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
                 try
                 {
                     ConsumeResult<Null, byte[]> result = _consumer!.Consume(cancellationToken);
-
-                    if (Filtered(result))
-                    {
-                        Store(result);
-
-                        continue;
-                    }
 
                     try
                     {
@@ -204,25 +199,6 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
         }
 
         await _producer.ProduceAsync(_configuration.Topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
-    }
-
-    /// <summary>
-    /// Consumer-side filtering: when the message targets specific consumers
-    /// (<c>AggregateConsumers</c> header non-empty) and this group is not among them, the delivery is
-    /// skipped (and acked) without deserializing the body.
-    /// </summary>
-    private bool Filtered(ConsumeResult<Null, byte[]> result)
-    {
-        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header)) return false;
-
-        string consumers = Encoding.UTF8.GetString(header);
-
-        if (string.IsNullOrWhiteSpace(consumers)) return false;
-
-        return !consumers
-            .Split(',')
-            .Select(consumer => consumer.Trim())
-            .Contains(_configuration.GroupId);
     }
 
     private void Store(ConsumeResult<Null, byte[]> result)

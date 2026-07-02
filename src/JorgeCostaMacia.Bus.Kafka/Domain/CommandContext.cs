@@ -47,7 +47,10 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transp
     /// <summary>UTC time when the conversation began.</summary>
     public DateTime ConversationOccurredAt { get; init; }
 
-    /// <summary>The consumers this command targets (e.g. consumer group ids); empty means no filtering.</summary>
+    /// <summary>
+    /// The consumers the events generated from this command will target (e.g. consumer group ids);
+    /// empty means no filtering. Commands themselves are point-to-point and never filtered.
+    /// </summary>
     public ImmutableList<string> AggregateConsumers { get; init; }
 
     /// <summary>Unique id of the inbound message (domain trace).</summary>

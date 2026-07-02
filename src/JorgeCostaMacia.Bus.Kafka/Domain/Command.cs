@@ -20,7 +20,11 @@ public abstract record Command : ICommand
     /// <summary>UTC timestamp of when the command was issued.</summary>
     public DateTime AggregateOccurredAt { get; init; }
 
-    /// <summary>The consumers this command targets (e.g. consumer group ids); empty means no filtering.</summary>
+    /// <summary>
+    /// The consumers the events generated from this command will target (e.g. consumer group ids);
+    /// empty means no filtering. Commands themselves are point-to-point and never filtered — this
+    /// travels as data for the handler to stamp on the events it publishes.
+    /// </summary>
     public ImmutableList<string> AggregateConsumers { get; init; }
 
     /// <summary>
