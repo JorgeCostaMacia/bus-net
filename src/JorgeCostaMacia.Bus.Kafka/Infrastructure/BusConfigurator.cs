@@ -88,7 +88,7 @@ public sealed class BusConfigurator
         where TCommand : Domain.Command
         where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
     {
-        CommandHandlerConfiguration<TCommand, TCommandHandler> configuration = new(
+        ConsumerConfiguration configuration = new(
             topic,
             groupId,
             _bootstrapServers,
@@ -137,7 +137,7 @@ public sealed class BusConfigurator
         where TEvent : Domain.Event
         where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
     {
-        EventSubscriberConfiguration<TEvent, TEventSubscriber> configuration = new(
+        ConsumerConfiguration configuration = new(
             topic,
             groupId,
             _bootstrapServers,

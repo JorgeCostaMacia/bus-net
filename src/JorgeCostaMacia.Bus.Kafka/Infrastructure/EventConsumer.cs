@@ -26,7 +26,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : Consumer<EventCo
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    public EventConsumer(IHandlerConfiguration configuration, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
+    public EventConsumer(ConsumerConfiguration configuration, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
         : base(configuration, producer, scopeFactory, logger) { }
 
     /// <inheritdoc />

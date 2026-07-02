@@ -4,10 +4,10 @@ using Confluent.Kafka;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default consumer settings applied to a <see cref="CommandHandlerConfiguration{TCommand, TCommandHandler}"/>
+/// Default consumer settings applied to a <see cref="ConsumerConfiguration"/>
 /// when not supplied.
 /// </summary>
-public static class CommandHandlerConfigurationDefaults
+public static class ConsumerConfigurationDefaults
 {
     /// <summary>Maximum retry requeues to the topic. Default: <c>0</c> (no retries).</summary>
     public const int RETRY_ATTEMPTS = 0;

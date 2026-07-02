@@ -33,14 +33,14 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
     private CancellationTokenSource? _cancellation;
 
     /// <summary>The handler's consumer configuration (topic, group id, resilience policy, consumer settings).</summary>
-    protected IHandlerConfiguration Configuration { get; }
+    protected ConsumerConfiguration Configuration { get; }
 
     /// <summary>Creates the consumer over its handler configuration, the shared producer, the scope factory and the logger.</summary>
     /// <param name="configuration">The handler's consumer configuration.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    protected Consumer(IHandlerConfiguration configuration, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
+    protected Consumer(ConsumerConfiguration configuration, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
     {
         Configuration = configuration;
         _producer = producer;
