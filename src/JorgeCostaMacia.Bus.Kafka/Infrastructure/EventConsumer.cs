@@ -106,13 +106,13 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
         while (!cancellationToken.IsCancellationRequested)
         {
             ConsumeResult<Null, byte[]>? result = null;
-            IDisposable? delivery = null;
+            IDisposable? logContext = null;
 
             try
             {
                 result = _consumer!.Consume(cancellationToken);
 
-                delivery = Delivery(result);
+                logContext = LogContext(result);
 
                 if (Filtered(result))
                 {
@@ -169,7 +169,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             }
             finally
             {
-                delivery?.Dispose();
+                logContext?.Dispose();
             }
         }
     }
@@ -269,9 +269,9 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     /// finally, so every log of the iteration (the subscriber's own included, and the failure lanes)
     /// is fully traced and a failed message can be inspected and reprocessed from the log platform.
     /// </summary>
-    private IDisposable? Delivery(ConsumeResult<Null, byte[]> result)
+    private IDisposable? LogContext(ConsumeResult<Null, byte[]> result)
     {
-        Dictionary<string, object?> delivery = new()
+        Dictionary<string, object?> logContext = new()
         {
             ["Partition"] = result.Partition.Value,
             ["Offset"] = result.Offset.Value,
@@ -282,12 +282,12 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
         {
             byte[] value = header.GetValueBytes();
 
-            delivery[header.Key] = GuidHeaders.Contains(header.Key) && value.Length == 16
+            logContext[header.Key] = GuidHeaders.Contains(header.Key) && value.Length == 16
                 ? new Guid(value)
                 : Encoding.UTF8.GetString(value);
         }
 
-        return _logger.BeginScope(delivery);
+        return _logger.BeginScope(logContext);
     }
 
     private static readonly ImmutableList<string> GuidHeaders =

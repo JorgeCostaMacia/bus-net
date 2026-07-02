@@ -106,13 +106,13 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
         while (!cancellationToken.IsCancellationRequested)
         {
             ConsumeResult<Null, byte[]>? result = null;
-            IDisposable? delivery = null;
+            IDisposable? logContext = null;
 
             try
             {
                 result = _consumer!.Consume(cancellationToken);
 
-                delivery = Delivery(result);
+                logContext = LogContext(result);
 
                 Transport transport = CreateTransport(result);
                 CommandContext<TCommand> context = CreateContext(result, transport);
@@ -162,7 +162,7 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
             }
             finally
             {
-                delivery?.Dispose();
+                logContext?.Dispose();
             }
         }
     }
@@ -242,9 +242,9 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     /// finally, so every log of the iteration (the handler's own included, and the failure lanes) is
     /// fully traced and a failed message can be inspected and reprocessed from the log platform.
     /// </summary>
-    private IDisposable? Delivery(ConsumeResult<Null, byte[]> result)
+    private IDisposable? LogContext(ConsumeResult<Null, byte[]> result)
     {
-        Dictionary<string, object?> delivery = new()
+        Dictionary<string, object?> logContext = new()
         {
             ["Partition"] = result.Partition.Value,
             ["Offset"] = result.Offset.Value,
@@ -255,12 +255,12 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
         {
             byte[] value = header.GetValueBytes();
 
-            delivery[header.Key] = GuidHeaders.Contains(header.Key) && value.Length == 16
+            logContext[header.Key] = GuidHeaders.Contains(header.Key) && value.Length == 16
                 ? new Guid(value)
                 : Encoding.UTF8.GetString(value);
         }
 
-        return _logger.BeginScope(delivery);
+        return _logger.BeginScope(logContext);
     }
 
     private static readonly ImmutableList<string> GuidHeaders =
