@@ -21,13 +21,14 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : Consumer<EventCo
     where TEvent : Domain.Event
     where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
 {
-    /// <summary>Creates the consumer over its subscriber configuration, the shared producer, the scope factory and the logger.</summary>
-    /// <param name="configuration">The subscriber's consumer configuration.</param>
+    /// <summary>Creates the consumer over its custom and Kafka configurations, the shared producer, the scope factory and the logger.</summary>
+    /// <param name="configuration">The subscriber's custom configuration (topic, group id, resilience policy).</param>
+    /// <param name="consumerConfig">The Kafka consumer configuration composed for this group.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    public EventConsumer(ConsumerConfiguration configuration, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
-        : base(configuration, producer, scopeFactory, logger) { }
+    public EventConsumer(HandlerConfiguration configuration, ConsumerConfig consumerConfig, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
+        : base(configuration, consumerConfig, producer, scopeFactory, logger) { }
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)

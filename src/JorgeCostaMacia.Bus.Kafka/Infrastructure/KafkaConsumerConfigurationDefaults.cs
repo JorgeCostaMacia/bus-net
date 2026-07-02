@@ -1,26 +1,13 @@
-using System.Collections.Immutable;
 using Confluent.Kafka;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default consumer settings applied to a <see cref="ConsumerConfiguration"/>
-/// when not supplied.
+/// Default Kafka consumer settings a <see cref="KafkaConsumerConfiguration"/> falls back to for
+/// values the <c>Bus:Consumer</c> section does not supply.
 /// </summary>
-public static class ConsumerConfigurationDefaults
+public static class KafkaConsumerConfigurationDefaults
 {
-    /// <summary>Maximum retry requeues to the topic. Default: <c>0</c> (no retries).</summary>
-    public const int RETRY_ATTEMPTS = 0;
-
-    /// <summary>Exception types excluded from retries. Default: empty.</summary>
-    public static ImmutableList<Type> RETRY_EXCLUDE_EXCEPTION_TYPES => [];
-
-    /// <summary>Maximum redelivery attempts. Default: <c>0</c>.</summary>
-    public const int REDELIVERY_ATTEMPTS = 0;
-
-    /// <summary>Exception types excluded from redelivery. Default: empty.</summary>
-    public static ImmutableList<Type> REDELIVERY_EXCLUDE_EXCEPTION_TYPES => [];
-
     /// <summary>Security protocol. Default: <c>Ssl</c>.</summary>
     public const SecurityProtocol SECURITY_PROTOCOL = SecurityProtocol.Ssl;
 

@@ -25,6 +25,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 internal abstract class Consumer<TContext, THandler> : IHostedService
     where THandler : IHandler
 {
+    private readonly ConsumerConfig _consumerConfig;
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
@@ -32,17 +33,19 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>The handler's consumer configuration (topic, group id, resilience policy, consumer settings).</summary>
-    protected ConsumerConfiguration Configuration { get; }
+    /// <summary>The handler's custom configuration (topic, group id, resilience policy).</summary>
+    protected HandlerConfiguration Configuration { get; }
 
-    /// <summary>Creates the consumer over its handler configuration, the shared producer, the scope factory and the logger.</summary>
-    /// <param name="configuration">The handler's consumer configuration.</param>
+    /// <summary>Creates the consumer over its custom and Kafka configurations, the shared producer, the scope factory and the logger.</summary>
+    /// <param name="configuration">The handler's custom configuration (topic, group id, resilience policy).</param>
+    /// <param name="consumerConfig">The Kafka consumer configuration composed for this group.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    protected Consumer(ConsumerConfiguration configuration, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
+    protected Consumer(HandlerConfiguration configuration, ConsumerConfig consumerConfig, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
     {
         Configuration = configuration;
+        _consumerConfig = consumerConfig;
         _producer = producer;
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -52,7 +55,7 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
     /// <param name="cancellationToken">A token to cancel startup.</param>
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _consumer = new ConsumerBuilder<Null, byte[]>(Configuration.ConsumerConfig)
+        _consumer = new ConsumerBuilder<Null, byte[]>(_consumerConfig)
             .SetErrorHandler((_, error) => LogError(error))
             .SetLogHandler((_, log) => Log(log))
             .Build();

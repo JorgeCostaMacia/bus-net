@@ -11,9 +11,10 @@ using Microsoft.Extensions.Logging;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Registers the bus's messages and handlers, carrying the connection from the <c>Bus:Producer</c>
-/// configuration section so it is declared once and never repeated. Each context maps its
-/// own pieces through it (<c>Map*BusContext(this BusConfigurator)</c> extensions): messages it sends
+/// Registers the bus's messages and handlers. The Kafka consumer settings come from the
+/// <c>Bus:Consumer</c> configuration section (declared once, never repeated); each handler declares
+/// only its own contract — topic, group id and resilience policy. Each context maps its own pieces
+/// through it (<c>Map*BusContext(this BusConfigurator)</c> extensions): messages it sends
 /// (<see cref="AddCommand{TCommand}"/> / <see cref="AddEvent{TEvent}"/>) and messages it consumes
 /// (<see cref="AddCommandHandler{TCommand, TCommandHandler}"/> /
 /// <see cref="AddEventSubscriber{TEvent, TEventSubscriber}"/> — each hosting its own consumer).
@@ -21,22 +22,12 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 public sealed class BusConfigurator
 {
     private readonly IServiceCollection _services;
-    private readonly string _bootstrapServers;
-    private readonly string? _saslUsername;
-    private readonly string? _saslPassword;
-    private readonly SecurityProtocol? _securityProtocol;
-    private readonly SaslMechanism? _saslMechanism;
+    private readonly KafkaConsumerConfiguration _consumer;
 
     internal BusConfigurator(IServiceCollection services, IConfiguration configuration)
     {
-        ProducerConfig connection = BusInfrastructureContext.CreateProducerConfig(configuration);
-
         _services = services;
-        _bootstrapServers = connection.BootstrapServers;
-        _saslUsername = connection.SaslUsername;
-        _saslPassword = connection.SaslPassword;
-        _securityProtocol = connection.SecurityProtocol;
-        _saslMechanism = connection.SaslMechanism;
+        _consumer = BusInfrastructureContext.CreateKafkaConsumerConfiguration(configuration);
     }
 
     /// <summary>Registers a command this service sends, mapping its type to a topic.</summary>
@@ -65,7 +56,7 @@ public sealed class BusConfigurator
 
     /// <summary>
     /// Registers a command handler: the handler itself (scoped, one per delivery) and its hosted
-    /// consumer, configured over the shared connection.
+    /// consumer — its custom policy here, its Kafka settings from the global configuration.
     /// </summary>
     /// <typeparam name="TCommand">The command type consumed.</typeparam>
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
@@ -75,7 +66,6 @@ public sealed class BusConfigurator
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
     /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
-    /// <param name="autoCommitIntervalMs">Interval (ms) between background commits of the stored offsets, or <see langword="null"/> for the default.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusConfigurator AddCommandHandler<TCommand, TCommandHandler>(
         string topic,
@@ -83,28 +73,24 @@ public sealed class BusConfigurator
         int? retryAttempts = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
-        ImmutableList<Type>? redeliveryExcludeExceptionTypes = null,
-        int? autoCommitIntervalMs = null)
+        ImmutableList<Type>? redeliveryExcludeExceptionTypes = null)
         where TCommand : Domain.Command
         where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
     {
-        ConsumerConfiguration configuration = new(
+        HandlerConfiguration configuration = new(
             topic,
             groupId,
-            _bootstrapServers,
-            _saslUsername,
-            _saslPassword,
             retryAttempts,
             retryExcludeExceptionTypes,
             redeliveryAttempts,
-            redeliveryExcludeExceptionTypes,
-            _securityProtocol,
-            _saslMechanism,
-            autoCommitIntervalMs: autoCommitIntervalMs);
+            redeliveryExcludeExceptionTypes);
+
+        ConsumerConfig consumer = _consumer.ConsumerConfig(groupId);
 
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider => new CommandConsumer<TCommand, TCommandHandler>(
             configuration,
+            consumer,
             provider.GetRequiredService<IProducer<Null, byte[]>>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<CommandConsumer<TCommand, TCommandHandler>>>()));
@@ -114,7 +100,7 @@ public sealed class BusConfigurator
 
     /// <summary>
     /// Registers an event subscriber: the subscriber itself (scoped, one per delivery) and its hosted
-    /// consumer, configured over the shared connection.
+    /// consumer — its custom policy here, its Kafka settings from the global configuration.
     /// </summary>
     /// <typeparam name="TEvent">The event type consumed.</typeparam>
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
@@ -124,7 +110,6 @@ public sealed class BusConfigurator
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
     /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
-    /// <param name="autoCommitIntervalMs">Interval (ms) between background commits of the stored offsets, or <see langword="null"/> for the default.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
         string topic,
@@ -132,28 +117,24 @@ public sealed class BusConfigurator
         int? retryAttempts = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
-        ImmutableList<Type>? redeliveryExcludeExceptionTypes = null,
-        int? autoCommitIntervalMs = null)
+        ImmutableList<Type>? redeliveryExcludeExceptionTypes = null)
         where TEvent : Domain.Event
         where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
     {
-        ConsumerConfiguration configuration = new(
+        HandlerConfiguration configuration = new(
             topic,
             groupId,
-            _bootstrapServers,
-            _saslUsername,
-            _saslPassword,
             retryAttempts,
             retryExcludeExceptionTypes,
             redeliveryAttempts,
-            redeliveryExcludeExceptionTypes,
-            _securityProtocol,
-            _saslMechanism,
-            autoCommitIntervalMs: autoCommitIntervalMs);
+            redeliveryExcludeExceptionTypes);
+
+        ConsumerConfig consumer = _consumer.ConsumerConfig(groupId);
 
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider => new EventConsumer<TEvent, TEventSubscriber>(
             configuration,
+            consumer,
             provider.GetRequiredService<IProducer<Null, byte[]>>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<EventConsumer<TEvent, TEventSubscriber>>>()));

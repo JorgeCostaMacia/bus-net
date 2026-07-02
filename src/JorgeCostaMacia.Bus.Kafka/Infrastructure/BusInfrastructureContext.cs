@@ -18,6 +18,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 internal static class BusInfrastructureContext
 {
     private const string PRODUCER_SECTION = "Bus:Producer";
+    private const string CONSUMER_SECTION = "Bus:Consumer";
 
     /// <summary>Registers the bus infrastructure over the application configuration.</summary>
     /// <param name="services">The service collection.</param>
@@ -39,7 +40,7 @@ internal static class BusInfrastructureContext
     }
 
     /// <summary>
-    /// Maps the <c>Bus:Producer</c> section onto a <see cref="ProducerConfiguration"/> (the curated
+    /// Maps the <c>Bus:Producer</c> section onto a <see cref="KafkaProducerConfiguration"/> (the curated
     /// setting surface; unset values fall back to the defaults when it composes the producer
     /// configuration).
     /// </summary>
@@ -48,7 +49,7 @@ internal static class BusInfrastructureContext
     /// <exception cref="InvalidOperationException"><c>Bus:Producer:BootstrapServers</c> is missing.</exception>
     internal static ProducerConfig CreateProducerConfig(IConfiguration configuration)
     {
-        ProducerConfiguration producer = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>() ?? new ProducerConfiguration();
+        KafkaProducerConfiguration producer = configuration.GetSection(PRODUCER_SECTION).Get<KafkaProducerConfiguration>() ?? new KafkaProducerConfiguration();
 
         if (string.IsNullOrWhiteSpace(producer.BootstrapServers))
         {
@@ -57,6 +58,17 @@ internal static class BusInfrastructureContext
 
         return producer.ProducerConfig;
     }
+
+    /// <summary>
+    /// Maps the <c>Bus:Consumer</c> section onto a <see cref="KafkaConsumerConfiguration"/> (the curated
+    /// setting surface; unset values fall back to the defaults when it composes each consumer's
+    /// configuration). The connection is validated lazily — a producer-only service needs no
+    /// <c>Bus:Consumer</c> section.
+    /// </summary>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The global consumer configuration.</returns>
+    internal static KafkaConsumerConfiguration CreateKafkaConsumerConfiguration(IConfiguration configuration)
+        => configuration.GetSection(CONSUMER_SECTION).Get<KafkaConsumerConfiguration>() ?? new KafkaConsumerConfiguration();
 
     private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
     {

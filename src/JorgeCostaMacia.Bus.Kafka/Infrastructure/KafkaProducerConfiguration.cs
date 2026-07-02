@@ -5,9 +5,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The global producer configuration, bound from the <c>Bus:Producer</c> section: the connection plus
 /// the tuning overrides this bus supports (a curated surface, not every client knob). Unset values
-/// fall back to <see cref="ProducerConfigurationDefaults"/> when composing the <see cref="ProducerConfig"/>.
+/// fall back to <see cref="KafkaProducerConfigurationDefaults"/> when composing the <see cref="ProducerConfig"/>.
 /// </summary>
-public sealed class ProducerConfiguration
+public sealed record KafkaProducerConfiguration
 {
     /// <summary>Comma-separated list of Kafka brokers. Required.</summary>
     public string? BootstrapServers { get; init; }
@@ -64,21 +64,21 @@ public sealed class ProducerConfiguration
     public ProducerConfig ProducerConfig => new()
     {
         BootstrapServers = BootstrapServers,
-        SecurityProtocol = SecurityProtocol ?? ProducerConfigurationDefaults.SECURITY_PROTOCOL,
-        SaslMechanism = SaslMechanism ?? ProducerConfigurationDefaults.SASL_MECHANISM,
+        SecurityProtocol = SecurityProtocol ?? KafkaProducerConfigurationDefaults.SECURITY_PROTOCOL,
+        SaslMechanism = SaslMechanism ?? KafkaProducerConfigurationDefaults.SASL_MECHANISM,
         SaslUsername = SaslUsername,
         SaslPassword = SaslPassword,
-        Acks = Acks ?? ProducerConfigurationDefaults.ACKS,
-        AllowAutoCreateTopics = AllowAutoCreateTopics ?? ProducerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
-        EnableIdempotence = EnableIdempotence ?? ProducerConfigurationDefaults.ENABLE_IDEMPOTENCE,
-        CompressionType = CompressionType ?? ProducerConfigurationDefaults.COMPRESSION_TYPE,
-        MessageTimeoutMs = MessageTimeoutMs ?? ProducerConfigurationDefaults.MESSAGE_TIMEOUT_MS,
-        LingerMs = LingerMs ?? ProducerConfigurationDefaults.LINGER_MS,
-        BatchNumMessages = BatchNumMessages ?? ProducerConfigurationDefaults.BATCH_NUM_MESSAGES,
-        BatchSize = BatchSize ?? ProducerConfigurationDefaults.BATCH_SIZE,
-        MessageSendMaxRetries = MessageSendMaxRetries ?? ProducerConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
-        RetryBackoffMs = RetryBackoffMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MS,
-        RetryBackoffMaxMs = RetryBackoffMaxMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
-        ClientId = ClientId ?? ProducerConfigurationDefaults.CLIENT_ID
+        Acks = Acks ?? KafkaProducerConfigurationDefaults.ACKS,
+        AllowAutoCreateTopics = AllowAutoCreateTopics ?? KafkaProducerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
+        EnableIdempotence = EnableIdempotence ?? KafkaProducerConfigurationDefaults.ENABLE_IDEMPOTENCE,
+        CompressionType = CompressionType ?? KafkaProducerConfigurationDefaults.COMPRESSION_TYPE,
+        MessageTimeoutMs = MessageTimeoutMs ?? KafkaProducerConfigurationDefaults.MESSAGE_TIMEOUT_MS,
+        LingerMs = LingerMs ?? KafkaProducerConfigurationDefaults.LINGER_MS,
+        BatchNumMessages = BatchNumMessages ?? KafkaProducerConfigurationDefaults.BATCH_NUM_MESSAGES,
+        BatchSize = BatchSize ?? KafkaProducerConfigurationDefaults.BATCH_SIZE,
+        MessageSendMaxRetries = MessageSendMaxRetries ?? KafkaProducerConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
+        RetryBackoffMs = RetryBackoffMs ?? KafkaProducerConfigurationDefaults.RETRY_BACKOFF_MS,
+        RetryBackoffMaxMs = RetryBackoffMaxMs ?? KafkaProducerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
+        ClientId = ClientId ?? KafkaProducerConfigurationDefaults.CLIENT_ID
     };
 }
