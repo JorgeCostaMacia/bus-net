@@ -21,9 +21,7 @@ internal static class BusInfrastructureContext
     /// <returns>The same service collection, to allow method chaining.</returns>
     public static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, BusConfiguration configuration)
     {
-        services.AddSingleton<IProducerConfiguration>(configuration);
-
-        services.AddSingleton(CreateProducer);
+        services.AddSingleton(provider => CreateProducer(provider, configuration));
 
         services.AddHostedService<BusProducer>();
 
@@ -34,9 +32,8 @@ internal static class BusInfrastructureContext
         return services;
     }
 
-    private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider)
+    private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, BusConfiguration configuration)
     {
-        IProducerConfiguration configuration = provider.GetRequiredService<IProducerConfiguration>();
         ILogger<BusProducer> logger = provider.GetRequiredService<ILogger<BusProducer>>();
 
         return new ProducerBuilder<Null, byte[]>(configuration.ProducerConfig)

@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// the <see cref="ProducerConfig"/> from the supplied connection details and tuning overrides,
 /// falling back to <see cref="BusConfigurationDefaults"/>.
 /// </summary>
-public sealed class BusConfiguration : IProducerConfiguration
+public sealed class BusConfiguration
 {
     private readonly string _bootstrapServers;
     private readonly string? _saslUsername;
@@ -84,7 +84,7 @@ public sealed class BusConfiguration : IProducerConfiguration
         _clientId = clientId ?? BusConfigurationDefaults.CLIENT_ID;
     }
 
-    /// <inheritdoc />
+    /// <summary>The Kafka producer configuration assembled from the connection and tuning.</summary>
     public ProducerConfig ProducerConfig => new()
     {
         BootstrapServers = _bootstrapServers,
