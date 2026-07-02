@@ -3,9 +3,9 @@ using Confluent.Kafka;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default global (connection + producer tuning) settings applied to a <see cref="BusConfiguration"/>
-/// when not supplied. Shared by every message; topics themselves are infrastructure, auto-created by
-/// the broker with its defaults and managed broker-side.
+/// Default producer settings a <see cref="BusConfiguration"/> falls back to for values the
+/// <c>Bus:Producer</c> section does not supply. Shared by every message; topics themselves are
+/// infrastructure, auto-created by the broker with its defaults and managed broker-side.
 /// </summary>
 public static class BusConfigurationDefaults
 {

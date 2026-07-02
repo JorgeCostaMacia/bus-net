@@ -1,108 +1,84 @@
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Kafka.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The global Kafka configuration: connection + producer tuning, shared by every message. Composes
-/// the <see cref="ProducerConfig"/> from the supplied connection details and tuning overrides,
-/// falling back to <see cref="BusConfigurationDefaults"/>.
+/// The global producer configuration, bound from the <c>Bus:Producer</c> section: the connection plus
+/// the tuning overrides this bus supports (a curated surface, not every client knob). Unset values
+/// fall back to <see cref="BusConfigurationDefaults"/> when composing the <see cref="ProducerConfig"/>.
 /// </summary>
 public sealed class BusConfiguration
 {
-    private readonly string _bootstrapServers;
-    private readonly string? _saslUsername;
-    private readonly string? _saslPassword;
-    private readonly SecurityProtocol _securityProtocol;
-    private readonly SaslMechanism _saslMechanism;
-    private readonly Acks _acks;
-    private readonly bool _allowAutoCreateTopics;
-    private readonly bool _enableIdempotence;
-    private readonly CompressionType _compressionType;
-    private readonly int _messageTimeoutMs;
-    private readonly double _lingerMs;
-    private readonly int _batchNumMessages;
-    private readonly int _batchSize;
-    private readonly int _messageSendMaxRetries;
-    private readonly int _retryBackoffMs;
-    private readonly int _retryBackoffMaxMs;
-    private readonly string _clientId;
+    /// <summary>Comma-separated list of Kafka brokers. Required.</summary>
+    public string? BootstrapServers { get; init; }
 
-    /// <summary>Builds the global configuration; tuning overrides fall back to the defaults.</summary>
-    /// <param name="bootstrapServers">Comma-separated list of Kafka brokers.</param>
-    /// <param name="saslUsername">SASL username, when authenticating.</param>
-    /// <param name="saslPassword">SASL password, when authenticating.</param>
-    /// <param name="securityProtocol">Security protocol, or <see langword="null"/> for the default.</param>
-    /// <param name="saslMechanism">SASL mechanism, or <see langword="null"/> for the default.</param>
-    /// <param name="acks">Acknowledgment level, or <see langword="null"/> for the default.</param>
-    /// <param name="allowAutoCreateTopics">Auto-create topics, or <see langword="null"/> for the default.</param>
-    /// <param name="enableIdempotence">Idempotent delivery, or <see langword="null"/> for the default.</param>
-    /// <param name="compressionType">Compression, or <see langword="null"/> for the default.</param>
-    /// <param name="messageTimeoutMs">Delivery timeout (ms), or <see langword="null"/> for the default.</param>
-    /// <param name="lingerMs">Linger (ms), or <see langword="null"/> for the default.</param>
-    /// <param name="batchNumMessages">Messages per batch, or <see langword="null"/> for the default.</param>
-    /// <param name="batchSize">Batch size (bytes), or <see langword="null"/> for the default.</param>
-    /// <param name="messageSendMaxRetries">Max send retries, or <see langword="null"/> for the default.</param>
-    /// <param name="retryBackoffMs">Retry backoff (ms), or <see langword="null"/> for the default.</param>
-    /// <param name="retryBackoffMaxMs">Max retry backoff (ms), or <see langword="null"/> for the default.</param>
-    /// <param name="clientId">Client id, or <see langword="null"/> for the default (machine name).</param>
-    public BusConfiguration(
-        string bootstrapServers,
-        string? saslUsername = null,
-        string? saslPassword = null,
-        SecurityProtocol? securityProtocol = null,
-        SaslMechanism? saslMechanism = null,
-        Acks? acks = null,
-        bool? allowAutoCreateTopics = null,
-        bool? enableIdempotence = null,
-        CompressionType? compressionType = null,
-        int? messageTimeoutMs = null,
-        double? lingerMs = null,
-        int? batchNumMessages = null,
-        int? batchSize = null,
-        int? messageSendMaxRetries = null,
-        int? retryBackoffMs = null,
-        int? retryBackoffMaxMs = null,
-        string? clientId = null)
-    {
-        _bootstrapServers = bootstrapServers;
-        _saslUsername = saslUsername;
-        _saslPassword = saslPassword;
-        _securityProtocol = securityProtocol ?? BusConfigurationDefaults.SECURITY_PROTOCOL;
-        _saslMechanism = saslMechanism ?? BusConfigurationDefaults.SASL_MECHANISM;
-        _acks = acks ?? BusConfigurationDefaults.ACKS;
-        _allowAutoCreateTopics = allowAutoCreateTopics ?? BusConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS;
-        _enableIdempotence = enableIdempotence ?? BusConfigurationDefaults.ENABLE_IDEMPOTENCE;
-        _compressionType = compressionType ?? BusConfigurationDefaults.COMPRESSION_TYPE;
-        _messageTimeoutMs = messageTimeoutMs ?? BusConfigurationDefaults.MESSAGE_TIMEOUT_MS;
-        _lingerMs = lingerMs ?? BusConfigurationDefaults.LINGER_MS;
-        _batchNumMessages = batchNumMessages ?? BusConfigurationDefaults.BATCH_NUM_MESSAGES;
-        _batchSize = batchSize ?? BusConfigurationDefaults.BATCH_SIZE;
-        _messageSendMaxRetries = messageSendMaxRetries ?? BusConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES;
-        _retryBackoffMs = retryBackoffMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MS;
-        _retryBackoffMaxMs = retryBackoffMaxMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
-        _clientId = clientId ?? BusConfigurationDefaults.CLIENT_ID;
-    }
+    /// <summary>SASL username, when authenticating.</summary>
+    public string? SaslUsername { get; init; }
 
-    /// <summary>The Kafka producer configuration assembled from the connection and tuning.</summary>
+    /// <summary>SASL password, when authenticating.</summary>
+    public string? SaslPassword { get; init; }
+
+    /// <summary>Security protocol, or <see langword="null"/> for the default.</summary>
+    public SecurityProtocol? SecurityProtocol { get; init; }
+
+    /// <summary>SASL mechanism, or <see langword="null"/> for the default.</summary>
+    public SaslMechanism? SaslMechanism { get; init; }
+
+    /// <summary>Acknowledgment level, or <see langword="null"/> for the default.</summary>
+    public Acks? Acks { get; init; }
+
+    /// <summary>Auto-create topics, or <see langword="null"/> for the default.</summary>
+    public bool? AllowAutoCreateTopics { get; init; }
+
+    /// <summary>Idempotent delivery, or <see langword="null"/> for the default.</summary>
+    public bool? EnableIdempotence { get; init; }
+
+    /// <summary>Compression, or <see langword="null"/> for the default.</summary>
+    public CompressionType? CompressionType { get; init; }
+
+    /// <summary>Delivery timeout (ms), or <see langword="null"/> for the default.</summary>
+    public int? MessageTimeoutMs { get; init; }
+
+    /// <summary>Linger (ms), or <see langword="null"/> for the default.</summary>
+    public double? LingerMs { get; init; }
+
+    /// <summary>Messages per batch, or <see langword="null"/> for the default.</summary>
+    public int? BatchNumMessages { get; init; }
+
+    /// <summary>Batch size (bytes), or <see langword="null"/> for the default.</summary>
+    public int? BatchSize { get; init; }
+
+    /// <summary>Max send retries, or <see langword="null"/> for the default.</summary>
+    public int? MessageSendMaxRetries { get; init; }
+
+    /// <summary>Retry backoff (ms), or <see langword="null"/> for the default.</summary>
+    public int? RetryBackoffMs { get; init; }
+
+    /// <summary>Max retry backoff (ms), or <see langword="null"/> for the default.</summary>
+    public int? RetryBackoffMaxMs { get; init; }
+
+    /// <summary>Client id, or <see langword="null"/> for the default (machine name).</summary>
+    public string? ClientId { get; init; }
+
+    /// <summary>The Kafka producer configuration — supplied values, defaults for the rest.</summary>
     public ProducerConfig ProducerConfig => new()
     {
-        BootstrapServers = _bootstrapServers,
-        SecurityProtocol = _securityProtocol,
-        SaslMechanism = _saslMechanism,
-        SaslUsername = _saslUsername,
-        SaslPassword = _saslPassword,
-        Acks = _acks,
-        AllowAutoCreateTopics = _allowAutoCreateTopics,
-        EnableIdempotence = _enableIdempotence,
-        CompressionType = _compressionType,
-        MessageTimeoutMs = _messageTimeoutMs,
-        LingerMs = _lingerMs,
-        BatchNumMessages = _batchNumMessages,
-        BatchSize = _batchSize,
-        MessageSendMaxRetries = _messageSendMaxRetries,
-        RetryBackoffMs = _retryBackoffMs,
-        RetryBackoffMaxMs = _retryBackoffMaxMs,
-        ClientId = _clientId
+        BootstrapServers = BootstrapServers,
+        SecurityProtocol = SecurityProtocol ?? BusConfigurationDefaults.SECURITY_PROTOCOL,
+        SaslMechanism = SaslMechanism ?? BusConfigurationDefaults.SASL_MECHANISM,
+        SaslUsername = SaslUsername,
+        SaslPassword = SaslPassword,
+        Acks = Acks ?? BusConfigurationDefaults.ACKS,
+        AllowAutoCreateTopics = AllowAutoCreateTopics ?? BusConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
+        EnableIdempotence = EnableIdempotence ?? BusConfigurationDefaults.ENABLE_IDEMPOTENCE,
+        CompressionType = CompressionType ?? BusConfigurationDefaults.COMPRESSION_TYPE,
+        MessageTimeoutMs = MessageTimeoutMs ?? BusConfigurationDefaults.MESSAGE_TIMEOUT_MS,
+        LingerMs = LingerMs ?? BusConfigurationDefaults.LINGER_MS,
+        BatchNumMessages = BatchNumMessages ?? BusConfigurationDefaults.BATCH_NUM_MESSAGES,
+        BatchSize = BatchSize ?? BusConfigurationDefaults.BATCH_SIZE,
+        MessageSendMaxRetries = MessageSendMaxRetries ?? BusConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
+        RetryBackoffMs = RetryBackoffMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MS,
+        RetryBackoffMaxMs = RetryBackoffMaxMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
+        ClientId = ClientId ?? BusConfigurationDefaults.CLIENT_ID
     };
 }

@@ -3,7 +3,7 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Command.Domain;
 using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Registers the bus's messages and handlers, carrying the connection from the global
-/// <see cref="BusConfiguration"/> so it is declared once and never repeated. Each context maps its
+/// Registers the bus's messages and handlers, carrying the connection from the <c>Bus:Producer</c>
+/// configuration section so it is declared once and never repeated. Each context maps its
 /// own pieces through it (<c>Map*BusContext(this BusConfigurator)</c> extensions): messages it sends
 /// (<see cref="AddCommand{TCommand}"/> / <see cref="AddEvent{TEvent}"/>) and messages it consumes
 /// (<see cref="AddCommandHandler{TCommand, TCommandHandler}"/> /
@@ -27,9 +27,9 @@ public sealed class BusConfigurator
     private readonly SecurityProtocol? _securityProtocol;
     private readonly SaslMechanism? _saslMechanism;
 
-    internal BusConfigurator(IServiceCollection services, BusConfiguration configuration)
+    internal BusConfigurator(IServiceCollection services, IConfiguration configuration)
     {
-        ProducerConfig connection = configuration.ProducerConfig;
+        ProducerConfig connection = BusInfrastructureContext.CreateProducerConfig(configuration);
 
         _services = services;
         _bootstrapServers = connection.BootstrapServers;
