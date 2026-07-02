@@ -39,10 +39,13 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _cancellation = new CancellationTokenSource();
+        CancellationToken token = _cancellation.Token;
 
-        for (int consumer = 0; consumer < _configuration.Consumers; consumer++)
+        for (int slot = 0; slot < _configuration.Consumers; slot++)
         {
-            _consumers.Add(Task.Run(() => Consume(_cancellation.Token), CancellationToken.None));
+            ConsumerConfig configuration = Configuration(slot);
+
+            _consumers.Add(Task.Run(() => Consume(configuration, token), CancellationToken.None));
         }
 
         return Task.CompletedTask;
@@ -64,13 +67,27 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     }
 
     /// <summary>
-    /// One consumer loop: consume → handle → commit (the offset commit is the ack). A failed
-    /// delivery is not committed; the resilience policy (retry / redelivery / error topic) is built
-    /// in the next phase.
+    /// The consumer configuration for one concurrency slot: the group instance id gets the slot as a
+    /// suffix, so concurrent loops in the same group keep distinct static identities (a duplicated
+    /// <c>group.instance.id</c> would be fenced by the broker).
     /// </summary>
-    private async Task Consume(CancellationToken cancellationToken)
+    private ConsumerConfig Configuration(int slot)
     {
-        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(_configuration.ConsumerConfig).Build();
+        ConsumerConfig configuration = _configuration.ConsumerConfig;
+
+        if (configuration.GroupInstanceId is not null) configuration.GroupInstanceId = $"{configuration.GroupInstanceId}.{slot}";
+
+        return configuration;
+    }
+
+    /// <summary>
+    /// One consumer loop: consume → handle → commit (the offset commit is the ack). A handling
+    /// failure currently stops the loop without committing; the resilience policy
+    /// (retry / redelivery / error topic) is built in the next phase.
+    /// </summary>
+    private async Task Consume(ConsumerConfig configuration, CancellationToken cancellationToken)
+    {
+        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(configuration).Build();
 
         consumer.Subscribe(_configuration.Topic);
 
