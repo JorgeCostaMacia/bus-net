@@ -8,9 +8,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The Kafka consumer configuration for an event subscriber: its topic, concurrency, resilience
 /// policy and the assembled <see cref="ConsumerConfig"/> (connection + consumer settings). The group
-/// id is derived as <c>{topic}.on.{TEventSubscriber}.subscriber</c> — unique per subscriber type, so
-/// every subscriber of an event receives it in full (subscribers sharing a group would split the
-/// messages between them instead). The connection is supplied by the bus builder (set
+/// id is declared explicitly (e.g. <c>{consumer}.on.{topic}.subscriber</c>) and must be unique per
+/// subscriber — subscribers sharing a group would split the messages between them instead of each
+/// receiving the full stream. It is a contract holding the group's offsets in the broker, so it must
+/// stay stable across refactors. The connection is supplied by the bus builder (set
 /// once), so it is not repeated per subscriber by the developer.
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
@@ -59,7 +60,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     public ImmutableList<Type> RedeliveryExcludeExceptionTypes { get; init; }
 
     /// <summary>Configures the event subscriber; unsupplied consumer settings fall back to the defaults.</summary>
-    /// <param name="topic">The Kafka topic to consume from (group id is derived as <c>{topic}.on.{TEventSubscriber}.subscriber</c>).</param>
+    /// <param name="topic">The Kafka topic to consume from.</param>
+    /// <param name="groupId">The consumer group id (e.g. <c>{consumer}.on.{topic}.subscriber</c>) — a stable contract, unique per subscriber, it holds the group's offsets.</param>
     /// <param name="bootstrapServers">Comma-separated Kafka brokers.</param>
     /// <param name="saslUsername">SASL username, when authenticating.</param>
     /// <param name="saslPassword">SASL password, when authenticating.</param>
@@ -84,6 +86,7 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     /// <param name="logHandler">Handler for the consumer's internal (librdkafka) log messages, or <see langword="null"/> for none.</param>
     public EventSubscriberConfiguration(
         string topic,
+        string groupId,
         string bootstrapServers,
         string saslUsername,
         string saslPassword,
@@ -130,7 +133,7 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         _retryBackoffMs = retryBackoffMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MS;
         _retryBackoffMaxMs = retryBackoffMaxMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
         _clientId = clientId ?? EventSubscriberConfigurationDefaults.CLIENT_ID;
-        _groupId = $"{topic}.on.{typeof(TEventSubscriber).Name}.subscriber";
+        _groupId = groupId;
         _groupInstanceId = groupInstanceId ?? EventSubscriberConfigurationDefaults.GROUP_INSTANCE_ID;
         ErrorHandler = errorHandler;
         LogHandler = logHandler;

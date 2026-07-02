@@ -6,10 +6,11 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The Kafka consumer configuration for a command handler: its topic, concurrency, resilience policy
+/// The Kafka consumer configuration for a command handler: its topic, group id, resilience policy
 /// and the assembled <see cref="ConsumerConfig"/> (connection + consumer settings). The group id is
-/// derived as <c>{topic}.handler</c>. The connection is supplied by the bus builder (set once), so it
-/// is not repeated per handler by the developer.
+/// declared explicitly (e.g. <c>{topic}.handler</c>) — it is a contract holding the group's offsets
+/// in the broker, so it must stay stable across refactors. The connection is supplied by the bus
+/// builder (set once), so it is not repeated per handler by the developer.
 /// </summary>
 /// <typeparam name="TCommand">The command type consumed.</typeparam>
 /// <typeparam name="TCommandHandler">The handler type.</typeparam>
@@ -57,7 +58,8 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
     public ImmutableList<Type> RedeliveryExcludeExceptionTypes { get; init; }
 
     /// <summary>Configures the command handler; unsupplied consumer settings fall back to the defaults.</summary>
-    /// <param name="topic">The Kafka topic to consume from (group id is derived as <c>{topic}.handler</c>).</param>
+    /// <param name="topic">The Kafka topic to consume from.</param>
+    /// <param name="groupId">The consumer group id (e.g. <c>{topic}.handler</c>) — a stable contract, it holds the group's offsets.</param>
     /// <param name="bootstrapServers">Comma-separated Kafka brokers.</param>
     /// <param name="saslUsername">SASL username, when authenticating.</param>
     /// <param name="saslPassword">SASL password, when authenticating.</param>
@@ -82,6 +84,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
     /// <param name="logHandler">Handler for the consumer's internal (librdkafka) log messages, or <see langword="null"/> for none.</param>
     public CommandHandlerConfiguration(
         string topic,
+        string groupId,
         string bootstrapServers,
         string saslUsername,
         string saslPassword,
@@ -128,7 +131,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
         _retryBackoffMs = retryBackoffMs ?? CommandHandlerConfigurationDefaults.RETRY_BACKOFF_MS;
         _retryBackoffMaxMs = retryBackoffMaxMs ?? CommandHandlerConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
         _clientId = clientId ?? CommandHandlerConfigurationDefaults.CLIENT_ID;
-        _groupId = $"{topic}.handler";
+        _groupId = groupId;
         _groupInstanceId = groupInstanceId ?? CommandHandlerConfigurationDefaults.GROUP_INSTANCE_ID;
         ErrorHandler = errorHandler;
         LogHandler = logHandler;
