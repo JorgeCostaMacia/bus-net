@@ -10,4 +10,10 @@ public interface IProducerConfiguration
 {
     /// <summary>The Kafka producer configuration.</summary>
     ProducerConfig ProducerConfig { get; }
+
+    /// <summary>Handler for producer errors (connection-level and fatal), or <see langword="null"/> for none.</summary>
+    Action<IProducer<Null, byte[]>, Error>? ErrorHandler { get; }
+
+    /// <summary>Handler for the producer's internal (librdkafka) log messages, or <see langword="null"/> for none.</summary>
+    Action<IProducer<Null, byte[]>, LogMessage>? LogHandler { get; }
 }

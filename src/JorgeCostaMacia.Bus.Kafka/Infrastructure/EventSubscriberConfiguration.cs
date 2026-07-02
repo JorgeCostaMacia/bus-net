@@ -82,6 +82,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     /// <param name="retryBackoffMaxMs">Max retry backoff (ms), or <see langword="null"/> for the default.</param>
     /// <param name="clientId">Client id, or <see langword="null"/> for the default (machine name).</param>
     /// <param name="groupInstanceId">Static group instance id, or <see langword="null"/> for the default (machine name).</param>
+    /// <param name="errorHandler">Handler for consumer errors (connection-level and fatal), or <see langword="null"/> for none.</param>
+    /// <param name="logHandler">Handler for the consumer's internal (librdkafka) log messages, or <see langword="null"/> for none.</param>
     public EventSubscriberConfiguration(
         string topic,
         string bootstrapServers,
@@ -104,7 +106,9 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         int? retryBackoffMs = null,
         int? retryBackoffMaxMs = null,
         string? clientId = null,
-        string? groupInstanceId = null)
+        string? groupInstanceId = null,
+        Action<IConsumer<Null, byte[]>, Error>? errorHandler = null,
+        Action<IConsumer<Null, byte[]>, LogMessage>? logHandler = null)
     {
         MessageType = typeof(TEvent);
         HandlerType = typeof(TEventSubscriber);
@@ -132,7 +136,15 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         _clientId = clientId ?? EventSubscriberConfigurationDefaults.CLIENT_ID;
         _groupId = $"{topic}.subscriber";
         _groupInstanceId = groupInstanceId ?? EventSubscriberConfigurationDefaults.GROUP_INSTANCE_ID;
+        ErrorHandler = errorHandler;
+        LogHandler = logHandler;
     }
+
+    /// <inheritdoc />
+    public Action<IConsumer<Null, byte[]>, Error>? ErrorHandler { get; }
+
+    /// <inheritdoc />
+    public Action<IConsumer<Null, byte[]>, LogMessage>? LogHandler { get; }
 
     /// <inheritdoc />
     public ConsumerConfig ConsumerConfig => new()

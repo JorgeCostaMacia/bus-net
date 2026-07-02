@@ -46,6 +46,8 @@ public sealed class BusConfiguration : IProducerConfiguration, IAdminConfigurati
     /// <param name="retryBackoffMs">Retry backoff (ms), or <see langword="null"/> for the default.</param>
     /// <param name="retryBackoffMaxMs">Max retry backoff (ms), or <see langword="null"/> for the default.</param>
     /// <param name="clientId">Client id, or <see langword="null"/> for the default (machine name).</param>
+    /// <param name="errorHandler">Handler for producer errors (connection-level and fatal), or <see langword="null"/> for none.</param>
+    /// <param name="logHandler">Handler for the producer's internal (librdkafka) log messages, or <see langword="null"/> for none.</param>
     public BusConfiguration(
         string bootstrapServers,
         string? saslUsername = null,
@@ -63,7 +65,9 @@ public sealed class BusConfiguration : IProducerConfiguration, IAdminConfigurati
         int? messageSendMaxRetries = null,
         int? retryBackoffMs = null,
         int? retryBackoffMaxMs = null,
-        string? clientId = null)
+        string? clientId = null,
+        Action<IProducer<Null, byte[]>, Error>? errorHandler = null,
+        Action<IProducer<Null, byte[]>, LogMessage>? logHandler = null)
     {
         _bootstrapServers = bootstrapServers;
         _saslUsername = saslUsername;
@@ -82,7 +86,15 @@ public sealed class BusConfiguration : IProducerConfiguration, IAdminConfigurati
         _retryBackoffMs = retryBackoffMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MS;
         _retryBackoffMaxMs = retryBackoffMaxMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
         _clientId = clientId ?? BusConfigurationDefaults.CLIENT_ID;
+        ErrorHandler = errorHandler;
+        LogHandler = logHandler;
     }
+
+    /// <inheritdoc />
+    public Action<IProducer<Null, byte[]>, Error>? ErrorHandler { get; }
+
+    /// <inheritdoc />
+    public Action<IProducer<Null, byte[]>, LogMessage>? LogHandler { get; }
 
     /// <inheritdoc />
     public ProducerConfig ProducerConfig => new()

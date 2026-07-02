@@ -40,4 +40,10 @@ public interface IHandlerConfiguration
 
     /// <summary>The assembled Kafka consumer configuration (connection + consumer settings).</summary>
     ConsumerConfig ConsumerConfig { get; }
+
+    /// <summary>Handler for consumer errors (connection-level and fatal), or <see langword="null"/> for none.</summary>
+    Action<IConsumer<Null, byte[]>, Error>? ErrorHandler { get; }
+
+    /// <summary>Handler for the consumer's internal (librdkafka) log messages, or <see langword="null"/> for none.</summary>
+    Action<IConsumer<Null, byte[]>, LogMessage>? LogHandler { get; }
 }

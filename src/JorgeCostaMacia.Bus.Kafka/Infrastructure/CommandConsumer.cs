@@ -87,7 +87,12 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     /// </summary>
     private async Task Consume(ConsumerConfig configuration, CancellationToken cancellationToken)
     {
-        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(configuration).Build();
+        ConsumerBuilder<Null, byte[]> builder = new(configuration);
+
+        if (_configuration.ErrorHandler is not null) builder.SetErrorHandler(_configuration.ErrorHandler);
+        if (_configuration.LogHandler is not null) builder.SetLogHandler(_configuration.LogHandler);
+
+        using IConsumer<Null, byte[]> consumer = builder.Build();
 
         consumer.Subscribe(_configuration.Topic);
 
