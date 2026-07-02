@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// <summary>
 /// Per-handler Kafka consumer configuration: the message type it consumes, the handler type, its
 /// topic and concurrency, the resilience policy (retry / redelivery) and the assembled
-/// <see cref="ConsumerConfig"/> (connection + consumer settings, including the derived group id).
+/// <see cref="ConsumerConfig"/> (connection + consumer settings, including the group id).
 /// Held by the bus, keyed by message type.
 /// </summary>
 public interface IHandlerConfiguration
