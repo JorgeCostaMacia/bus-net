@@ -8,7 +8,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The Kafka consumer configuration for an event subscriber: its topic, concurrency, resilience
 /// policy and the assembled <see cref="ConsumerConfig"/> (connection + consumer settings). The group
-/// id is derived as <c>{topic}.subscriber</c>. The connection is supplied by the bus builder (set
+/// id is derived as <c>{topic}.on.{TEventSubscriber}.subscriber</c> — unique per subscriber type, so
+/// every subscriber of an event receives it in full (subscribers sharing a group would split the
+/// messages between them instead). The connection is supplied by the bus builder (set
 /// once), so it is not repeated per subscriber by the developer.
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
@@ -57,7 +59,7 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     public ImmutableList<Type> RedeliveryExcludeExceptionTypes { get; init; }
 
     /// <summary>Configures the event subscriber; unsupplied consumer settings fall back to the defaults.</summary>
-    /// <param name="topic">The Kafka topic to consume from (group id is derived as <c>{topic}.subscriber</c>).</param>
+    /// <param name="topic">The Kafka topic to consume from (group id is derived as <c>{topic}.on.{TEventSubscriber}.subscriber</c>).</param>
     /// <param name="bootstrapServers">Comma-separated Kafka brokers.</param>
     /// <param name="saslUsername">SASL username, when authenticating.</param>
     /// <param name="saslPassword">SASL password, when authenticating.</param>
@@ -128,7 +130,7 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         _retryBackoffMs = retryBackoffMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MS;
         _retryBackoffMaxMs = retryBackoffMaxMs ?? EventSubscriberConfigurationDefaults.RETRY_BACKOFF_MAX_MS;
         _clientId = clientId ?? EventSubscriberConfigurationDefaults.CLIENT_ID;
-        _groupId = $"{topic}.subscriber";
+        _groupId = $"{topic}.on.{typeof(TEventSubscriber).Name}.subscriber";
         _groupInstanceId = groupInstanceId ?? EventSubscriberConfigurationDefaults.GROUP_INSTANCE_ID;
         ErrorHandler = errorHandler;
         LogHandler = logHandler;
