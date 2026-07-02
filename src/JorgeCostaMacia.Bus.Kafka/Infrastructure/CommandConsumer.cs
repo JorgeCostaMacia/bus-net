@@ -121,26 +121,7 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     private async Task Handle(ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
     {
         Transport transport = CreateTransport(result);
-        TCommand message = JsonSerializer.Deserialize<TCommand>(result.Message.Value)!;
-
-        CommandContext<TCommand> context = new(
-            message,
-            transport,
-            transport.GetGuid(TransportHeaders.MessageId),
-            transport.GetString(TransportHeaders.MessageType),
-            transport.GetStringList(TransportHeaders.MessageTypeUrn),
-            transport.GetString(TransportHeaders.MessageDestinationAddress),
-            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
-            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
-            transport.GetGuid(TransportHeaders.ConversationId),
-            transport.GetString(TransportHeaders.ConversationAddress),
-            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateDestinationAddresses),
-            transport.GetGuid(TransportHeaders.AggregateId),
-            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
-            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RetryCount),
-            transport.GetInt(TransportHeaders.RedeliveryCount));
+        CommandContext<TCommand> context = CreateContext(result, transport);
 
         for (int attempt = 0; ; attempt++)
         {
@@ -173,4 +154,24 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
             result.Offset,
             result.LeaderEpoch,
             result.Message.Timestamp);
+
+    private static CommandContext<TCommand> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
+        => new(
+            JsonSerializer.Deserialize<TCommand>(result.Message.Value)!,
+            transport,
+            transport.GetGuid(TransportHeaders.MessageId),
+            transport.GetString(TransportHeaders.MessageType),
+            transport.GetStringList(TransportHeaders.MessageTypeUrn),
+            transport.GetString(TransportHeaders.MessageDestinationAddress),
+            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
+            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
+            transport.GetGuid(TransportHeaders.ConversationId),
+            transport.GetString(TransportHeaders.ConversationAddress),
+            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
+            transport.GetStringList(TransportHeaders.AggregateDestinationAddresses),
+            transport.GetGuid(TransportHeaders.AggregateId),
+            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
+            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
+            transport.GetInt(TransportHeaders.RetryCount),
+            transport.GetInt(TransportHeaders.RedeliveryCount));
 }

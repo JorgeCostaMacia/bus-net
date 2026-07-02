@@ -121,26 +121,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     private async Task Handle(ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
     {
         Transport transport = CreateTransport(result);
-        TEvent message = JsonSerializer.Deserialize<TEvent>(result.Message.Value)!;
-
-        EventContext<TEvent> context = new(
-            message,
-            transport,
-            transport.GetGuid(TransportHeaders.MessageId),
-            transport.GetString(TransportHeaders.MessageType),
-            transport.GetStringList(TransportHeaders.MessageTypeUrn),
-            transport.GetString(TransportHeaders.MessageDestinationAddress),
-            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
-            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
-            transport.GetGuid(TransportHeaders.ConversationId),
-            transport.GetString(TransportHeaders.ConversationAddress),
-            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateDestinationAddresses),
-            transport.GetGuid(TransportHeaders.AggregateId),
-            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
-            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RetryCount),
-            transport.GetInt(TransportHeaders.RedeliveryCount));
+        EventContext<TEvent> context = CreateContext(result, transport);
 
         for (int attempt = 0; ; attempt++)
         {
@@ -173,4 +154,24 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             result.Offset,
             result.LeaderEpoch,
             result.Message.Timestamp);
+
+    private static EventContext<TEvent> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
+        => new(
+            JsonSerializer.Deserialize<TEvent>(result.Message.Value)!,
+            transport,
+            transport.GetGuid(TransportHeaders.MessageId),
+            transport.GetString(TransportHeaders.MessageType),
+            transport.GetStringList(TransportHeaders.MessageTypeUrn),
+            transport.GetString(TransportHeaders.MessageDestinationAddress),
+            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
+            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
+            transport.GetGuid(TransportHeaders.ConversationId),
+            transport.GetString(TransportHeaders.ConversationAddress),
+            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
+            transport.GetStringList(TransportHeaders.AggregateDestinationAddresses),
+            transport.GetGuid(TransportHeaders.AggregateId),
+            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
+            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
+            transport.GetInt(TransportHeaders.RetryCount),
+            transport.GetInt(TransportHeaders.RedeliveryCount));
 }
