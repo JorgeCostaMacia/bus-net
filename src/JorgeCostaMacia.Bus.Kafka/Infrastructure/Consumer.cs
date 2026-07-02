@@ -309,7 +309,9 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
 
             logContext[header.Key] = TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
                 ? new Guid(value)
-                : Encoding.UTF8.GetString(value);
+                : TransportHeaders.IntHeaders.Contains(header.Key) && int.TryParse(Encoding.UTF8.GetString(value), out int count)
+                    ? count
+                    : Encoding.UTF8.GetString(value);
         }
 
         return _logger.BeginScope(logContext);

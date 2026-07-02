@@ -32,4 +32,11 @@ internal static class TransportHeaders
         AggregateId,
         AggregateCorrelationId
     ];
+
+    /// <summary>The keys whose values travel as integer digits (the resilience counters).</summary>
+    public static readonly ImmutableList<string> IntHeaders =
+    [
+        RetryCount,
+        RedeliveryCount
+    ];
 }
