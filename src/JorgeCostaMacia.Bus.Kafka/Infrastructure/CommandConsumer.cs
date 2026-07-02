@@ -26,7 +26,8 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     private readonly IHandlerConfiguration _configuration;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CommandConsumer<TCommand, TCommandHandler>> _logger;
-    private Task? _consumer;
+    private IConsumer<Null, byte[]>? _consumer;
+    private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
     /// <summary>Creates the consumer over its handler configuration, the scope factory and the logger.</summary>
@@ -40,31 +41,42 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
         _logger = logger;
     }
 
-    /// <summary>Launches the consumer loop.</summary>
+    /// <summary>Builds the consumer, subscribes to the topic and launches the consumer loop.</summary>
     /// <param name="cancellationToken">A token to cancel startup.</param>
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        _consumer = new ConsumerBuilder<Null, byte[]>(_configuration.ConsumerConfig)
+            .SetErrorHandler((_, error) => LogError(error))
+            .SetLogHandler((_, log) => Log(log))
+            .Build();
+
+        _consumer.Subscribe(_configuration.Topic);
+
         _cancellation = new CancellationTokenSource();
         CancellationToken token = _cancellation.Token;
 
-        _consumer = Task.Run(() => Consume(token), CancellationToken.None);
+        _loop = Task.Run(() => Consume(token), CancellationToken.None);
 
         return Task.CompletedTask;
     }
 
-    /// <summary>Cancels the consumer loop and awaits its graceful shutdown.</summary>
+    /// <summary>Cancels the consumer loop, awaits it and closes the consumer gracefully.</summary>
     /// <param name="cancellationToken">A token to cancel shutdown.</param>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_cancellation is null || _consumer is null) return;
+        if (_cancellation is null || _loop is null || _consumer is null) return;
 
         _cancellation.Cancel();
 
-        await _consumer.WaitAsync(cancellationToken);
+        await _loop.WaitAsync(cancellationToken);
+
+        _consumer.Close();
+        _consumer.Dispose();
+        _consumer = null;
 
         _cancellation.Dispose();
         _cancellation = null;
-        _consumer = null;
+        _loop = null;
     }
 
     /// <summary>
@@ -77,20 +89,11 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
-        ConsumerConfig configuration = _configuration.ConsumerConfig;
-
         using IDisposable? scope = _logger.BeginScope(new Dictionary<string, object?>
         {
             ["Topic"] = _configuration.Topic,
-            ["GroupId"] = configuration.GroupId
+            ["GroupId"] = _configuration.GroupId
         });
-
-        using IConsumer<Null, byte[]> consumer = new ConsumerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) => LogError(error))
-            .SetLogHandler((_, log) => Log(log))
-            .Build();
-
-        consumer.Subscribe(_configuration.Topic);
 
         try
         {
@@ -98,18 +101,18 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
             {
                 try
                 {
-                    ConsumeResult<Null, byte[]> result = consumer.Consume(cancellationToken);
+                    ConsumeResult<Null, byte[]> result = _consumer!.Consume(cancellationToken);
 
                     if (Filtered(result))
                     {
-                        Store(consumer, result);
+                        Store(result);
 
                         continue;
                     }
 
                     await Handle(result, cancellationToken);
 
-                    Store(consumer, result);
+                    Store(result);
                 }
                 catch (ConsumeException exception)
                 {
@@ -126,10 +129,6 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
         catch (OperationCanceledException)
         {
             // Graceful stop.
-        }
-        finally
-        {
-            consumer.Close();
         }
     }
 
@@ -203,11 +202,11 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
             .Contains(_configuration.GroupId);
     }
 
-    private void Store(IConsumer<Null, byte[]> consumer, ConsumeResult<Null, byte[]> result)
+    private void Store(ConsumeResult<Null, byte[]> result)
     {
         try
         {
-            consumer.StoreOffset(result);
+            _consumer!.StoreOffset(result);
         }
         catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
         {
