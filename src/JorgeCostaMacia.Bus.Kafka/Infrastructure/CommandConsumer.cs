@@ -112,6 +112,12 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
         }
     }
 
+    /// <summary>
+    /// Handles one delivery with in-process retries: each attempt runs in a fresh service scope; a
+    /// failed attempt waits the configured interval and retries with <c>RetryCount</c> incremented.
+    /// Excluded exception types (and cancellation) are not retried; when the attempts are exhausted
+    /// the exception propagates.
+    /// </summary>
     private async Task Handle(ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
     {
         Transport transport = CreateTransport(result);
@@ -136,11 +142,27 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
             transport.GetInt(TransportHeaders.RetryCount),
             transport.GetInt(TransportHeaders.RedeliveryCount));
 
-        using IServiceScope scope = _scopeFactory.CreateScope();
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                using IServiceScope scope = _scopeFactory.CreateScope();
 
-        TCommandHandler handler = scope.ServiceProvider.GetRequiredService<TCommandHandler>();
+                TCommandHandler handler = scope.ServiceProvider.GetRequiredService<TCommandHandler>();
 
-        await handler.Handle(context, cancellationToken);
+                await handler.Handle(context, cancellationToken);
+
+                return;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException
+                && attempt < _configuration.RetryIntervals.Count
+                && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
+            {
+                await Task.Delay(_configuration.RetryIntervals[attempt], cancellationToken);
+
+                context = context with { RetryCount = context.RetryCount + 1 };
+            }
+        }
     }
 
     private static Transport CreateTransport(ConsumeResult<Null, byte[]> result)

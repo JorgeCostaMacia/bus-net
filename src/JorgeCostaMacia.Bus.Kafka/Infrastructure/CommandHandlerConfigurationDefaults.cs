@@ -12,11 +12,11 @@ public static class CommandHandlerConfigurationDefaults
     /// <summary>Number of concurrent consumer instances. Default: <c>1</c>.</summary>
     public const int CONSUMERS = 1;
 
-    /// <summary>Maximum in-process retry attempts. Default: <c>0</c>.</summary>
-    public const int RETRY_ATTEMPTS = 0;
+    /// <summary>Delays between in-process retry attempts. Default: empty (no retries).</summary>
+    public static ImmutableList<TimeSpan> RETRY_INTERVALS => [];
 
     /// <summary>Exception types excluded from retries. Default: empty.</summary>
-    public static ImmutableList<Type> RETRY_ATTEMPTS_EXCLUDE_EXCEPTION_TYPES => [];
+    public static ImmutableList<Type> RETRY_EXCLUDE_EXCEPTION_TYPES => [];
 
     /// <summary>Maximum redelivery attempts. Default: <c>0</c>.</summary>
     public const int REDELIVERY_ATTEMPTS = 0;

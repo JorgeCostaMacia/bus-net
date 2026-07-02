@@ -23,11 +23,14 @@ public interface IHandlerConfiguration
     /// <summary>Number of concurrent consumer instances for this handler.</summary>
     int Consumers { get; }
 
-    /// <summary>Maximum in-process retry attempts when handling fails.</summary>
-    int RetryAttempts { get; }
+    /// <summary>
+    /// Delays between in-process retry attempts when handling fails — one entry per attempt, waited
+    /// before it (empty means no retries).
+    /// </summary>
+    ImmutableList<TimeSpan> RetryIntervals { get; }
 
     /// <summary>Exception types excluded from retries.</summary>
-    ImmutableList<Type> RetryAttemptsExcludeExceptionTypes { get; }
+    ImmutableList<Type> RetryExcludeExceptionTypes { get; }
 
     /// <summary>Maximum redelivery attempts (re-queued by the bus) after failure.</summary>
     int RedeliveryAttempts { get; }

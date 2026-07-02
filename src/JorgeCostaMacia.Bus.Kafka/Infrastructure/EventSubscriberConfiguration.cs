@@ -48,10 +48,10 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     public int Consumers { get; init; }
 
     /// <inheritdoc />
-    public int RetryAttempts { get; init; }
+    public ImmutableList<TimeSpan> RetryIntervals { get; init; }
 
     /// <inheritdoc />
-    public ImmutableList<Type> RetryAttemptsExcludeExceptionTypes { get; init; }
+    public ImmutableList<Type> RetryExcludeExceptionTypes { get; init; }
 
     /// <inheritdoc />
     public int RedeliveryAttempts { get; init; }
@@ -65,8 +65,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     /// <param name="saslUsername">SASL username, when authenticating.</param>
     /// <param name="saslPassword">SASL password, when authenticating.</param>
     /// <param name="consumers">Concurrent consumer instances, or <see langword="null"/> for the default.</param>
-    /// <param name="retryAttempts">In-process retry attempts, or <see langword="null"/> for the default.</param>
-    /// <param name="retryAttemptsExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
+    /// <param name="retryIntervals">Delays between in-process retry attempts (one entry per attempt), or <see langword="null"/> for the default (no retries).</param>
+    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
     /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <param name="securityProtocol">Security protocol, or <see langword="null"/> for the default.</param>
@@ -88,8 +88,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         string saslUsername,
         string saslPassword,
         int? consumers = null,
-        int? retryAttempts = null,
-        ImmutableList<Type>? retryAttemptsExcludeExceptionTypes = null,
+        ImmutableList<TimeSpan>? retryIntervals = null,
+        ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null,
         SecurityProtocol? securityProtocol = null,
@@ -110,8 +110,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         HandlerType = typeof(TEventSubscriber);
         Topic = topic;
         Consumers = consumers ?? EventSubscriberConfigurationDefaults.CONSUMERS;
-        RetryAttempts = retryAttempts ?? EventSubscriberConfigurationDefaults.RETRY_ATTEMPTS;
-        RetryAttemptsExcludeExceptionTypes = retryAttemptsExcludeExceptionTypes ?? EventSubscriberConfigurationDefaults.RETRY_ATTEMPTS_EXCLUDE_EXCEPTION_TYPES;
+        RetryIntervals = retryIntervals ?? EventSubscriberConfigurationDefaults.RETRY_INTERVALS;
+        RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? EventSubscriberConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
         RedeliveryAttempts = redeliveryAttempts ?? EventSubscriberConfigurationDefaults.REDELIVERY_ATTEMPTS;
         RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? EventSubscriberConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES;
 
