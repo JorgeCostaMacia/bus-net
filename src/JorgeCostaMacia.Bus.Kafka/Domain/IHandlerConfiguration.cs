@@ -24,10 +24,10 @@ public interface IHandlerConfiguration
     string GroupId { get; }
 
     /// <summary>
-    /// Delays between in-process retry attempts when handling fails — one entry per attempt, waited
-    /// before it (empty means no retries).
+    /// Maximum retry attempts when handling fails — each retry requeues the delivery to the topic's
+    /// tail, targeted to this consumer only (0 means no retries).
     /// </summary>
-    ImmutableList<TimeSpan> RetryIntervals { get; }
+    int RetryAttempts { get; }
 
     /// <summary>Exception types excluded from retries.</summary>
     ImmutableList<Type> RetryExcludeExceptionTypes { get; }

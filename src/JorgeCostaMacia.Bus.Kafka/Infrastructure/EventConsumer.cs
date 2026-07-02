@@ -15,7 +15,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// subscriber's topic (scale out by running more app instances — the consumer group balances the
 /// partitions). Each delivery rebuilds the context from the transport's headers, is handled in its
 /// own service scope and acked by storing the offset after handling (committed in the background —
-/// the store-offsets pattern). On shutdown the loop is cancelled and the consumer closed gracefully.
+/// the store-offsets pattern). A failed delivery is retried through the topic itself: requeued at
+/// the tail with <c>RetryCount</c> incremented and targeted to this group only. On shutdown the loop
+/// is cancelled and the consumer closed gracefully.
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
@@ -24,19 +26,22 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     where TEventSubscriber : IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
 {
     private readonly IHandlerConfiguration _configuration;
+    private readonly IProducer<Null, byte[]> _producer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<EventConsumer<TEvent, TEventSubscriber>> _logger;
     private IConsumer<Null, byte[]>? _consumer;
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the consumer over its subscriber configuration, the scope factory and the logger.</summary>
+    /// <summary>Creates the consumer over its subscriber configuration, the shared producer, the scope factory and the logger.</summary>
     /// <param name="configuration">The subscriber's consumer configuration.</param>
+    /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    public EventConsumer(IHandlerConfiguration configuration, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
+    public EventConsumer(IHandlerConfiguration configuration, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
     {
         _configuration = configuration;
+        _producer = producer;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -81,11 +86,10 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
 
     /// <summary>
     /// The consumer loop: consume → filter → handle → store the offset (the store is the ack; the
-    /// background thread commits it without blocking the loop). The loop only stops on cancellation: a consume
-    /// error is logged and retried (the client reconnects on its own), and a failed delivery
-    /// (retries exhausted, poison message) is logged and not acked — redelivered after a
-    /// restart/rebalance until the resilience policy (redelivery / error topic) lands in the next
-    /// phase.
+    /// background thread commits it without blocking the loop). The loop only stops on cancellation:
+    /// a consume error is logged and retried (the client reconnects on its own); a failed delivery is
+    /// requeued to the topic when retryable — the requeue is the ack — and otherwise logged and not
+    /// acked, until the resilience policy (redelivery / error topic) lands in the next phase.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -110,7 +114,14 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
                         continue;
                     }
 
-                    await Handle(result, cancellationToken);
+                    try
+                    {
+                        await Handle(result, cancellationToken);
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException && Retryable(result, exception))
+                    {
+                        await Retry(result, exception, cancellationToken);
+                    }
 
                     Store(result);
                 }
@@ -133,10 +144,8 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     }
 
     /// <summary>
-    /// Handles one delivery with in-process retries: each attempt runs in a fresh service scope; a
-    /// failed attempt waits the configured interval and retries with <c>RetryCount</c> incremented.
-    /// Excluded exception types (and cancellation) are not retried; when the attempts are exhausted
-    /// the exception propagates.
+    /// Handles one delivery: rebuilds the context from the transport's headers and invokes the
+    /// subscriber in its own service scope, with the envelope trace in the logging scope.
     /// </summary>
     private async Task Handle(ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
     {
@@ -151,36 +160,52 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             ["AggregateCorrelationId"] = context.AggregateCorrelationId
         });
 
-        while (true)
+        using IServiceScope scope = _scopeFactory.CreateScope();
+
+        TEventSubscriber subscriber = scope.ServiceProvider.GetRequiredService<TEventSubscriber>();
+
+        await subscriber.Handle(context, cancellationToken);
+    }
+
+    /// <summary>
+    /// Whether a failed delivery is requeued: its envelope's <c>RetryCount</c> has attempts left and
+    /// the exception type is not excluded.
+    /// </summary>
+    private bool Retryable(ConsumeResult<Null, byte[]> result, Exception exception)
+    {
+        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
+
+        return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
+            && retries < _configuration.RetryAttempts
+            && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
+    }
+
+    /// <summary>
+    /// Retries through the topic itself: the delivery is requeued at the tail with the envelope
+    /// cloned, <c>RetryCount</c> incremented and targeted to this group only — the other subscriber
+    /// groups already handled the original, so they filter the retry out. The user's original
+    /// targeting stays in the message body; the header is this copy's delivery instruction. Nothing
+    /// is held in memory and the retry survives a restart.
+    /// </summary>
+    private async Task Retry(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    {
+        Transport transport = CreateTransport(result);
+        int retry = transport.GetInt(TransportHeaders.RetryCount) + 1;
+
+        Headers headers = transport.CloneHeaders();
+
+        Restamp(headers, TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(retry.ToString()));
+        Restamp(headers, TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(_configuration.GroupId));
+
+        using (_logger.BeginScope(new Dictionary<string, object?>
         {
-            try
-            {
-                using IServiceScope scope = _scopeFactory.CreateScope();
-
-                TEventSubscriber subscriber = scope.ServiceProvider.GetRequiredService<TEventSubscriber>();
-
-                await subscriber.Handle(context, cancellationToken);
-
-                return;
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException
-                && context.RetryCount < _configuration.RetryIntervals.Count
-                && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
-            {
-                using (_logger.BeginScope(new Dictionary<string, object?>
-                {
-                    ["Interval"] = _configuration.RetryIntervals[context.RetryCount],
-                    ["Retry"] = context.RetryCount + 1
-                }))
-                {
-                    _logger.LogWarning(exception, "Handling failed; retrying.");
-                }
-
-                await Task.Delay(_configuration.RetryIntervals[context.RetryCount], cancellationToken);
-
-                context = context with { RetryCount = context.RetryCount + 1 };
-            }
+            ["Retry"] = retry
+        }))
+        {
+            _logger.LogWarning(exception, "Handling failed; requeued to retry.");
         }
+
+        await _producer.ProduceAsync(_configuration.Topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
     }
 
     /// <summary>
@@ -265,4 +290,10 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
             transport.GetInt(TransportHeaders.RetryCount),
             transport.GetInt(TransportHeaders.RedeliveryCount));
+
+    private static void Restamp(Headers headers, string key, byte[] value)
+    {
+        headers.Remove(key);
+        headers.Add(key, value);
+    }
 }

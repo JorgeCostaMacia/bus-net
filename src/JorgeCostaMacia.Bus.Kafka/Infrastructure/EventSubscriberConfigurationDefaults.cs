@@ -9,8 +9,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 public static class EventSubscriberConfigurationDefaults
 {
-    /// <summary>Delays between in-process retry attempts. Default: empty (no retries).</summary>
-    public static ImmutableList<TimeSpan> RETRY_INTERVALS => [];
+    /// <summary>Maximum retry requeues to the topic. Default: <c>0</c> (no retries).</summary>
+    public const int RETRY_ATTEMPTS = 0;
 
     /// <summary>Exception types excluded from retries. Default: empty.</summary>
     public static ImmutableList<Type> RETRY_EXCLUDE_EXCEPTION_TYPES => [];

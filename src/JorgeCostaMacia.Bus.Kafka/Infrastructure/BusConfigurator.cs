@@ -71,7 +71,7 @@ public sealed class BusConfigurator
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
     /// <param name="topic">The Kafka topic to consume from.</param>
     /// <param name="groupId">The consumer group id (e.g. <c>{topic}.handler</c>) — a stable contract, it holds the group's offsets.</param>
-    /// <param name="retryIntervals">Delays between in-process retry attempts (one entry per attempt), or <see langword="null"/> for the default (no retries).</param>
+    /// <param name="retryAttempts">Maximum retry requeues to the topic, or <see langword="null"/> for the default (no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
     /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
@@ -80,7 +80,7 @@ public sealed class BusConfigurator
     public BusConfigurator AddCommandHandler<TCommand, TCommandHandler>(
         string topic,
         string groupId,
-        ImmutableList<TimeSpan>? retryIntervals = null,
+        int? retryAttempts = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null,
@@ -94,7 +94,7 @@ public sealed class BusConfigurator
             _bootstrapServers,
             _saslUsername,
             _saslPassword,
-            retryIntervals,
+            retryAttempts,
             retryExcludeExceptionTypes,
             redeliveryAttempts,
             redeliveryExcludeExceptionTypes,
@@ -106,6 +106,7 @@ public sealed class BusConfigurator
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider => new CommandConsumer<TCommand, TCommandHandler>(
             configuration,
+            provider.GetRequiredService<IProducer<Null, byte[]>>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<CommandConsumer<TCommand, TCommandHandler>>>()));
 
@@ -120,7 +121,7 @@ public sealed class BusConfigurator
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
     /// <param name="topic">The Kafka topic to consume from.</param>
     /// <param name="groupId">The consumer group id (e.g. <c>{consumer}.on.{topic}.subscriber</c>) — a stable contract, unique per subscriber, it holds the group's offsets.</param>
-    /// <param name="retryIntervals">Delays between in-process retry attempts (one entry per attempt), or <see langword="null"/> for the default (no retries).</param>
+    /// <param name="retryAttempts">Maximum retry requeues to the topic, or <see langword="null"/> for the default (no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
     /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
@@ -129,7 +130,7 @@ public sealed class BusConfigurator
     public BusConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
         string topic,
         string groupId,
-        ImmutableList<TimeSpan>? retryIntervals = null,
+        int? retryAttempts = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null,
@@ -143,7 +144,7 @@ public sealed class BusConfigurator
             _bootstrapServers,
             _saslUsername,
             _saslPassword,
-            retryIntervals,
+            retryAttempts,
             retryExcludeExceptionTypes,
             redeliveryAttempts,
             redeliveryExcludeExceptionTypes,
@@ -155,6 +156,7 @@ public sealed class BusConfigurator
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider => new EventConsumer<TEvent, TEventSubscriber>(
             configuration,
+            provider.GetRequiredService<IProducer<Null, byte[]>>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<EventConsumer<TEvent, TEventSubscriber>>>()));
 

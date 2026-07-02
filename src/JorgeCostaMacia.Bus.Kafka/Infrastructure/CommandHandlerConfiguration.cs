@@ -50,7 +50,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
     public string GroupId { get; init; }
 
     /// <inheritdoc />
-    public ImmutableList<TimeSpan> RetryIntervals { get; init; }
+    public int RetryAttempts { get; init; }
 
     /// <inheritdoc />
     public ImmutableList<Type> RetryExcludeExceptionTypes { get; init; }
@@ -67,7 +67,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
     /// <param name="bootstrapServers">Comma-separated Kafka brokers.</param>
     /// <param name="saslUsername">SASL username, when authenticating.</param>
     /// <param name="saslPassword">SASL password, when authenticating.</param>
-    /// <param name="retryIntervals">Delays between in-process retry attempts (one entry per attempt), or <see langword="null"/> for the default (no retries).</param>
+    /// <param name="retryAttempts">Maximum retry requeues to the topic, or <see langword="null"/> for the default (no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
     /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
@@ -92,7 +92,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
         string bootstrapServers,
         string? saslUsername = null,
         string? saslPassword = null,
-        ImmutableList<TimeSpan>? retryIntervals = null,
+        int? retryAttempts = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
         int? redeliveryAttempts = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null,
@@ -115,7 +115,7 @@ public sealed record CommandHandlerConfiguration<TCommand, TCommandHandler> : IH
         MessageType = typeof(TCommand);
         HandlerType = typeof(TCommandHandler);
         Topic = topic;
-        RetryIntervals = retryIntervals ?? CommandHandlerConfigurationDefaults.RETRY_INTERVALS;
+        RetryAttempts = retryAttempts ?? CommandHandlerConfigurationDefaults.RETRY_ATTEMPTS;
         RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? CommandHandlerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
         RedeliveryAttempts = redeliveryAttempts ?? CommandHandlerConfigurationDefaults.REDELIVERY_ATTEMPTS;
         RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? CommandHandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES;
