@@ -68,9 +68,11 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
 
     /// <summary>
     /// The consumer loop: consume → handle → store the offset (the store is the ack; the background
-    /// thread commits it without blocking the loop). A handling failure currently stops the loop
-    /// without storing; the resilience policy (retry / redelivery / error topic) is built in the
-    /// next phase.
+    /// thread commits it without blocking the loop). The loop only stops on cancellation: a consume
+    /// error is logged and retried (the client reconnects on its own), and a failed delivery
+    /// (retries exhausted, poison message) is logged and not acked — redelivered after a
+    /// restart/rebalance until the resilience policy (redelivery / error topic) lands in the next
+    /// phase.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -93,17 +95,23 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                ConsumeResult<Null, byte[]> result = consumer.Consume(cancellationToken);
-
-                await Handle(result, cancellationToken);
-
                 try
                 {
-                    consumer.StoreOffset(result);
+                    ConsumeResult<Null, byte[]> result = consumer.Consume(cancellationToken);
+
+                    await Handle(result, cancellationToken);
+
+                    Store(consumer, result);
                 }
-                catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
+                catch (ConsumeException exception)
                 {
-                    _logger.LogWarning("Partition lost in a rebalance; its new owner will handle the message again.");
+                    _logger.LogError(exception, "Consume failed.");
+
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    _logger.LogError(exception, "Handling failed; the delivery is not acked.");
                 }
             }
         }
@@ -165,6 +173,18 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
 
                 context = context with { RetryCount = context.RetryCount + 1 };
             }
+        }
+    }
+
+    private void Store(IConsumer<Null, byte[]> consumer, ConsumeResult<Null, byte[]> result)
+    {
+        try
+        {
+            consumer.StoreOffset(result);
+        }
+        catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
+        {
+            _logger.LogWarning("Partition lost in a rebalance; its new owner will handle the message again.");
         }
     }
 
