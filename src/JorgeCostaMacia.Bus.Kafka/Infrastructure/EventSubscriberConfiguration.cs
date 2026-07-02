@@ -26,6 +26,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     private readonly string _saslUsername;
     private readonly string _saslPassword;
     private readonly bool _enableAutoCommit;
+    private readonly bool _enableAutoOffsetStore;
+    private readonly int _autoCommitIntervalMs;
     private readonly bool _allowAutoCreateTopics;
     private readonly AutoOffsetReset _autoOffsetReset;
     private readonly int _socketTimeoutMs;
@@ -71,7 +73,9 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <param name="securityProtocol">Security protocol, or <see langword="null"/> for the default.</param>
     /// <param name="saslMechanism">SASL mechanism, or <see langword="null"/> for the default.</param>
-    /// <param name="enableAutoCommit">Auto-commit offsets, or <see langword="null"/> for the default (false).</param>
+    /// <param name="enableAutoCommit">Background commit of stored offsets, or <see langword="null"/> for the default (true).</param>
+    /// <param name="enableAutoOffsetStore">Store offsets automatically prior to delivery, or <see langword="null"/> for the default (false — the consumer stores after handling).</param>
+    /// <param name="autoCommitIntervalMs">Interval (ms) between background commits of the stored offsets, or <see langword="null"/> for the default (5000).</param>
     /// <param name="allowAutoCreateTopics">Auto-create topics, or <see langword="null"/> for the default.</param>
     /// <param name="autoOffsetReset">Offset reset behavior, or <see langword="null"/> for the default.</param>
     /// <param name="socketTimeoutMs">Socket timeout (ms), or <see langword="null"/> for the default.</param>
@@ -95,6 +99,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         SecurityProtocol? securityProtocol = null,
         SaslMechanism? saslMechanism = null,
         bool? enableAutoCommit = null,
+        bool? enableAutoOffsetStore = null,
+        int? autoCommitIntervalMs = null,
         bool? allowAutoCreateTopics = null,
         AutoOffsetReset? autoOffsetReset = null,
         int? socketTimeoutMs = null,
@@ -120,6 +126,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         _securityProtocol = securityProtocol ?? EventSubscriberConfigurationDefaults.SECURITY_PROTOCOL;
         _saslMechanism = saslMechanism ?? EventSubscriberConfigurationDefaults.SASL_MECHANISM;
         _enableAutoCommit = enableAutoCommit ?? EventSubscriberConfigurationDefaults.ENABLE_AUTO_COMMIT;
+        _enableAutoOffsetStore = enableAutoOffsetStore ?? EventSubscriberConfigurationDefaults.ENABLE_AUTO_OFFSET_STORE;
+        _autoCommitIntervalMs = autoCommitIntervalMs ?? EventSubscriberConfigurationDefaults.AUTO_COMMIT_INTERVAL_MS;
         _allowAutoCreateTopics = allowAutoCreateTopics ?? EventSubscriberConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS;
         _autoOffsetReset = autoOffsetReset ?? EventSubscriberConfigurationDefaults.AUTO_OFFSET_RESET;
         _socketTimeoutMs = socketTimeoutMs ?? EventSubscriberConfigurationDefaults.SOCKET_TIMEOUT_MS;
@@ -142,6 +150,8 @@ public sealed record EventSubscriberConfiguration<TEvent, TEventSubscriber> : IH
         SaslUsername = _saslUsername,
         SaslPassword = _saslPassword,
         EnableAutoCommit = _enableAutoCommit,
+        EnableAutoOffsetStore = _enableAutoOffsetStore,
+        AutoCommitIntervalMs = _autoCommitIntervalMs,
         AllowAutoCreateTopics = _allowAutoCreateTopics,
         AutoOffsetReset = _autoOffsetReset,
         SocketTimeoutMs = _socketTimeoutMs,

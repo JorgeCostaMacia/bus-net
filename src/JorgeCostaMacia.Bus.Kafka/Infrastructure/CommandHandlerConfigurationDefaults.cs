@@ -27,8 +27,24 @@ public static class CommandHandlerConfigurationDefaults
     /// <summary>SASL mechanism. Default: <c>ScramSha512</c>.</summary>
     public const SaslMechanism SASL_MECHANISM = SaslMechanism.ScramSha512;
 
-    /// <summary>Whether the consumer auto-commits offsets. Default: <c>false</c> (manual commit as ack).</summary>
-    public const bool ENABLE_AUTO_COMMIT = false;
+    /// <summary>
+    /// Whether the background thread periodically commits the stored offsets. Default: <c>true</c> —
+    /// combined with <see cref="ENABLE_AUTO_OFFSET_STORE"/> this is the store-offsets pattern: the
+    /// consumer stores the offset only after handling, and the commit happens without blocking.
+    /// </summary>
+    public const bool ENABLE_AUTO_COMMIT = true;
+
+    /// <summary>
+    /// Whether offsets are stored automatically prior to delivery. Default: <c>false</c> — the
+    /// consumer stores the offset explicitly after the message is handled (the store is the ack).
+    /// </summary>
+    public const bool ENABLE_AUTO_OFFSET_STORE = false;
+
+    /// <summary>
+    /// Interval (ms) at which the background thread commits the stored offsets — bounds the
+    /// redelivery window after a hard crash (throughput × interval). Default: <c>5000</c>.
+    /// </summary>
+    public const int AUTO_COMMIT_INTERVAL_MS = 5_000;
 
     /// <summary>Whether topics can be auto-created on subscribe. Default: <c>false</c>.</summary>
     public const bool ALLOW_AUTO_CREATE_TOPICS = false;

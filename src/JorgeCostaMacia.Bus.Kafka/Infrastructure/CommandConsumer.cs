@@ -13,8 +13,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// The consumer hosting one command handler in the application lifecycle: one consumer loop on the
 /// handler's topic (scale out by running more app instances — the consumer group balances the
 /// partitions). Each delivery rebuilds the context from the transport's headers, is handled in its
-/// own service scope and acked by committing the offset. On shutdown the loop is cancelled and the
-/// consumer closed gracefully.
+/// own service scope and acked by storing the offset after handling (committed in the background —
+/// the store-offsets pattern). On shutdown the loop is cancelled and the consumer closed gracefully.
 /// </summary>
 /// <typeparam name="TCommand">The command type consumed.</typeparam>
 /// <typeparam name="TCommandHandler">The handler type resolved per delivery.</typeparam>
@@ -67,9 +67,10 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     }
 
     /// <summary>
-    /// The consumer loop: consume → handle → commit (the offset commit is the ack). A handling
-    /// failure currently stops the loop without committing; the resilience policy
-    /// (retry / redelivery / error topic) is built in the next phase.
+    /// The consumer loop: consume → handle → store the offset (the store is the ack; the background
+    /// thread commits it without blocking the loop). A handling failure currently stops the loop
+    /// without storing; the resilience policy (retry / redelivery / error topic) is built in the
+    /// next phase.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -96,7 +97,14 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
 
                 await Handle(result, cancellationToken);
 
-                consumer.Commit(result);
+                try
+                {
+                    consumer.StoreOffset(result);
+                }
+                catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
+                {
+                    _logger.LogWarning("Partition lost in a rebalance; its new owner will handle the message again.");
+                }
             }
         }
         catch (OperationCanceledException)
