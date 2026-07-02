@@ -151,7 +151,7 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
             ["AggregateCorrelationId"] = context.AggregateCorrelationId
         });
 
-        for (int attempt = 0; ; attempt++)
+        while (true)
         {
             try
             {
@@ -164,19 +164,19 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
                 return;
             }
             catch (Exception exception) when (exception is not OperationCanceledException
-                && attempt < _configuration.RetryIntervals.Count
+                && context.RetryCount < _configuration.RetryIntervals.Count
                 && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
             {
                 using (_logger.BeginScope(new Dictionary<string, object?>
                 {
-                    ["Interval"] = _configuration.RetryIntervals[attempt],
+                    ["Interval"] = _configuration.RetryIntervals[context.RetryCount],
                     ["Retry"] = context.RetryCount + 1
                 }))
                 {
                     _logger.LogWarning(exception, "Handling failed; retrying.");
                 }
 
-                await Task.Delay(_configuration.RetryIntervals[attempt], cancellationToken);
+                await Task.Delay(_configuration.RetryIntervals[context.RetryCount], cancellationToken);
 
                 context = context with { RetryCount = context.RetryCount + 1 };
             }
