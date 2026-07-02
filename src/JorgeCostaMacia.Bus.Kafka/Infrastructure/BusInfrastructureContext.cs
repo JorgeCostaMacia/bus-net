@@ -39,7 +39,7 @@ internal static class BusInfrastructureContext
     }
 
     /// <summary>
-    /// Maps the <c>Bus:Producer</c> section onto a <see cref="BusConfiguration"/> (the curated
+    /// Maps the <c>Bus:Producer</c> section onto a <see cref="ProducerConfiguration"/> (the curated
     /// setting surface; unset values fall back to the defaults when it composes the producer
     /// configuration).
     /// </summary>
@@ -48,14 +48,14 @@ internal static class BusInfrastructureContext
     /// <exception cref="InvalidOperationException"><c>Bus:Producer:BootstrapServers</c> is missing.</exception>
     internal static ProducerConfig CreateProducerConfig(IConfiguration configuration)
     {
-        BusConfiguration bus = configuration.GetSection(PRODUCER_SECTION).Get<BusConfiguration>() ?? new BusConfiguration();
+        ProducerConfiguration producer = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>() ?? new ProducerConfiguration();
 
-        if (string.IsNullOrWhiteSpace(bus.BootstrapServers))
+        if (string.IsNullOrWhiteSpace(producer.BootstrapServers))
         {
-            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(bus.BootstrapServers)}' is null.");
+            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producer.BootstrapServers)}' is null.");
         }
 
-        return bus.ProducerConfig;
+        return producer.ProducerConfig;
     }
 
     private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)

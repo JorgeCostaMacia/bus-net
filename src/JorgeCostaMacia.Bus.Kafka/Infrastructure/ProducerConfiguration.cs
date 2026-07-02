@@ -5,9 +5,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The global producer configuration, bound from the <c>Bus:Producer</c> section: the connection plus
 /// the tuning overrides this bus supports (a curated surface, not every client knob). Unset values
-/// fall back to <see cref="BusConfigurationDefaults"/> when composing the <see cref="ProducerConfig"/>.
+/// fall back to <see cref="ProducerConfigurationDefaults"/> when composing the <see cref="ProducerConfig"/>.
 /// </summary>
-public sealed class BusConfiguration
+public sealed class ProducerConfiguration
 {
     /// <summary>Comma-separated list of Kafka brokers. Required.</summary>
     public string? BootstrapServers { get; init; }
@@ -64,21 +64,21 @@ public sealed class BusConfiguration
     public ProducerConfig ProducerConfig => new()
     {
         BootstrapServers = BootstrapServers,
-        SecurityProtocol = SecurityProtocol ?? BusConfigurationDefaults.SECURITY_PROTOCOL,
-        SaslMechanism = SaslMechanism ?? BusConfigurationDefaults.SASL_MECHANISM,
+        SecurityProtocol = SecurityProtocol ?? ProducerConfigurationDefaults.SECURITY_PROTOCOL,
+        SaslMechanism = SaslMechanism ?? ProducerConfigurationDefaults.SASL_MECHANISM,
         SaslUsername = SaslUsername,
         SaslPassword = SaslPassword,
-        Acks = Acks ?? BusConfigurationDefaults.ACKS,
-        AllowAutoCreateTopics = AllowAutoCreateTopics ?? BusConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
-        EnableIdempotence = EnableIdempotence ?? BusConfigurationDefaults.ENABLE_IDEMPOTENCE,
-        CompressionType = CompressionType ?? BusConfigurationDefaults.COMPRESSION_TYPE,
-        MessageTimeoutMs = MessageTimeoutMs ?? BusConfigurationDefaults.MESSAGE_TIMEOUT_MS,
-        LingerMs = LingerMs ?? BusConfigurationDefaults.LINGER_MS,
-        BatchNumMessages = BatchNumMessages ?? BusConfigurationDefaults.BATCH_NUM_MESSAGES,
-        BatchSize = BatchSize ?? BusConfigurationDefaults.BATCH_SIZE,
-        MessageSendMaxRetries = MessageSendMaxRetries ?? BusConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
-        RetryBackoffMs = RetryBackoffMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MS,
-        RetryBackoffMaxMs = RetryBackoffMaxMs ?? BusConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
-        ClientId = ClientId ?? BusConfigurationDefaults.CLIENT_ID
+        Acks = Acks ?? ProducerConfigurationDefaults.ACKS,
+        AllowAutoCreateTopics = AllowAutoCreateTopics ?? ProducerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
+        EnableIdempotence = EnableIdempotence ?? ProducerConfigurationDefaults.ENABLE_IDEMPOTENCE,
+        CompressionType = CompressionType ?? ProducerConfigurationDefaults.COMPRESSION_TYPE,
+        MessageTimeoutMs = MessageTimeoutMs ?? ProducerConfigurationDefaults.MESSAGE_TIMEOUT_MS,
+        LingerMs = LingerMs ?? ProducerConfigurationDefaults.LINGER_MS,
+        BatchNumMessages = BatchNumMessages ?? ProducerConfigurationDefaults.BATCH_NUM_MESSAGES,
+        BatchSize = BatchSize ?? ProducerConfigurationDefaults.BATCH_SIZE,
+        MessageSendMaxRetries = MessageSendMaxRetries ?? ProducerConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
+        RetryBackoffMs = RetryBackoffMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MS,
+        RetryBackoffMaxMs = RetryBackoffMaxMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
+        ClientId = ClientId ?? ProducerConfigurationDefaults.CLIENT_ID
     };
 }
