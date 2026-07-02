@@ -5,10 +5,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
 /// The global Kafka configuration: connection + producer tuning, shared by every message. Composes
-/// the <see cref="ProducerConfig"/> and <see cref="AdminClientConfig"/> from the supplied connection
-/// details and tuning overrides, falling back to <see cref="BusConfigurationDefaults"/>.
+/// the <see cref="ProducerConfig"/> from the supplied connection details and tuning overrides,
+/// falling back to <see cref="BusConfigurationDefaults"/>.
 /// </summary>
-public sealed class BusConfiguration : IProducerConfiguration, IAdminConfiguration
+public sealed class BusConfiguration : IProducerConfiguration
 {
     private readonly string _bootstrapServers;
     private readonly string? _saslUsername;
@@ -103,17 +103,6 @@ public sealed class BusConfiguration : IProducerConfiguration, IAdminConfigurati
         MessageSendMaxRetries = _messageSendMaxRetries,
         RetryBackoffMs = _retryBackoffMs,
         RetryBackoffMaxMs = _retryBackoffMaxMs,
-        ClientId = _clientId
-    };
-
-    /// <inheritdoc />
-    public AdminClientConfig AdminClientConfig => new()
-    {
-        BootstrapServers = _bootstrapServers,
-        SecurityProtocol = _securityProtocol,
-        SaslMechanism = _saslMechanism,
-        SaslUsername = _saslUsername,
-        SaslPassword = _saslPassword,
         ClientId = _clientId
     };
 }

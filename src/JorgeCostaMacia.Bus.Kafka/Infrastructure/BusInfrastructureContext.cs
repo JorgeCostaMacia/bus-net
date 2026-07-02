@@ -22,7 +22,6 @@ internal static class BusInfrastructureContext
     public static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, BusConfiguration configuration)
     {
         services.AddSingleton<IProducerConfiguration>(configuration);
-        services.AddSingleton<IAdminConfiguration>(configuration);
 
         services.AddSingleton(CreateProducer);
 

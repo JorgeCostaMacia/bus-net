@@ -42,13 +42,11 @@ public sealed class BusConfigurator
     /// <summary>Registers a command this service sends, mapping its type to a topic.</summary>
     /// <typeparam name="TCommand">The command type.</typeparam>
     /// <param name="topic">The Kafka topic the command is sent to.</param>
-    /// <param name="numPartitions">Partitions when provisioning, or <see langword="null"/> for the default.</param>
-    /// <param name="replicationFactor">Replication factor when provisioning, or <see langword="null"/> for the default.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public BusConfigurator AddCommand<TCommand>(string topic, int? numPartitions = null, short? replicationFactor = null)
+    public BusConfigurator AddCommand<TCommand>(string topic)
         where TCommand : ICommand
     {
-        _services.AddSingleton<IMessageConfiguration>(new CommandConfiguration<TCommand>(topic, numPartitions, replicationFactor));
+        _services.AddSingleton<IMessageConfiguration>(new CommandConfiguration<TCommand>(topic));
 
         return this;
     }
@@ -56,13 +54,11 @@ public sealed class BusConfigurator
     /// <summary>Registers an event this service publishes, mapping its type to a topic.</summary>
     /// <typeparam name="TEvent">The event type.</typeparam>
     /// <param name="topic">The Kafka topic the event is published to.</param>
-    /// <param name="numPartitions">Partitions when provisioning, or <see langword="null"/> for the default.</param>
-    /// <param name="replicationFactor">Replication factor when provisioning, or <see langword="null"/> for the default.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public BusConfigurator AddEvent<TEvent>(string topic, int? numPartitions = null, short? replicationFactor = null)
+    public BusConfigurator AddEvent<TEvent>(string topic)
         where TEvent : IEvent
     {
-        _services.AddSingleton<IMessageConfiguration>(new EventConfiguration<TEvent>(topic, numPartitions, replicationFactor));
+        _services.AddSingleton<IMessageConfiguration>(new EventConfiguration<TEvent>(topic));
 
         return this;
     }

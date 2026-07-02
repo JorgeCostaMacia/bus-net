@@ -4,8 +4,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
 /// Default global (connection + producer tuning) settings applied to a <see cref="BusConfiguration"/>
-/// when not supplied. Shared by every message; per-topic settings live in
-/// <see cref="CommandConfigurationDefaults"/>.
+/// when not supplied. Shared by every message; topics themselves are infrastructure, auto-created by
+/// the broker with its defaults and managed broker-side.
 /// </summary>
 public static class BusConfigurationDefaults
 {
@@ -18,8 +18,11 @@ public static class BusConfigurationDefaults
     /// <summary>Producer acknowledgment level. Default: <c>All</c>.</summary>
     public const Acks ACKS = Acks.All;
 
-    /// <summary>Whether topics can be auto-created if missing. Default: <c>false</c>.</summary>
-    public const bool ALLOW_AUTO_CREATE_TOPICS = false;
+    /// <summary>
+    /// Whether topics can be auto-created if missing. Default: <c>true</c> — topics are born on first
+    /// use with the broker's defaults (partitions/replication/min-isr) and managed broker-side.
+    /// </summary>
+    public const bool ALLOW_AUTO_CREATE_TOPICS = true;
 
     /// <summary>Enables idempotent message delivery. Default: <c>true</c>.</summary>
     public const bool ENABLE_IDEMPOTENCE = true;

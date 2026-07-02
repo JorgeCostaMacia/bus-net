@@ -46,8 +46,11 @@ public static class EventSubscriberConfigurationDefaults
     /// </summary>
     public const int AUTO_COMMIT_INTERVAL_MS = 5_000;
 
-    /// <summary>Whether topics can be auto-created on subscribe. Default: <c>false</c>.</summary>
-    public const bool ALLOW_AUTO_CREATE_TOPICS = false;
+    /// <summary>
+    /// Whether topics can be auto-created on subscribe. Default: <c>true</c> — topics are born on
+    /// first use with the broker's defaults (partitions/replication/min-isr) and managed broker-side.
+    /// </summary>
+    public const bool ALLOW_AUTO_CREATE_TOPICS = true;
 
     /// <summary>Where to start when no offset is stored. Default: <c>Latest</c>.</summary>
     public static AutoOffsetReset AUTO_OFFSET_RESET => AutoOffsetReset.Latest;

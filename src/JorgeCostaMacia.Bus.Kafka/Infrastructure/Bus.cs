@@ -77,7 +77,7 @@ public sealed class Bus : IBus
             throw new InvalidOperationException($"No topic is configured for message type '{type.FullName}'.");
         }
 
-        return configuration.TopicSpecification.Name;
+        return configuration.Topic;
     }
 
     /// <summary>
