@@ -114,14 +114,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
                         continue;
                     }
 
-                    try
-                    {
-                        await Handle(result, cancellationToken);
-                    }
-                    catch (Exception exception) when (exception is not OperationCanceledException && Retryable(result, exception))
-                    {
-                        await Retry(result, exception, cancellationToken);
-                    }
+                    await Handle(result, cancellationToken);
 
                     Store(result);
                 }
@@ -145,7 +138,9 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
 
     /// <summary>
     /// Handles one delivery: rebuilds the context from the transport's headers and invokes the
-    /// subscriber in its own service scope, with the envelope trace in the logging scope.
+    /// subscriber in its own service scope, with the envelope trace in the logging scope. A retryable
+    /// failure is requeued here (the return then acks the original); a non-retryable one propagates
+    /// (no ack).
     /// </summary>
     private async Task Handle(ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
     {
@@ -160,24 +155,20 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             ["AggregateCorrelationId"] = context.AggregateCorrelationId
         });
 
-        using IServiceScope scope = _scopeFactory.CreateScope();
+        try
+        {
+            using IServiceScope scope = _scopeFactory.CreateScope();
 
-        TEventSubscriber subscriber = scope.ServiceProvider.GetRequiredService<TEventSubscriber>();
+            TEventSubscriber subscriber = scope.ServiceProvider.GetRequiredService<TEventSubscriber>();
 
-        await subscriber.Handle(context, cancellationToken);
-    }
-
-    /// <summary>
-    /// Whether a failed delivery is requeued: its envelope's <c>RetryCount</c> has attempts left and
-    /// the exception type is not excluded.
-    /// </summary>
-    private bool Retryable(ConsumeResult<Null, byte[]> result, Exception exception)
-    {
-        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
-
-        return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
-            && retries < _configuration.RetryAttempts
-            && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
+            await subscriber.Handle(context, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException
+            && context.RetryCount < _configuration.RetryAttempts
+            && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
+        {
+            await Retry(transport, result, exception, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -187,9 +178,8 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
     /// targeting stays in the message body; the header is this copy's delivery instruction. Nothing
     /// is held in memory and the retry survives a restart.
     /// </summary>
-    private async Task Retry(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    private async Task Retry(Transport transport, ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
-        Transport transport = CreateTransport(result);
         int retry = transport.GetInt(TransportHeaders.RetryCount) + 1;
 
         Headers headers = transport.CloneHeaders();

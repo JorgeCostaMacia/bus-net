@@ -109,14 +109,7 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
                 {
                     ConsumeResult<Null, byte[]> result = _consumer!.Consume(cancellationToken);
 
-                    try
-                    {
-                        await Handle(result, cancellationToken);
-                    }
-                    catch (Exception exception) when (exception is not OperationCanceledException && Retryable(result, exception))
-                    {
-                        await Retry(result, exception, cancellationToken);
-                    }
+                    await Handle(result, cancellationToken);
 
                     Store(result);
                 }
@@ -140,7 +133,9 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
 
     /// <summary>
     /// Handles one delivery: rebuilds the context from the transport's headers and invokes the
-    /// handler in its own service scope, with the envelope trace in the logging scope.
+    /// handler in its own service scope, with the envelope trace in the logging scope. A retryable
+    /// failure is requeued here (the return then acks the original); a non-retryable one propagates
+    /// (no ack).
     /// </summary>
     private async Task Handle(ConsumeResult<Null, byte[]> result, CancellationToken cancellationToken)
     {
@@ -155,24 +150,20 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
             ["AggregateCorrelationId"] = context.AggregateCorrelationId
         });
 
-        using IServiceScope scope = _scopeFactory.CreateScope();
+        try
+        {
+            using IServiceScope scope = _scopeFactory.CreateScope();
 
-        TCommandHandler handler = scope.ServiceProvider.GetRequiredService<TCommandHandler>();
+            TCommandHandler handler = scope.ServiceProvider.GetRequiredService<TCommandHandler>();
 
-        await handler.Handle(context, cancellationToken);
-    }
-
-    /// <summary>
-    /// Whether a failed delivery is requeued: its envelope's <c>RetryCount</c> has attempts left and
-    /// the exception type is not excluded.
-    /// </summary>
-    private bool Retryable(ConsumeResult<Null, byte[]> result, Exception exception)
-    {
-        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
-
-        return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
-            && retries < _configuration.RetryAttempts
-            && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
+            await handler.Handle(context, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException
+            && context.RetryCount < _configuration.RetryAttempts
+            && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
+        {
+            await Retry(transport, result, exception, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -181,9 +172,8 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : IHostedServic
     /// restart. No targeting is stamped: a command topic has a single consumer group by definition,
     /// so the original envelope (including the user's own consumer filter) travels unchanged.
     /// </summary>
-    private async Task Retry(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    private async Task Retry(Transport transport, ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
-        Transport transport = CreateTransport(result);
         int retry = transport.GetInt(TransportHeaders.RetryCount) + 1;
 
         Headers headers = transport.CloneHeaders();
