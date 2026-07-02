@@ -3,7 +3,8 @@ using System.Collections.Immutable;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default custom-policy settings applied to a <see cref="HandlerConfiguration"/> when not supplied.
+/// Default custom-policy settings (topic retry / redelivery) a consumer falls back to when the
+/// configurator is not given a value.
 /// </summary>
 public static class HandlerConfigurationDefaults
 {
@@ -13,8 +14,8 @@ public static class HandlerConfigurationDefaults
     /// <summary>Exception types excluded from retries. Default: empty.</summary>
     public static ImmutableList<Type> RETRY_EXCLUDE_EXCEPTION_TYPES => [];
 
-    /// <summary>Maximum redelivery attempts. Default: <c>0</c>.</summary>
-    public const int REDELIVERY_ATTEMPTS = 0;
+    /// <summary>Delays between scheduled redeliveries. Default: empty (no redeliveries).</summary>
+    public static ImmutableList<TimeSpan> REDELIVERY_INTERVALS => [];
 
     /// <summary>Exception types excluded from redelivery. Default: empty.</summary>
     public static ImmutableList<Type> REDELIVERY_EXCLUDE_EXCEPTION_TYPES => [];

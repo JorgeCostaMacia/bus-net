@@ -22,17 +22,17 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 public sealed class Bus : IBus
 {
     private readonly IProducer<Null, byte[]> _producer;
-    private readonly IReadOnlyDictionary<Type, IMessageConfiguration> _messages;
+    private readonly IReadOnlyDictionary<Type, string> _messages;
     private readonly ILogger<Bus> _logger;
 
-    /// <summary>Creates the bus over a shared producer, the message topic configurations and the logger.</summary>
+    /// <summary>Creates the bus over a shared producer, the type → topic routing map and the logger.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
-    /// <param name="messages">The per-message topic configurations (command and event).</param>
+    /// <param name="messages">The type → topic routing map (commands and events).</param>
     /// <param name="logger">The logger for produce failures.</param>
-    public Bus(IProducer<Null, byte[]> producer, IEnumerable<IMessageConfiguration> messages, ILogger<Bus> logger)
+    public Bus(IProducer<Null, byte[]> producer, IReadOnlyDictionary<Type, string> messages, ILogger<Bus> logger)
     {
         _producer = producer;
-        _messages = messages.ToDictionary(configuration => configuration.MessageType);
+        _messages = messages;
         _logger = logger;
     }
 
@@ -76,12 +76,12 @@ public sealed class Bus : IBus
     {
         Type type = message!.GetType();
 
-        if (!_messages.TryGetValue(type, out IMessageConfiguration? configuration))
+        if (!_messages.TryGetValue(type, out string? topic))
         {
             throw new InvalidOperationException($"No topic is configured for message type '{type.FullName}'.");
         }
 
-        return configuration.Topic;
+        return topic;
     }
 
     /// <summary>

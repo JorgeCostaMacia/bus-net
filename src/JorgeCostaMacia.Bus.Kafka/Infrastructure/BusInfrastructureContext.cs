@@ -75,27 +75,8 @@ internal static class BusInfrastructureContext
         ILogger<BusProducer> logger = provider.GetRequiredService<ILogger<BusProducer>>();
 
         return new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) =>
-            {
-                using (logger.BeginScope(new Dictionary<string, object?>
-                {
-                    ["@Error"] = error
-                }))
-                {
-                    logger.LogError("Producer error.");
-                }
-            })
-            .SetLogHandler((_, log) =>
-            {
-                using (logger.BeginScope(new Dictionary<string, object?>
-                {
-                    ["Name"] = log.Name,
-                    ["Facility"] = log.Facility
-                }))
-                {
-                    logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "{Message}", log.Message);
-                }
-            })
+            .SetErrorHandler((_, error) => KafkaProducerLogger.LogError(logger, error))
+            .SetLogHandler((_, log) => KafkaProducerLogger.Log(logger, log))
             .Build();
     }
 }

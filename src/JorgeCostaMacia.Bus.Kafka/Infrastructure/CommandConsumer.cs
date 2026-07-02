@@ -19,14 +19,13 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : Consumer<Comm
     where TCommand : Domain.Command
     where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
 {
-    /// <summary>Creates the consumer over its custom and Kafka configurations, the shared producer, the scope factory and the logger.</summary>
-    /// <param name="configuration">The handler's custom configuration (topic, group id, resilience policy).</param>
-    /// <param name="consumerConfig">The Kafka consumer configuration composed for this group.</param>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory and the logger.</summary>
+    /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
-    /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    public CommandConsumer(HandlerConfiguration configuration, ConsumerConfig consumerConfig, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<CommandConsumer<TCommand, TCommandHandler>> logger)
-        : base(configuration, consumerConfig, producer, scopeFactory, logger) { }
+    /// <param name="logger">The logger for the deliveries and retries.</param>
+    public CommandConsumer(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<CommandConsumer<TCommand, TCommandHandler>> logger)
+        : base(builder, producer, scopeFactory, logger) { }
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)

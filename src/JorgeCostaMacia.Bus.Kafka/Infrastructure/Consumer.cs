@@ -12,40 +12,62 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
 /// Base for the hosted consumers — one per handler, one consumer loop on its topic (scale out by
-/// running more app instances; the consumer group balances the partitions). The whole delivery flow
-/// and its error policy live here once: consume → filter → rebuild transport/context → handle in its
-/// own service scope (the whole delivery in the logging scope) → store the offset (the store is the
-/// ack; the background thread commits it without blocking). A retryable failure is requeued through
-/// the topic itself; the concrete consumers plug in only what differs — building their context,
-/// invoking their handler, and the pub/sub-only behaviors (consumer-side filtering and retry
-/// targeting). On shutdown the loop is cancelled and the consumer closed gracefully.
+/// running more app instances; the consumer group balances the partitions). Its Kafka configuration
+/// arrives as a ready-made builder (settings and logging handlers wired where it is composed); its
+/// custom policy — topic, group id, resilience — as required properties. The whole delivery flow and
+/// its error policy live here once: consume → filter → rebuild transport/context → handle in its own
+/// service scope (the whole delivery in the logging scope) → store the offset (the store is the ack;
+/// the background thread commits it without blocking). A retryable failure is requeued through the
+/// topic itself; the concrete consumers plug in only what differs — building their context, invoking
+/// their handler, and the pub/sub-only behaviors (consumer-side filtering and retry targeting). On
+/// shutdown the loop is cancelled and the consumer closed gracefully.
 /// </summary>
 /// <typeparam name="TContext">The context type delivered to the handler.</typeparam>
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
 internal abstract class Consumer<TContext, THandler> : IHostedService
     where THandler : IHandler
 {
-    private readonly ConsumerConfig _consumerConfig;
+    /// <summary>The Kafka topic the consumer subscribes to.</summary>
+    public required string Topic { get; init; }
+
+    /// <summary>The consumer group id — the consumer's identity for offsets and consumer-side filtering.</summary>
+    public required string GroupId { get; init; }
+
+    /// <summary>
+    /// Maximum retry attempts when handling fails — each retry requeues the delivery to the topic's
+    /// tail (0 means no retries).
+    /// </summary>
+    public required int RetryAttempts { get; init; }
+
+    /// <summary>Exception types excluded from retries.</summary>
+    public required ImmutableList<Type> RetryExcludeExceptionTypes { get; init; }
+
+    /// <summary>
+    /// Delays between scheduled redeliveries after the retries are exhausted — one entry per
+    /// redelivery, waited before it (empty means no redeliveries).
+    /// </summary>
+    public required ImmutableList<TimeSpan> RedeliveryIntervals { get; init; }
+
+    /// <summary>Exception types excluded from redelivery.</summary>
+    public required ImmutableList<Type> RedeliveryExcludeExceptionTypes { get; init; }
+
+    private readonly ConsumerBuilder<Null, byte[]> _builder;
+    private IConsumer<Null, byte[]>? _consumer;
+
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
-    private IConsumer<Null, byte[]>? _consumer;
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>The handler's custom configuration (topic, group id, resilience policy).</summary>
-    protected HandlerConfiguration Configuration { get; }
-
-    /// <summary>Creates the consumer over its custom and Kafka configurations, the shared producer, the scope factory and the logger.</summary>
-    /// <param name="configuration">The handler's custom configuration (topic, group id, resilience policy).</param>
-    /// <param name="consumerConfig">The Kafka consumer configuration composed for this group.</param>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory and the logger.</summary>
+    /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
-    /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    protected Consumer(HandlerConfiguration configuration, ConsumerConfig consumerConfig, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
+    /// <param name="logger">The logger for the deliveries and retries.</param>
+    protected Consumer(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
     {
-        Configuration = configuration;
-        _consumerConfig = consumerConfig;
+        _builder = builder;
         _producer = producer;
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -55,12 +77,8 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
     /// <param name="cancellationToken">A token to cancel startup.</param>
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _consumer = new ConsumerBuilder<Null, byte[]>(_consumerConfig)
-            .SetErrorHandler((_, error) => LogError(error))
-            .SetLogHandler((_, log) => Log(log))
-            .Build();
-
-        _consumer.Subscribe(Configuration.Topic);
+        _consumer = _builder.Build();
+        _consumer.Subscribe(Topic);
 
         _cancellation = new CancellationTokenSource();
         CancellationToken token = _cancellation.Token;
@@ -127,8 +145,8 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
     {
         using IDisposable? scope = _logger.BeginScope(new Dictionary<string, object?>
         {
-            ["Topic"] = Configuration.Topic,
-            ["GroupId"] = Configuration.GroupId
+            ["Topic"] = Topic,
+            ["GroupId"] = GroupId
         });
 
         while (!cancellationToken.IsCancellationRequested)
@@ -210,8 +228,8 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
         if (result is null || !result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
 
         return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
-            && retries < Configuration.RetryAttempts
-            && !Configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
+            && retries < RetryAttempts
+            && !RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
     }
 
     /// <summary>
@@ -234,7 +252,7 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
 
         try
         {
-            await _producer.ProduceAsync(Configuration.Topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
+            await _producer.ProduceAsync(Topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
 
             using (_logger.BeginScope(new Dictionary<string, object?>
             {
@@ -295,29 +313,6 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
         }
 
         return _logger.BeginScope(logContext);
-    }
-
-    private void LogError(Error error)
-    {
-        using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["@Error"] = error
-        }))
-        {
-            _logger.LogError("Consumer error.");
-        }
-    }
-
-    private void Log(LogMessage log)
-    {
-        using (_logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["Name"] = log.Name,
-            ["Facility"] = log.Facility
-        }))
-        {
-            _logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "{Message}", log.Message);
-        }
     }
 
     private static Transport CreateTransport(ConsumeResult<Null, byte[]> result)

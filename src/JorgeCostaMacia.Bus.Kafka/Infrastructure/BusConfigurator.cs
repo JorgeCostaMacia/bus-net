@@ -23,6 +23,10 @@ public sealed class BusConfigurator
 {
     private readonly IServiceCollection _services;
     private readonly KafkaConsumerConfiguration _consumer;
+    private readonly Dictionary<Type, string> _messages = [];
+
+    /// <summary>The type → topic routing map accumulated by the contexts.</summary>
+    internal IReadOnlyDictionary<Type, string> Messages => _messages;
 
     internal BusConfigurator(IServiceCollection services, IConfiguration configuration)
     {
@@ -37,7 +41,7 @@ public sealed class BusConfigurator
     public BusConfigurator AddCommand<TCommand>(string topic)
         where TCommand : ICommand
     {
-        _services.AddSingleton<IMessageConfiguration>(new CommandConfiguration<TCommand>(topic));
+        _messages.Add(typeof(TCommand), topic);
 
         return this;
     }
@@ -49,7 +53,7 @@ public sealed class BusConfigurator
     public BusConfigurator AddEvent<TEvent>(string topic)
         where TEvent : IEvent
     {
-        _services.AddSingleton<IMessageConfiguration>(new EventConfiguration<TEvent>(topic));
+        _messages.Add(typeof(TEvent), topic);
 
         return this;
     }
@@ -64,7 +68,7 @@ public sealed class BusConfigurator
     /// <param name="groupId">The consumer group id (e.g. <c>{topic}.handler</c>) — a stable contract, it holds the group's offsets.</param>
     /// <param name="retryAttempts">Maximum retry requeues to the topic, or <see langword="null"/> for the default (no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
-    /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
+    /// <param name="redeliveryIntervals">Delays between scheduled redeliveries (one entry per redelivery), or <see langword="null"/> for the default (none).</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusConfigurator AddCommandHandler<TCommand, TCommandHandler>(
@@ -72,28 +76,36 @@ public sealed class BusConfigurator
         string groupId,
         int? retryAttempts = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
-        int? redeliveryAttempts = null,
+        ImmutableList<TimeSpan>? redeliveryIntervals = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null)
         where TCommand : Domain.Command
         where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
     {
-        HandlerConfiguration configuration = new(
-            topic,
-            groupId,
-            retryAttempts,
-            retryExcludeExceptionTypes,
-            redeliveryAttempts,
-            redeliveryExcludeExceptionTypes);
-
         ConsumerConfig consumer = _consumer.ConsumerConfig(groupId);
 
         _services.AddScoped<TCommandHandler>();
-        _services.AddSingleton<IHostedService>(provider => new CommandConsumer<TCommand, TCommandHandler>(
-            configuration,
-            consumer,
-            provider.GetRequiredService<IProducer<Null, byte[]>>(),
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            provider.GetRequiredService<ILogger<CommandConsumer<TCommand, TCommandHandler>>>()));
+        _services.AddSingleton<IHostedService>(provider =>
+        {
+            ILogger<CommandConsumer<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumer<TCommand, TCommandHandler>>>();
+
+            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(consumer)
+                .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
+                .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
+
+            return new CommandConsumer<TCommand, TCommandHandler>(
+                builder,
+                provider.GetRequiredService<IProducer<Null, byte[]>>(),
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                logger)
+            {
+                Topic = topic,
+                GroupId = groupId,
+                RetryAttempts = retryAttempts ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS,
+                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? HandlerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
+                RedeliveryIntervals = redeliveryIntervals ?? HandlerConfigurationDefaults.REDELIVERY_INTERVALS,
+                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? HandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
+            };
+        });
 
         return this;
     }
@@ -108,7 +120,7 @@ public sealed class BusConfigurator
     /// <param name="groupId">The consumer group id (e.g. <c>{consumer}.on.{topic}.subscriber</c>) — a stable contract, unique per subscriber, it holds the group's offsets.</param>
     /// <param name="retryAttempts">Maximum retry requeues to the topic, or <see langword="null"/> for the default (no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
-    /// <param name="redeliveryAttempts">Redelivery attempts, or <see langword="null"/> for the default.</param>
+    /// <param name="redeliveryIntervals">Delays between scheduled redeliveries (one entry per redelivery), or <see langword="null"/> for the default (none).</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
@@ -116,28 +128,36 @@ public sealed class BusConfigurator
         string groupId,
         int? retryAttempts = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
-        int? redeliveryAttempts = null,
+        ImmutableList<TimeSpan>? redeliveryIntervals = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null)
         where TEvent : Domain.Event
         where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
     {
-        HandlerConfiguration configuration = new(
-            topic,
-            groupId,
-            retryAttempts,
-            retryExcludeExceptionTypes,
-            redeliveryAttempts,
-            redeliveryExcludeExceptionTypes);
-
         ConsumerConfig consumer = _consumer.ConsumerConfig(groupId);
 
         _services.AddScoped<TEventSubscriber>();
-        _services.AddSingleton<IHostedService>(provider => new EventConsumer<TEvent, TEventSubscriber>(
-            configuration,
-            consumer,
-            provider.GetRequiredService<IProducer<Null, byte[]>>(),
-            provider.GetRequiredService<IServiceScopeFactory>(),
-            provider.GetRequiredService<ILogger<EventConsumer<TEvent, TEventSubscriber>>>()));
+        _services.AddSingleton<IHostedService>(provider =>
+        {
+            ILogger<EventConsumer<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumer<TEvent, TEventSubscriber>>>();
+
+            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(consumer)
+                .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
+                .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
+
+            return new EventConsumer<TEvent, TEventSubscriber>(
+                builder,
+                provider.GetRequiredService<IProducer<Null, byte[]>>(),
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                logger)
+            {
+                Topic = topic,
+                GroupId = groupId,
+                RetryAttempts = retryAttempts ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS,
+                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? HandlerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
+                RedeliveryIntervals = redeliveryIntervals ?? HandlerConfigurationDefaults.REDELIVERY_INTERVALS,
+                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? HandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
+            };
+        });
 
         return this;
     }

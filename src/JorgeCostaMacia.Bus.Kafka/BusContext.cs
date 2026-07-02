@@ -24,7 +24,11 @@ public static class BusContext
     {
         services.AddBusInfrastructureContext(configuration);
 
-        configure(new BusConfigurator(services, configuration));
+        BusConfigurator configurator = new(services, configuration);
+
+        configure(configurator);
+
+        services.AddSingleton(configurator.Messages);
 
         return services;
     }

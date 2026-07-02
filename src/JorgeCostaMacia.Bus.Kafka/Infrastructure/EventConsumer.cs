@@ -21,14 +21,13 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : Consumer<EventCo
     where TEvent : Domain.Event
     where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
 {
-    /// <summary>Creates the consumer over its custom and Kafka configurations, the shared producer, the scope factory and the logger.</summary>
-    /// <param name="configuration">The subscriber's custom configuration (topic, group id, resilience policy).</param>
-    /// <param name="consumerConfig">The Kafka consumer configuration composed for this group.</param>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory and the logger.</summary>
+    /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
-    /// <param name="logger">The logger for consumer errors, internal Kafka logs and retries.</param>
-    public EventConsumer(HandlerConfiguration configuration, ConsumerConfig consumerConfig, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
-        : base(configuration, consumerConfig, producer, scopeFactory, logger) { }
+    /// <param name="logger">The logger for the deliveries and retries.</param>
+    public EventConsumer(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
+        : base(builder, producer, scopeFactory, logger) { }
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
@@ -73,7 +72,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : Consumer<EventCo
         return !consumers
             .Split(',')
             .Select(consumer => consumer.Trim())
-            .Contains(Configuration.GroupId);
+            .Contains(GroupId);
     }
 
     /// <summary>
@@ -82,5 +81,5 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : Consumer<EventCo
     /// </summary>
     /// <param name="headers">The requeued delivery's headers.</param>
     protected override void Target(Headers headers)
-        => Restamp(headers, TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(Configuration.GroupId));
+        => Restamp(headers, TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(GroupId));
 }
