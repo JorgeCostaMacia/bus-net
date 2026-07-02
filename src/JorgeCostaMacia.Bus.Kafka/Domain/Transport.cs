@@ -102,6 +102,20 @@ public sealed record Transport : ITransport
         return Encoding.UTF8.GetString(header);
     }
 
+    /// <summary>
+    /// Reads the header with the given <paramref name="key"/> as a UTF-8 string, or
+    /// <see langword="null"/> when the header is absent — for optional envelope fields (e.g. the
+    /// origin address, which a flow's first message does not carry).
+    /// </summary>
+    /// <param name="key">The header key.</param>
+    /// <returns>The header value decoded as UTF-8, or <see langword="null"/> when absent.</returns>
+    public string? GetStringOrDefault(string key)
+    {
+        byte[]? header = Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes();
+
+        return header is null ? null : Encoding.UTF8.GetString(header);
+    }
+
     /// <summary>Reads the header with the given <paramref name="key"/> as a UTC <see cref="DateTime"/>.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value parsed as a UTC <see cref="DateTime"/>.</returns>
