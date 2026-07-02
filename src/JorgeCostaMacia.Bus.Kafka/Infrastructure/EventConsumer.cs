@@ -99,40 +99,53 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             ["GroupId"] = _configuration.GroupId
         });
 
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                try
+                ConsumeResult<Null, byte[]> result = _consumer!.Consume(cancellationToken);
+
+                if (Filtered(result))
                 {
-                    ConsumeResult<Null, byte[]> result = _consumer!.Consume(cancellationToken);
-
-                    if (Filtered(result))
-                    {
-                        Store(result);
-
-                        continue;
-                    }
-
-                    await Handle(result, cancellationToken);
-
                     Store(result);
-                }
-                catch (ConsumeException exception)
-                {
-                    _logger.LogError(exception, "Consume failed.");
 
-                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                    continue;
                 }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    _logger.LogError(exception, "Handling failed; the delivery is not acked.");
-                }
+
+                await Handle(result, cancellationToken);
+
+                Store(result);
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // Graceful stop.
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Consume canceled.");
+            }
+            catch (ConsumeException exception)
+            {
+                _logger.LogError(exception, "Consume failed.");
+
+                await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+            }
+            catch (ProduceException<Null, byte[]> exception)
+            {
+                _logger.LogError(exception, "Produce failed; the delivery is not acked.");
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogError(exception, "Malformed delivery; the body cannot be deserialized.");
+            }
+            catch (KeyNotFoundException exception)
+            {
+                _logger.LogError(exception, "Malformed delivery; an envelope header is missing.");
+            }
+            catch (InvalidCastException exception)
+            {
+                _logger.LogError(exception, "Malformed delivery; an envelope header is invalid.");
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "Handling failed; the delivery is not acked.");
+            }
         }
     }
 
@@ -163,7 +176,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
 
             await subscriber.Handle(context, cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested
             && context.RetryCount < _configuration.RetryAttempts
             && !_configuration.RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception)))
         {
