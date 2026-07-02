@@ -95,7 +95,7 @@ public sealed class Bus : IBus
     private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message)
         where TMessage : ITracedMessage, IFilteredMessage
     {
-        Guid messageId = JorgeCostaMacia.GuidFactory.Domain.GuidFactory.Create();
+        Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         string occurredAt = DateTime.UtcNow.ToString("O");
         Type type = message.GetType();
 
@@ -103,7 +103,7 @@ public sealed class Bus : IBus
         {
             { TransportHeaders.MessageId, Bytes(messageId) },
             { TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name) },
-            { TransportHeaders.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)) },
+            { TransportHeaders.MessageTypeUrn, Bytes(UrnFactory.Domain.UrnFactory.Create(type)) },
             { TransportHeaders.MessageDestinationAddress, Bytes(topic) },
             { TransportHeaders.MessageOccurredAt, Bytes(occurredAt) },
             { TransportHeaders.ConversationId, Bytes(messageId) },
@@ -129,7 +129,7 @@ public sealed class Bus : IBus
     private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage
     {
-        Guid messageId = JorgeCostaMacia.GuidFactory.Domain.GuidFactory.Create();
+        Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         Type type = message.GetType();
         Transport inbound = (Transport)transport;
 
@@ -137,7 +137,7 @@ public sealed class Bus : IBus
 
         Restamp(headers, TransportHeaders.MessageId, Bytes(messageId));
         Restamp(headers, TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name));
-        Restamp(headers, TransportHeaders.MessageTypeUrn, Bytes(JorgeCostaMacia.Bus.UrnFactory.Domain.UrnFactory.Create(type)));
+        Restamp(headers, TransportHeaders.MessageTypeUrn, Bytes(UrnFactory.Domain.UrnFactory.Create(type)));
         Restamp(headers, TransportHeaders.MessageOriginAddress, Bytes(inbound.GetString(TransportHeaders.MessageDestinationAddress)));
         Restamp(headers, TransportHeaders.MessageDestinationAddress, Bytes(topic));
         Restamp(headers, TransportHeaders.MessageOccurredAt, Bytes(DateTime.UtcNow.ToString("O")));
