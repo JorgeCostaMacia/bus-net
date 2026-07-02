@@ -100,10 +100,10 @@ public sealed class BusConfigurator
             {
                 Topic = topic,
                 GroupId = groupId,
-                RetryAttempts = retryAttempts ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS,
-                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? HandlerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
-                RedeliveryIntervals = redeliveryIntervals ?? HandlerConfigurationDefaults.REDELIVERY_INTERVALS,
-                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? HandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
+                RetryAttempts = retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
+                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
+                RedeliveryIntervals = redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
+                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
             };
         });
 
@@ -152,10 +152,10 @@ public sealed class BusConfigurator
             {
                 Topic = topic,
                 GroupId = groupId,
-                RetryAttempts = retryAttempts ?? HandlerConfigurationDefaults.RETRY_ATTEMPTS,
-                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? HandlerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
-                RedeliveryIntervals = redeliveryIntervals ?? HandlerConfigurationDefaults.REDELIVERY_INTERVALS,
-                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? HandlerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
+                RetryAttempts = retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
+                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
+                RedeliveryIntervals = redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
+                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
             };
         });
 
