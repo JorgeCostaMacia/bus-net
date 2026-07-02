@@ -31,7 +31,7 @@ public sealed class BusConfigurator
     internal BusConfigurator(IServiceCollection services, IConfiguration configuration)
     {
         _services = services;
-        _consumer = BusInfrastructureContext.CreateKafkaConsumerConfiguration(configuration);
+        _consumer = KafkaConsumerConfiguration.Create(configuration);
     }
 
     /// <summary>Registers a command this service sends, mapping its type to a topic.</summary>

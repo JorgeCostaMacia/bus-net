@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using Microsoft.Extensions.Configuration;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
@@ -9,6 +10,24 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 public sealed record KafkaProducerConfiguration
 {
+    private const string SECTION = "Bus:Producer";
+
+    /// <summary>Maps the <c>Bus:Producer</c> section onto a <see cref="KafkaProducerConfiguration"/>.</summary>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The global producer configuration.</returns>
+    /// <exception cref="InvalidOperationException"><c>Bus:Producer:BootstrapServers</c> is missing.</exception>
+    internal static KafkaProducerConfiguration Create(IConfiguration configuration)
+    {
+        KafkaProducerConfiguration producer = configuration.GetSection(SECTION).Get<KafkaProducerConfiguration>() ?? new KafkaProducerConfiguration();
+
+        if (string.IsNullOrWhiteSpace(producer.BootstrapServers))
+        {
+            throw new InvalidOperationException($"'{SECTION}:{nameof(BootstrapServers)}' is null.");
+        }
+
+        return producer;
+    }
+
     /// <summary>Comma-separated list of Kafka brokers. Required.</summary>
     public string? BootstrapServers { get; init; }
 
