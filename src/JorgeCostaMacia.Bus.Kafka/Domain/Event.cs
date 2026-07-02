@@ -5,7 +5,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
 /// Base implementation for events on the Kafka bus: an immutable <see langword="record"/> carrying
-/// traceability metadata (id / correlation / UTC timestamp) and optional destination addresses,
+/// traceability metadata (id / correlation / UTC timestamp) and optional target consumers,
 /// defaulting the id via JorgeCostaMacia.GuidFactory. Concrete events forward to it with
 /// <c>: base(...)</c>. Implements the transport-agnostic <see cref="IEvent"/> contract (and thus
 /// <c>IDomainEvent</c>), so it fits an aggregate's event list.
@@ -21,8 +21,8 @@ public abstract record Event : IEvent
     /// <summary>UTC timestamp of when the event occurred.</summary>
     public DateTime AggregateOccurredAt { get; init; }
 
-    /// <summary>Destination addresses this event targets; empty means no filtering.</summary>
-    public ImmutableList<string> AggregateDestinationAddresses { get; init; }
+    /// <summary>The consumers this event targets (e.g. consumer group ids); empty means no filtering.</summary>
+    public ImmutableList<string> AggregateConsumers { get; init; }
 
     /// <summary>
     /// Initializes the traceability metadata, generating defaults when a value is not supplied: the
@@ -32,12 +32,12 @@ public abstract record Event : IEvent
     /// <param name="aggregateId">The event id, or <see langword="null"/> to generate one.</param>
     /// <param name="aggregateCorrelationId">The correlation id, or <see langword="null"/> to default to the id.</param>
     /// <param name="aggregateOccurredAt">The UTC timestamp, or <see langword="null"/> for now.</param>
-    /// <param name="aggregateDestinationAddresses">The destination addresses, or <see langword="null"/> for none.</param>
-    protected Event(Guid? aggregateId, Guid? aggregateCorrelationId, DateTime? aggregateOccurredAt, IEnumerable<string>? aggregateDestinationAddresses)
+    /// <param name="aggregateConsumers">The target consumers, or <see langword="null"/> for none.</param>
+    protected Event(Guid? aggregateId, Guid? aggregateCorrelationId, DateTime? aggregateOccurredAt, IEnumerable<string>? aggregateConsumers)
     {
         AggregateId = aggregateId ?? JorgeCostaMacia.GuidFactory.Domain.GuidFactory.Create();
         AggregateCorrelationId = aggregateCorrelationId ?? AggregateId;
         AggregateOccurredAt = aggregateOccurredAt ?? DateTime.UtcNow;
-        AggregateDestinationAddresses = aggregateDestinationAddresses?.ToImmutableList() ?? [];
+        AggregateConsumers = aggregateConsumers?.ToImmutableList() ?? [];
     }
 }

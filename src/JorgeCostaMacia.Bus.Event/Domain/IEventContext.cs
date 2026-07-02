@@ -9,7 +9,7 @@ public interface IEventContext : IContext { }
 /// <summary>
 /// The context an event subscriber receives — the glue that binds the whole delivery together: the
 /// <typeparamref name="TEvent"/> and the <typeparamref name="TTransport"/> it arrived on, plus the
-/// read-only envelope facets (messaging trace, domain trace, destination addresses, conversation and
+/// read-only envelope facets (messaging trace, domain trace, target consumers, conversation and
 /// resilience). <typeparamref name="TTransport"/> is bound by the transport (e.g. a Kafka transport),
 /// so it never leaks onto the subscriber unless it asks for it.
 /// </summary>

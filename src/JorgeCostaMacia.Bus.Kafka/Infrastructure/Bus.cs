@@ -105,7 +105,7 @@ public sealed class Bus : IBus
             { TransportHeaders.AggregateId, Bytes(message.AggregateId) },
             { TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId) },
             { TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")) },
-            { TransportHeaders.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses) },
+            { TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers) },
             { TransportHeaders.RetryCount, Bytes("0") },
             { TransportHeaders.RedeliveryCount, Bytes("0") }
         };
@@ -137,7 +137,7 @@ public sealed class Bus : IBus
         Restamp(headers, TransportHeaders.AggregateId, Bytes(message.AggregateId));
         Restamp(headers, TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId));
         Restamp(headers, TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
-        Restamp(headers, TransportHeaders.AggregateDestinationAddresses, Bytes(message.AggregateDestinationAddresses));
+        Restamp(headers, TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers));
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
     }

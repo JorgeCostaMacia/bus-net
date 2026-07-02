@@ -18,7 +18,7 @@ internal static class TransportHeaders
     public const string AggregateId = Prefix + "aggregate_id";
     public const string AggregateCorrelationId = Prefix + "aggregate_correlation_id";
     public const string AggregateOccurredAt = Prefix + "aggregate_occurred_at";
-    public const string AggregateDestinationAddresses = Prefix + "aggregate_destination_addresses";
+    public const string AggregateConsumers = Prefix + "aggregate_consumers";
     public const string RetryCount = Prefix + "retry_count";
     public const string RedeliveryCount = Prefix + "redelivery_count";
 }

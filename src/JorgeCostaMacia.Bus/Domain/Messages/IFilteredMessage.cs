@@ -8,6 +8,6 @@ namespace JorgeCostaMacia.Bus.Domain.Messages;
 /// </summary>
 public interface IFilteredMessage : IMessage
 {
-    /// <summary>The destination addresses this message targets; empty means "no filtering".</summary>
-    ImmutableList<string> AggregateDestinationAddresses { get; }
+    /// <summary>The consumers this message targets (e.g. consumer group ids); empty means "no filtering".</summary>
+    ImmutableList<string> AggregateConsumers { get; }
 }

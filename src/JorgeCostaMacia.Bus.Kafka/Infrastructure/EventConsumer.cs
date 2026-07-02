@@ -233,7 +233,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : IHostedService
             transport.GetGuid(TransportHeaders.ConversationId),
             transport.GetString(TransportHeaders.ConversationAddress),
             transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateDestinationAddresses),
+            transport.GetStringList(TransportHeaders.AggregateConsumers),
             transport.GetGuid(TransportHeaders.AggregateId),
             transport.GetGuid(TransportHeaders.AggregateCorrelationId),
             transport.GetDateTime(TransportHeaders.AggregateOccurredAt),

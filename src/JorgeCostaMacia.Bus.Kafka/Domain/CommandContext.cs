@@ -47,8 +47,8 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transp
     /// <summary>UTC time when the conversation began.</summary>
     public DateTime ConversationOccurredAt { get; init; }
 
-    /// <summary>Destination addresses this command targets; empty means no filtering.</summary>
-    public ImmutableList<string> AggregateDestinationAddresses { get; init; }
+    /// <summary>The consumers this command targets (e.g. consumer group ids); empty means no filtering.</summary>
+    public ImmutableList<string> AggregateConsumers { get; init; }
 
     /// <summary>Unique id of the inbound message (domain trace).</summary>
     public Guid AggregateId { get; init; }
@@ -80,13 +80,13 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transp
     /// <param name="conversationId">Conversation trace id.</param>
     /// <param name="conversationAddress">Address the conversation originated at.</param>
     /// <param name="conversationOccurredAt">UTC time the conversation began.</param>
-    /// <param name="aggregateDestinationAddresses">Destination addresses this command targets.</param>
+    /// <param name="aggregateConsumers">The consumers this command targets.</param>
     /// <param name="aggregateId">Domain id of the inbound message.</param>
     /// <param name="aggregateCorrelationId">Domain correlation id.</param>
     /// <param name="aggregateOccurredAt">UTC event-time of the inbound message.</param>
     /// <param name="retryCount">In-process retry attempts.</param>
     /// <param name="redeliveryCount">Transport redeliveries.</param>
-    public CommandContext(TCommand message, Transport transport, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateDestinationAddresses, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
+    public CommandContext(TCommand message, Transport transport, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateConsumers, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount, int redeliveryCount)
     {
         Message = message;
         Transport = transport;
@@ -99,7 +99,7 @@ public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transp
         ConversationId = conversationId;
         ConversationAddress = conversationAddress;
         ConversationOccurredAt = conversationOccurredAt;
-        AggregateDestinationAddresses = aggregateDestinationAddresses;
+        AggregateConsumers = aggregateConsumers;
         AggregateId = aggregateId;
         AggregateCorrelationId = aggregateCorrelationId;
         AggregateOccurredAt = aggregateOccurredAt;
