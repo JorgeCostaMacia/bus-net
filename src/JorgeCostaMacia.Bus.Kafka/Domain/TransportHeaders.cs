@@ -21,7 +21,7 @@ internal static class TransportHeaders
     public const string AggregateCorrelationId = Prefix + "aggregate_correlation_id";
     public const string AggregateOccurredAt = Prefix + "aggregate_occurred_at";
     public const string AggregateConsumers = Prefix + "aggregate_consumers";
-    public const string RedeliveryCount = Prefix + "redelivery_count";
+    public const string RetryCount = Prefix + "retry_count";
 
     /// <summary>The keys whose values travel as 16 raw <see cref="Guid"/> bytes.</summary>
     public static readonly ImmutableList<string> GuidHeaders =
@@ -35,6 +35,6 @@ internal static class TransportHeaders
     /// <summary>The keys whose values travel as integer digits (the resilience counter).</summary>
     public static readonly ImmutableList<string> IntHeaders =
     [
-        RedeliveryCount
+        RetryCount
     ];
 }

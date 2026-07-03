@@ -29,7 +29,7 @@ public static class KafkaConsumerConfigurationDefaults
 
     /// <summary>
     /// Interval (ms) at which the background thread commits the stored offsets — bounds the
-    /// redelivery window after a hard crash (throughput × interval). Default: <c>5000</c>.
+    /// retry window after a hard crash (throughput × interval). Default: <c>5000</c>.
     /// </summary>
     public const int AUTO_COMMIT_INTERVAL_MS = 5_000;
 

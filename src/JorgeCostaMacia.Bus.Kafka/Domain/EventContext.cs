@@ -59,8 +59,8 @@ public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
     /// <summary>UTC event-time of the inbound message.</summary>
     public DateTime AggregateOccurredAt { get; init; }
 
-    /// <summary>Number of times this message has been redelivered (immediate or scheduled).</summary>
-    public int RedeliveryCount { get; init; }
+    /// <summary>Number of times this message has been retried (immediate or scheduled).</summary>
+    public int RetryCount { get; init; }
 
     /// <summary>
     /// Builds the context with every envelope value supplied — used by the consumer to reconstruct
@@ -81,8 +81,8 @@ public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
     /// <param name="aggregateId">Domain id of the inbound message.</param>
     /// <param name="aggregateCorrelationId">Domain correlation id.</param>
     /// <param name="aggregateOccurredAt">UTC event-time of the inbound message.</param>
-    /// <param name="redeliveryCount">Redeliveries of this message (immediate or scheduled).</param>
-    public EventContext(TEvent message, Transport transport, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateConsumers, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int redeliveryCount)
+    /// <param name="retryCount">Retries of this message (immediate or scheduled).</param>
+    public EventContext(TEvent message, Transport transport, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateConsumers, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount)
     {
         Message = message;
         Transport = transport;
@@ -99,6 +99,6 @@ public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
         AggregateId = aggregateId;
         AggregateCorrelationId = aggregateCorrelationId;
         AggregateOccurredAt = aggregateOccurredAt;
-        RedeliveryCount = redeliveryCount;
+        RetryCount = retryCount;
     }
 }

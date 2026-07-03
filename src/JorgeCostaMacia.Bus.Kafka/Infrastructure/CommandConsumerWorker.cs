@@ -11,7 +11,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The consumer hosting one command handler. Commands are point-to-point (one group), so the base
 /// defaults apply: no consumer-side filtering — the command's <c>AggregateConsumers</c> is data for
-/// the events it generates, not a delivery instruction — and redeliveries are requeued with the
+/// the events it generates, not a delivery instruction — and retries are requeued with the
 /// envelope untouched.
 /// </summary>
 /// <typeparam name="TCommand">The command type consumed.</typeparam>
@@ -27,8 +27,8 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
     /// <param name="logger">The logger for the deliveries and retries.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
-    /// <param name="redeliveryIntervals">Delays before each redelivery — <c>00:00</c> requeues immediately (empty means no redeliveries).</param>
-    /// <param name="redeliveryExcludeExceptionTypes">Exception types excluded from redelivery.</param>
+    /// <param name="retryIntervals">Delays before each retry — <c>00:00</c> requeues immediately (empty means no retries).</param>
+    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry.</param>
     public CommandConsumerWorker(
         ConsumerBuilder<Null, byte[]> builder,
         IProducer<Null, byte[]> producer,
@@ -36,9 +36,9 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
         ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger,
         string topic,
         string groupId,
-        ImmutableList<TimeSpan> redeliveryIntervals,
-        ImmutableList<Type> redeliveryExcludeExceptionTypes)
-        : base(builder, producer, scopeFactory, logger, topic, groupId, redeliveryIntervals, redeliveryExcludeExceptionTypes) { }
+        ImmutableList<TimeSpan> retryIntervals,
+        ImmutableList<Type> retryExcludeExceptionTypes)
+        : base(builder, producer, scopeFactory, logger, topic, groupId, retryIntervals, retryExcludeExceptionTypes) { }
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
@@ -58,7 +58,7 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
             transport.GetGuid(TransportHeaders.AggregateId),
             transport.GetGuid(TransportHeaders.AggregateCorrelationId),
             transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RedeliveryCount));
+            transport.GetInt(TransportHeaders.RetryCount));
 
     /// <inheritdoc />
     protected override Task Handle(TCommandHandler handler, CommandContext<TCommand> context, CancellationToken cancellationToken)

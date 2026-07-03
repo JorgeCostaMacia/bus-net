@@ -12,9 +12,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The consumer hosting one event subscriber. Events are pub/sub (one group per subscriber), so it
 /// overrides the base's pub/sub hooks: consumer-side filtering (deliveries targeting other consumers
-/// are skipped and acked, straight off the raw header) and redelivery targeting (the redelivery is
+/// are skipped and acked, straight off the raw header) and retry targeting (the retry is
 /// stamped with this group only — the other subscriber groups already handled the original and filter
-/// the redelivery out; the user's original targeting stays in the message body).
+/// the retry out; the user's original targeting stays in the message body).
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
@@ -29,8 +29,8 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     /// <param name="logger">The logger for the deliveries and retries.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
-    /// <param name="redeliveryIntervals">Delays before each redelivery — <c>00:00</c> requeues immediately (empty means no redeliveries).</param>
-    /// <param name="redeliveryExcludeExceptionTypes">Exception types excluded from redelivery.</param>
+    /// <param name="retryIntervals">Delays before each retry — <c>00:00</c> requeues immediately (empty means no retries).</param>
+    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry.</param>
     public EventConsumerWorker(
         ConsumerBuilder<Null, byte[]> builder,
         IProducer<Null, byte[]> producer,
@@ -38,9 +38,9 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
         ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger,
         string topic,
         string groupId,
-        ImmutableList<TimeSpan> redeliveryIntervals,
-        ImmutableList<Type> redeliveryExcludeExceptionTypes)
-        : base(builder, producer, scopeFactory, logger, topic, groupId, redeliveryIntervals, redeliveryExcludeExceptionTypes) { }
+        ImmutableList<TimeSpan> retryIntervals,
+        ImmutableList<Type> retryExcludeExceptionTypes)
+        : base(builder, producer, scopeFactory, logger, topic, groupId, retryIntervals, retryExcludeExceptionTypes) { }
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
@@ -60,7 +60,7 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
             transport.GetGuid(TransportHeaders.AggregateId),
             transport.GetGuid(TransportHeaders.AggregateCorrelationId),
             transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RedeliveryCount));
+            transport.GetInt(TransportHeaders.RetryCount));
 
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
@@ -88,10 +88,10 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     }
 
     /// <summary>
-    /// Targets the redelivery to this group only — the other subscriber groups already handled the
-    /// original and filter the redelivery out; the user's original targeting stays in the message body.
+    /// Targets the retry to this group only — the other subscriber groups already handled the
+    /// original and filter the retry out; the user's original targeting stays in the message body.
     /// </summary>
-    /// <param name="headers">The redelivery's headers.</param>
+    /// <param name="headers">The retry's headers.</param>
     protected override void Target(Headers headers)
         => Restamp(headers, TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(GroupId));
 }
