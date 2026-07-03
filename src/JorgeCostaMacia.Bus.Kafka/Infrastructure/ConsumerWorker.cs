@@ -24,7 +24,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 /// <typeparam name="TContext">The context type delivered to the handler.</typeparam>
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
-internal abstract class Consumer<TContext, THandler> : IHostedService
+internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     where THandler : IHandler
 {
     /// <summary>The Kafka topic the consumer subscribes to.</summary>
@@ -65,7 +65,7 @@ internal abstract class Consumer<TContext, THandler> : IHostedService
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries and retries.</param>
-    protected Consumer(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
+    protected ConsumerWorker(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
     {
         _builder = builder;
         _producer = producer;

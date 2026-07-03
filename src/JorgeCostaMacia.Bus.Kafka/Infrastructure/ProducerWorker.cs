@@ -9,15 +9,15 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// waiting until every queued message is delivered (librdkafka batches sends internally), so
 /// stopping the app never drops messages that were still in the outbound buffer.
 /// </summary>
-internal sealed class BusProducer : IHostedService
+internal sealed class ProducerWorker : IHostedService
 {
     private readonly IProducer<Null, byte[]> _producer;
-    private readonly ILogger<BusProducer> _logger;
+    private readonly ILogger<ProducerWorker> _logger;
 
     /// <summary>Creates the worker over the shared producer whose lifecycle it manages.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
     /// <param name="logger">The logger for an interrupted flush.</param>
-    public BusProducer(IProducer<Null, byte[]> producer, ILogger<BusProducer> logger)
+    public ProducerWorker(IProducer<Null, byte[]> producer, ILogger<ProducerWorker> logger)
     {
         _producer = producer;
         _logger = logger;

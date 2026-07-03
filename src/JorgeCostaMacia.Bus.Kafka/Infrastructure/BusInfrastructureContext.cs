@@ -35,7 +35,7 @@ internal static class BusInfrastructureContext
 
         services.AddSingleton(provider => CreateProducer(provider, producer.ProducerConfig));
 
-        services.AddHostedService<BusProducer>();
+        services.AddHostedService<ProducerWorker>();
 
         services.AddSingleton<IBus, Bus>();
         services.AddSingleton<ICommandBus>(static provider => provider.GetRequiredService<IBus>());
@@ -83,7 +83,7 @@ internal static class BusInfrastructureContext
 
     private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
     {
-        ILogger<BusProducer> logger = provider.GetRequiredService<ILogger<BusProducer>>();
+        ILogger<ProducerWorker> logger = provider.GetRequiredService<ILogger<ProducerWorker>>();
 
         return new ProducerBuilder<Null, byte[]>(configuration)
             .SetErrorHandler((_, error) => KafkaProducerLogger.LogError(logger, error))

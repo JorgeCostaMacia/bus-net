@@ -17,7 +17,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
-internal sealed class EventConsumer<TEvent, TEventSubscriber> : Consumer<EventContext<TEvent>, TEventSubscriber>
+internal sealed class EventConsumer<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
     where TEvent : Domain.Event
     where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
 {

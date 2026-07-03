@@ -15,7 +15,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 /// <typeparam name="TCommand">The command type consumed.</typeparam>
 /// <typeparam name="TCommandHandler">The handler type resolved per delivery.</typeparam>
-internal sealed class CommandConsumer<TCommand, TCommandHandler> : Consumer<CommandContext<TCommand>, TCommandHandler>
+internal sealed class CommandConsumer<TCommand, TCommandHandler> : ConsumerWorker<CommandContext<TCommand>, TCommandHandler>
     where TCommand : Domain.Command
     where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
 {
