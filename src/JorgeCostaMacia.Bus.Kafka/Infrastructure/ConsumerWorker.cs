@@ -226,6 +226,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         {
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RedeliveredToNewOwner)) _logger.LogWarning("Partition lost.");
         }
+        catch (KafkaException exception)
+        {
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogWarning(exception, "Store failed.");
+        }
     }
 
     /// <summary>Replaces every value of a header key with the given one.</summary>

@@ -52,6 +52,7 @@ public class ConfigurationTests
         Assert.False(config.EnableAutoOffsetStore);
         Assert.Equal(5_000, config.AutoCommitIntervalMs);
         Assert.Equal(AutoOffsetReset.Latest, config.AutoOffsetReset);
+        Assert.Equal(PartitionAssignmentStrategy.CooperativeSticky, config.PartitionAssignmentStrategy);
         Assert.Equal(Environment.MachineName, config.GroupInstanceId);
     }
 

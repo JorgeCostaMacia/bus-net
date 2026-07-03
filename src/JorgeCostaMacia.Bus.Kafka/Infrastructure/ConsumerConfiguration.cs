@@ -41,6 +41,9 @@ public sealed class ConsumerConfiguration
     /// <summary>Offset reset behavior, or <see langword="null"/> for the default.</summary>
     public AutoOffsetReset? AutoOffsetReset { get; init; }
 
+    /// <summary>Partition assignment strategy, or <see langword="null"/> for the default (CooperativeSticky — incremental rebalancing).</summary>
+    public PartitionAssignmentStrategy? PartitionAssignmentStrategy { get; init; }
+
     /// <summary>Socket timeout (ms), or <see langword="null"/> for the default.</summary>
     public int? SocketTimeoutMs { get; init; }
 
@@ -90,6 +93,7 @@ public sealed class ConsumerConfiguration
             AutoCommitIntervalMs = AutoCommitIntervalMs ?? ConsumerConfigurationDefaults.AUTO_COMMIT_INTERVAL_MS,
             AllowAutoCreateTopics = AllowAutoCreateTopics ?? ConsumerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
             AutoOffsetReset = AutoOffsetReset ?? ConsumerConfigurationDefaults.AUTO_OFFSET_RESET,
+            PartitionAssignmentStrategy = PartitionAssignmentStrategy ?? ConsumerConfigurationDefaults.PARTITION_ASSIGNMENT_STRATEGY,
             SocketTimeoutMs = SocketTimeoutMs ?? ConsumerConfigurationDefaults.SOCKET_TIMEOUT_MS,
             MaxPollIntervalMs = MaxPollIntervalMs ?? ConsumerConfigurationDefaults.MAX_POLL_INTERVAL_MS,
             SessionTimeoutMs = SessionTimeoutMs ?? ConsumerConfigurationDefaults.SESSION_TIMEOUT_MS,

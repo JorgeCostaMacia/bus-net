@@ -42,6 +42,13 @@ public static class ConsumerConfigurationDefaults
     /// <summary>Where to start when no offset is stored. Default: <c>Latest</c>.</summary>
     public const AutoOffsetReset AUTO_OFFSET_RESET = AutoOffsetReset.Latest;
 
+    /// <summary>
+    /// Partition assignment strategy. Default: <c>CooperativeSticky</c> — incremental rebalancing:
+    /// scaling instances in or out moves only the partitions that must move, instead of the eager
+    /// stop-the-world revoke of the whole group.
+    /// </summary>
+    public const PartitionAssignmentStrategy PARTITION_ASSIGNMENT_STRATEGY = PartitionAssignmentStrategy.CooperativeSticky;
+
     /// <summary>Socket timeout (ms). Default: <c>90000</c>.</summary>
     public const int SOCKET_TIMEOUT_MS = 90_000;
 
