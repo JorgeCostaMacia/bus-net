@@ -62,6 +62,27 @@ public sealed record Transport : ITransport
             result.Message.Timestamp);
 
     /// <summary>
+    /// Decodes every header to browsable text, order and duplicate keys preserved (Kafka allows
+    /// them) — the envelope's known binary GUID headers render as GUIDs, everything else as
+    /// best-effort UTF-8. The view embedded in the bodies parked to <c>.error</c> / <c>.fault</c>.
+    /// </summary>
+    /// <returns>Every header as a key/text pair.</returns>
+    internal ImmutableList<KeyValuePair<string, string>> DecodeHeaders()
+        => Headers
+            .Select(header => new KeyValuePair<string, string>(header.Key, Decode(header)))
+            .ToImmutableList();
+
+    /// <summary>Decodes one header's value: a GUID for the envelope's binary GUID keys, best-effort UTF-8 otherwise.</summary>
+    private static string Decode(IHeader header)
+    {
+        byte[] value = header.GetValueBytes();
+
+        return TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
+            ? new Guid(value).ToString()
+            : Encoding.UTF8.GetString(value);
+    }
+
+    /// <summary>
     /// Clones this delivery's headers, deep-copying each value's bytes, so the result can be re-stamped
     /// for an outbound message without mutating the original delivery's headers.
     /// </summary>

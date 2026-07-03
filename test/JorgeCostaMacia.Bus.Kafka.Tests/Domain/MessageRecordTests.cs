@@ -1,9 +1,25 @@
+using System.Text.Json;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
 public class MessageRecordTests
 {
+    [Fact]
+    public void Command_RoundTrips_ThroughTheSerializer()
+    {
+        TestCommand command = new("pepe", Guid.NewGuid(), Guid.NewGuid(), new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc), ["g1", "g2"]);
+
+        TestCommand roundTripped = JsonSerializer.Deserialize<TestCommand>(JsonSerializer.SerializeToUtf8Bytes(command))!;
+
+        Assert.Equal(command.Name, roundTripped.Name);
+        Assert.Equal(command.AggregateId, roundTripped.AggregateId);
+        Assert.Equal(command.AggregateCorrelationId, roundTripped.AggregateCorrelationId);
+        Assert.Equal(command.AggregateOccurredAt, roundTripped.AggregateOccurredAt);
+        Assert.Equal(command.AggregateConsumers, roundTripped.AggregateConsumers);
+    }
+
+
     [Fact]
     public void Command_Defaults_GenerateTheTrace()
     {

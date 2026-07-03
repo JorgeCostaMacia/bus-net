@@ -12,21 +12,23 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// Base for the hosted consumers — one per handler, one consumer loop on its topic (scale out by
 /// running more app instances; the consumer group balances the partitions). The loop is strictly
 /// sequential: a handler outrunning <c>MaxPollIntervalMs</c> (5 minutes by default) evicts the
-/// consumer from the group until the next consume rejoins — raise that knob for slower handlers.
-/// Its Kafka configuration
-/// arrives as a ready-made builder (settings and logging handlers wired where it is composed); its
-/// custom policy — topic, group id, resilience — through the constructor. The whole delivery flow and
-/// its error policy live here once: consume → filter → rebuild transport/context → handle in its own
-/// service scope (the whole delivery in the logging scope) → store the offset (the store is the ack;
-/// the background thread commits it without blocking). Failures are handed to the
-/// <see cref="ConsumerErrorHandler"/> policy — retry ladder, retry scheduler, error topic; the concrete
-/// consumers plug in only what differs — building their context, invoking their handler, and the
-/// pub/sub-only behaviors (consumer-side filtering and retry targeting). On shutdown the loop is
-/// cancelled and the consumer closed gracefully.
+/// consumer from the group until the next consume rejoins — raise that knob for slower handlers. Its
+/// Kafka configuration arrives as a ready-made builder (settings and logging handlers wired where it
+/// is composed); its contract — topic, group id, error and fault handlers — through the constructor.
+/// The whole delivery flow lives here once: consume → filter → rebuild transport/context → handle in
+/// its own service scope (the whole delivery in the logging scope) → store the offset (the store is
+/// the ack; the background thread commits it without blocking). A handler failure is handed to the
+/// message's error handler, which reports through <see cref="ErrorHandlerResult"/> whether it
+/// requeued, scheduled or parked; a malformed delivery — or an error handler that reports
+/// <see cref="ErrorHandlerResult.Faulted"/> — is handed to the fault handler. The concrete consumers
+/// plug in only what differs — building their context, invoking their handler and their error handler,
+/// and the pub/sub-only consumer-side filtering. On shutdown the loop is cancelled and the consumer
+/// closed gracefully.
 /// </summary>
 /// <typeparam name="TContext">The context type delivered to the handler.</typeparam>
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
 internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
+    where TContext : IContext
     where THandler : IHandler
 {
     /// <summary>The consumer group id — the consumer's identity for offsets and consumer-side filtering.</summary>
@@ -35,7 +37,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly ConsumerBuilder<Ignore, byte[]> _builder;
     private IConsumer<Ignore, byte[]>? _consumer;
 
-    private readonly ConsumerErrorHandler _errorHandler;
+    private readonly Domain.FaultHandler _faultHandler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
     private readonly IHostApplicationLifetime _lifetime;
@@ -45,9 +47,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, its fault handler, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
-    /// <param name="errorHandler">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
+    /// <param name="faultHandler">The fault handler parking broken deliveries — and the relay when the error handler cannot cope.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
@@ -55,7 +57,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
         ConsumerBuilder<Ignore, byte[]> builder,
-        ConsumerErrorHandler errorHandler,
+        Domain.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger logger,
         IHostApplicationLifetime lifetime,
@@ -63,7 +65,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         string groupId)
     {
         _builder = builder;
-        _errorHandler = errorHandler;
+        _faultHandler = faultHandler;
         _scopeFactory = scopeFactory;
         _logger = logger;
         _lifetime = lifetime;
@@ -134,6 +136,16 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     protected abstract Task Handle(THandler handler, TContext context, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Hands the failed delivery to the message's error handler over the context already built (the
+    /// message deserialized once), and reports how it left it.
+    /// </summary>
+    /// <param name="context">The failed delivery's context.</param>
+    /// <param name="exception">The handling failure.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>How the error handler left the delivery.</returns>
+    protected abstract Task<ErrorHandlerResult> HandleError(TContext context, Exception exception, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Consumer-side filtering — whether the delivery targets other consumers and is skipped (and
     /// acked). Point-to-point consumers keep the default (never); pub/sub consumers override it.
     /// </summary>
@@ -142,18 +154,12 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     protected virtual bool Filtered(ConsumeResult<Ignore, byte[]> result) => false;
 
     /// <summary>
-    /// Stamps the retry's targeting. Point-to-point consumers keep the default (none — the
-    /// envelope travels unchanged); pub/sub consumers override it to target their own group.
-    /// </summary>
-    /// <param name="headers">The retry's headers.</param>
-    protected virtual void Target(Headers headers) { }
-
-    /// <summary>
     /// The consumer loop — the delivery flow with each failure in its own lane: our shutdown exits
-    /// through the while condition; consume errors back off (the client reconnects on its own);
-    /// malformed deliveries park to the fault topic; every other handling failure is decided by the
-    /// <see cref="ConsumerErrorHandler"/> policy — retry ladder, retry scheduler, error topic. A dealt-with
-    /// delivery is acked; an unresolved one is logged with the delivery attached and left unacked.
+    /// through the while condition; consume errors back off (the client reconnects on its own; a fatal
+    /// one stops the application); a malformed delivery goes to the fault handler; every other handling
+    /// failure goes to the error handler, and to the fault handler as the relay when it reports
+    /// <see cref="ErrorHandlerResult.Faulted"/>. A dealt-with delivery is acked; an unresolved one is
+    /// left unacked and redelivers.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -162,6 +168,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         while (!cancellationToken.IsCancellationRequested)
         {
             ConsumeResult<Ignore, byte[]>? result = null;
+            TContext? context = default;
             IDisposable? logContext = null;
 
             try
@@ -177,8 +184,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                     continue;
                 }
 
-                Transport transport = Transport.Create(result);
-                TContext context = CreateContext(result, transport);
+                context = CreateContext(result, Transport.Create(result));
 
                 using (IServiceScope services = _scopeFactory.CreateScope())
                 {
@@ -207,19 +213,19 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (JsonException exception)
             {
-                if (await _errorHandler.Malformed(result!, exception, cancellationToken)) Store(result!);
+                await Fault(result!, exception, cancellationToken);
             }
             catch (KeyNotFoundException exception)
             {
-                if (await _errorHandler.Malformed(result!, exception, cancellationToken)) Store(result!);
+                await Fault(result!, exception, cancellationToken);
             }
             catch (InvalidCastException exception)
             {
-                if (await _errorHandler.Malformed(result!, exception, cancellationToken)) Store(result!);
+                await Fault(result!, exception, cancellationToken);
             }
             catch (Exception exception) when (result is not null)
             {
-                if (await _errorHandler.Handle(result, exception, Target, cancellationToken)) Store(result);
+                await Failed(result, context, exception, cancellationToken);
             }
             catch (Exception exception)
             {
@@ -230,6 +236,41 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                 logContext?.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// A handling failure: hands the delivery to the error handler and acts on its verdict — a
+    /// requeue, schedule or park acks it; a report of <see cref="ErrorHandlerResult.Faulted"/> (or a
+    /// context that never built) hands it to the fault handler; anything else leaves it unacked to
+    /// redeliver.
+    /// </summary>
+    private async Task Failed(ConsumeResult<Ignore, byte[]> result, TContext? context, Exception exception, CancellationToken cancellationToken)
+    {
+        ErrorHandlerResult outcome = context is not null
+            ? await HandleError(context, exception, cancellationToken)
+            : ErrorHandlerResult.Faulted;
+
+        switch (outcome)
+        {
+            case ErrorHandlerResult.Retried or ErrorHandlerResult.Scheduled or ErrorHandlerResult.Parked:
+                Store(result);
+                break;
+
+            case ErrorHandlerResult.Faulted:
+                await Fault(result, exception, cancellationToken);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// A broken (or relayed) delivery: hands it to the fault handler and acks it when the handler
+    /// parks it; an unparked delivery is left unacked to redeliver.
+    /// </summary>
+    private async Task Fault(ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    {
+        await _faultHandler.Handle(FaultContext.Create(result.Message.Value, Transport.Create(result), exception), cancellationToken);
+
+        if (_faultHandler.Result is FaultHandlerResult.Parked) Store(result);
     }
 
     private void Store(ConsumeResult<Ignore, byte[]> result)
@@ -247,5 +288,4 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogWarning(exception, "Store failed.");
         }
     }
-
 }

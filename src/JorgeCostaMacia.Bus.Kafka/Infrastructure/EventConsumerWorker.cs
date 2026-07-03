@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
@@ -10,10 +11,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
 /// The consumer hosting one event subscriber. Events are pub/sub (one group per subscriber), so it
-/// overrides the base's pub/sub hooks: consumer-side filtering (deliveries targeting other consumers
-/// are skipped and acked, straight off the raw header) and retry targeting (the retry is
-/// stamped with this group only — the other subscriber groups already handled the original and filter
-/// the retry out; the user's original targeting stays in the message body).
+/// overrides consumer-side filtering: deliveries targeting other consumers are skipped and acked,
+/// straight off the raw header. On a failure it hands the delivery to its event error handler (the
+/// framework mechanics — retry ladder targeted to this group, error parking) over the context
+/// already built, so the event deserialized once serves the subscriber and the error handler alike.
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
@@ -21,9 +22,12 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     where TEvent : Event
     where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
 {
-    /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
+    private readonly Domain.EventErrorHandler<TEvent> _errorHandler;
+
+    /// <summary>Creates the consumer over its ready-made Kafka builder, its error and fault handlers, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
-    /// <param name="errorHandler">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
+    /// <param name="errorHandler">The event's error handler — the framework mechanics deciding a failed delivery's outcome.</param>
+    /// <param name="faultHandler">The fault handler parking broken deliveries — and the relay when the error handler cannot cope.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
@@ -31,21 +35,31 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     public EventConsumerWorker(
         ConsumerBuilder<Ignore, byte[]> builder,
-        ConsumerErrorHandler errorHandler,
+        Domain.EventErrorHandler<TEvent> errorHandler,
+        Domain.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger,
         IHostApplicationLifetime lifetime,
         string topic,
         string groupId)
-        : base(builder, errorHandler, scopeFactory, logger, lifetime, topic, groupId) { }
+        : base(builder, faultHandler, scopeFactory, logger, lifetime, topic, groupId)
+        => _errorHandler = errorHandler;
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
-        => EventContext<TEvent>.Create(result.Message.Value, transport);
+        => new(JsonSerializer.Deserialize<TEvent>(result.Message.Value)!, transport);
 
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
         => handler.Handle(context, cancellationToken);
+
+    /// <inheritdoc />
+    protected override async Task<ErrorHandlerResult> HandleError(EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
+    {
+        await _errorHandler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
+
+        return _errorHandler.Result;
+    }
 
     /// <summary>
     /// Consumer-side filtering: when the message targets specific consumers
@@ -67,12 +81,4 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
             .Select(consumer => consumer.Trim())
             .Contains(GroupId);
     }
-
-    /// <summary>
-    /// Targets the retry to this group only — the other subscriber groups already handled the
-    /// original and filter the retry out; the user's original targeting stays in the message body.
-    /// </summary>
-    /// <param name="headers">The retry's headers.</param>
-    protected override void Target(Headers headers)
-        => headers.Restamp(TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(GroupId));
 }

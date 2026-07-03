@@ -13,7 +13,8 @@ internal static class BusLoggerDescriptions
     public const string ParkedToFaultTopic = "Parked to the fault topic.";
     public const string DeliveryNotAcked = "The delivery is not acked.";
     public const string ScheduleFailed = "The scheduling failed; the delivery is not acked.";
-    public const string RetrySchedulerMissing = "No retry scheduler is registered; the delivery is not acked.";
+    public const string RetrySchedulerMissing = "No retry scheduler is registered; parked to the error topic as terminal.";
+    public const string HandedToFaultHandler = "The envelope is unreadable; handed to the fault handler.";
     public const string SendFaulted = "The send faulted.";
     public const string ProducerQueueFull = "The producer's local queue is full; back-pressure upstream or raise QueueBufferingMaxMessages.";
     public const string ConsumeRetried = "The consume is retried.";

@@ -12,11 +12,12 @@ namespace JorgeCostaMacia.Bus.Kafka;
 /// <summary>
 /// Registers the bus's messages and handlers. The Kafka consumer settings come from the
 /// <c>Bus:Consumer</c> configuration section (declared once, never repeated); each handler declares
-/// only its own contract — topic, group id and resilience policy. Each context maps its own pieces
-/// through it (<c>Map*BusContext(this BusContextConfigurator)</c> extensions): messages it sends
+/// only its own contract — topic, group id and resilience policy. Messages it sends
 /// (<see cref="AddCommand{TCommand}"/> / <see cref="AddEvent{TEvent}"/>) and messages it consumes
 /// (<see cref="AddCommandHandler{TCommand, TCommandHandler}"/> /
-/// <see cref="AddEventSubscriber{TEvent, TEventSubscriber}"/> — each hosting its own consumer).
+/// <see cref="AddEventSubscriber{TEvent, TEventSubscriber}"/> — each hosting its own consumer, with
+/// the framework's error and fault handlers wired in). The error handling is the framework's; the
+/// service tunes only the resilience policy (retry intervals, excluded exceptions, the scheduler).
 /// </summary>
 public sealed class BusContextConfigurator
 {
@@ -57,7 +58,8 @@ public sealed class BusContextConfigurator
 
     /// <summary>
     /// Registers a command handler: the handler itself (scoped, one per delivery) and its hosted
-    /// consumer — its custom policy here, its Kafka settings from the global configuration.
+    /// consumer, with the framework's error and fault handlers wired in. Its Kafka settings come from
+    /// the global configuration; the service tunes only the resilience policy here.
     /// </summary>
     /// <typeparam name="TCommand">The command type consumed.</typeparam>
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
@@ -74,8 +76,7 @@ public sealed class BusContextConfigurator
         where TCommand : Command
         where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
     {
-        ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
-            ?? throw new InvalidOperationException($"'{BusInfrastructureContext.CONSUMER_SECTION}' is null.");
+        ConsumerConfig configuration = ConsumerConfig(groupId);
 
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider =>
@@ -85,7 +86,8 @@ public sealed class BusContextConfigurator
 
             return new CommandConsumerWorker<TCommand, TCommandHandler>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                CreateErrorHandler(provider, logger, topic, groupId, retryIntervals, retryExcludeExceptionTypes),
+                new Infrastructure.CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
@@ -98,7 +100,8 @@ public sealed class BusContextConfigurator
 
     /// <summary>
     /// Registers an event subscriber: the subscriber itself (scoped, one per delivery) and its hosted
-    /// consumer — its custom policy here, its Kafka settings from the global configuration.
+    /// consumer, with the framework's error and fault handlers wired in. Its Kafka settings come from
+    /// the global configuration; the service tunes only the resilience policy here.
     /// </summary>
     /// <typeparam name="TEvent">The event type consumed.</typeparam>
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
@@ -115,8 +118,7 @@ public sealed class BusContextConfigurator
         where TEvent : Event
         where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
     {
-        ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
-            ?? throw new InvalidOperationException($"'{BusInfrastructureContext.CONSUMER_SECTION}' is null.");
+        ConsumerConfig configuration = ConsumerConfig(groupId);
 
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider =>
@@ -126,7 +128,8 @@ public sealed class BusContextConfigurator
 
             return new EventConsumerWorker<TEvent, TEventSubscriber>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                CreateErrorHandler(provider, logger, topic, groupId, retryIntervals, retryExcludeExceptionTypes),
+                new Infrastructure.EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
@@ -136,6 +139,11 @@ public sealed class BusContextConfigurator
 
         return this;
     }
+
+    /// <summary>The consumer's Kafka settings for the group, or a throw when the consumer section is absent.</summary>
+    private ConsumerConfig ConsumerConfig(string groupId)
+        => _configuration?.ConsumerConfig(groupId)
+            ?? throw new InvalidOperationException($"'{BusInfrastructureContext.CONSUMER_SECTION}' is null.");
 
     /// <summary>
     /// Composes a consumer's Kafka builder: the settings plus every callback wired — the client's
@@ -161,14 +169,19 @@ public sealed class BusContextConfigurator
             .SetPartitionsLostHandler((_, partitions) => BusLogger.LogPartitionsLost(logger, partitions));
     }
 
-    /// <summary>Composes a consumer's failure policy, the defaults applied.</summary>
-    private static ConsumerErrorHandler CreateErrorHandler(IServiceProvider provider, ILogger logger, string topic, string groupId, ImmutableList<TimeSpan>? retryIntervals, ImmutableList<Type>? retryExcludeExceptionTypes)
-        => new(
-            provider.GetRequiredService<Infrastructure.Bus>(),
-            provider.GetService<IRetryScheduler>(),
-            logger,
-            topic,
-            groupId,
-            retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
-            retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
+    /// <summary>Composes a consumer's fault handler over the bus, the logger and its contract.</summary>
+    private static Infrastructure.FaultHandler CreateFaultHandler(IServiceProvider provider, ILogger logger, string topic, string groupId)
+        => new(Bus(provider), logger, topic, groupId);
+
+    /// <summary>The bus — the single outbound gate the error and fault handlers produce through.</summary>
+    private static Infrastructure.Bus Bus(IServiceProvider provider)
+        => provider.GetRequiredService<Infrastructure.Bus>();
+
+    /// <summary>The retry ladder, or the default when none is supplied.</summary>
+    private static ImmutableList<TimeSpan> Intervals(ImmutableList<TimeSpan>? retryIntervals)
+        => retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
+
+    /// <summary>The retry-excluded exception types, or the default when none is supplied.</summary>
+    private static ImmutableList<Type> Excludes(ImmutableList<Type>? retryExcludeExceptionTypes)
+        => retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
 }

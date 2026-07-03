@@ -1,22 +1,22 @@
 using System.Collections.Immutable;
-using System.Text.Json;
 using JorgeCostaMacia.Bus.Domain.Contexts;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
-/// The Kafka command context a handler receives — composes every envelope facet over
-/// <see cref="Transport"/>, carrying the command, the transport and the full read-only envelope.
-/// Built by the consumer from the delivered message and its headers; the <b>outbound</b> envelope
-/// (new flow / correlated) is computed by the bus when producing, not here.
+/// The Kafka command context a handler receives — composes the envelope facets over
+/// <see cref="Transport"/> (all but the filtering one: commands are point-to-point and never
+/// filtered), carrying only the command and the transport: every envelope property reads straight
+/// from the transport's headers on access, nothing duplicated in memory. Built by the consumer,
+/// which deserializes the message once per delivery; the <b>outbound</b> envelope (new flow / correlated) is computed by
+/// the bus when producing, not here.
 /// </summary>
 /// <typeparam name="TCommand">The command type.</typeparam>
-public sealed record CommandContext<TCommand> :
+public record CommandContext<TCommand> :
     IMessageContext<TCommand>,
     ITransportContext<Transport>,
     ITracedContext,
     IAggregateTracedContext,
-    IAggregateFilteredContext,
     IConversationContext,
     IResilientContext
     where TCommand : Command
@@ -28,114 +28,51 @@ public sealed record CommandContext<TCommand> :
     public Transport Transport { get; init; }
 
     /// <summary>Unique id of this message, assigned by the messaging layer.</summary>
-    public Guid MessageId { get; init; }
+    public Guid MessageId => Transport.GetGuid(TransportHeaders.MessageId);
 
     /// <summary>Logical type name of the message.</summary>
-    public string MessageType { get; init; }
+    public string MessageType => Transport.GetString(TransportHeaders.MessageType);
 
     /// <summary>Ordered URNs of the message type and its base types/interfaces (polymorphic routing / versioning).</summary>
-    public ImmutableList<string> MessageTypeUrn { get; init; }
+    public ImmutableList<string> MessageTypeUrn => Transport.GetStringList(TransportHeaders.MessageTypeUrn);
 
     /// <summary>Primary destination address (topic).</summary>
-    public string MessageDestinationAddress { get; init; }
+    public string MessageDestinationAddress => Transport.GetString(TransportHeaders.MessageDestinationAddress);
 
     /// <summary>Primary origin address (topic) the message came from, when known.</summary>
-    public string? MessageOriginAddress { get; init; }
+    public string? MessageOriginAddress => Transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress);
 
     /// <summary>UTC time when the message was created/sent.</summary>
-    public DateTime MessageOccurredAt { get; init; }
+    public DateTime MessageOccurredAt => Transport.GetDateTime(TransportHeaders.MessageOccurredAt);
 
     /// <summary>Conversation trace id, shared by the whole chain; equals the first message's id.</summary>
-    public Guid ConversationId { get; init; }
+    public Guid ConversationId => Transport.GetGuid(TransportHeaders.ConversationId);
 
     /// <summary>Address where the conversation originated — the first message's destination.</summary>
-    public string ConversationAddress { get; init; }
+    public string ConversationAddress => Transport.GetString(TransportHeaders.ConversationAddress);
 
     /// <summary>UTC time when the conversation began.</summary>
-    public DateTime ConversationOccurredAt { get; init; }
-
-    /// <summary>
-    /// The consumers the events generated from this command will target (e.g. consumer group ids);
-    /// empty means no filtering. Commands themselves are point-to-point and never filtered.
-    /// </summary>
-    public ImmutableList<string> AggregateConsumers { get; init; }
+    public DateTime ConversationOccurredAt => Transport.GetDateTime(TransportHeaders.ConversationOccurredAt);
 
     /// <summary>Unique id of the inbound message (domain trace).</summary>
-    public Guid AggregateId { get; init; }
+    public Guid AggregateId => Transport.GetGuid(TransportHeaders.AggregateId);
 
     /// <summary>Domain correlation id, propagated to messages sent from this handler.</summary>
-    public Guid AggregateCorrelationId { get; init; }
+    public Guid AggregateCorrelationId => Transport.GetGuid(TransportHeaders.AggregateCorrelationId);
 
     /// <summary>UTC event-time of the inbound message.</summary>
-    public DateTime AggregateOccurredAt { get; init; }
+    public DateTime AggregateOccurredAt => Transport.GetDateTime(TransportHeaders.AggregateOccurredAt);
 
     /// <summary>Number of times this message has been retried (immediate or scheduled).</summary>
-    public int RetryCount { get; init; }
+    public int RetryCount => Transport.GetInt(TransportHeaders.RetryCount);
 
-    /// <summary>
-    /// Builds the context with every envelope value supplied — used by the consumer to reconstruct
-    /// it from the delivered message and its headers.
-    /// </summary>
+    /// <summary>Builds the context over the delivered command and its transport.</summary>
     /// <param name="message">The command payload.</param>
     /// <param name="transport">The Kafka transport for this delivery.</param>
-    /// <param name="messageId">Unique id of this message.</param>
-    /// <param name="messageType">Logical type name of the message.</param>
-    /// <param name="messageTypeUrn">URNs of the message type and its base types/interfaces.</param>
-    /// <param name="messageDestinationAddress">Primary destination address.</param>
-    /// <param name="messageOriginAddress">Primary origin address, when known.</param>
-    /// <param name="messageOccurredAt">UTC time the message was created/sent.</param>
-    /// <param name="conversationId">Conversation trace id.</param>
-    /// <param name="conversationAddress">Address the conversation originated at.</param>
-    /// <param name="conversationOccurredAt">UTC time the conversation began.</param>
-    /// <param name="aggregateConsumers">The consumers this command targets.</param>
-    /// <param name="aggregateId">Domain id of the inbound message.</param>
-    /// <param name="aggregateCorrelationId">Domain correlation id.</param>
-    /// <param name="aggregateOccurredAt">UTC event-time of the inbound message.</param>
-    /// <param name="retryCount">Retries of this message (immediate or scheduled).</param>
-    public CommandContext(TCommand message, Transport transport, Guid messageId, string messageType, ImmutableList<string> messageTypeUrn, string messageDestinationAddress, string? messageOriginAddress, DateTime messageOccurredAt, Guid conversationId, string conversationAddress, DateTime conversationOccurredAt, ImmutableList<string> aggregateConsumers, Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, int retryCount)
+    public CommandContext(TCommand message, Transport transport)
     {
         Message = message;
         Transport = transport;
-        MessageId = messageId;
-        MessageType = messageType;
-        MessageTypeUrn = messageTypeUrn;
-        MessageDestinationAddress = messageDestinationAddress;
-        MessageOriginAddress = messageOriginAddress;
-        MessageOccurredAt = messageOccurredAt;
-        ConversationId = conversationId;
-        ConversationAddress = conversationAddress;
-        ConversationOccurredAt = conversationOccurredAt;
-        AggregateConsumers = aggregateConsumers;
-        AggregateId = aggregateId;
-        AggregateCorrelationId = aggregateCorrelationId;
-        AggregateOccurredAt = aggregateOccurredAt;
-        RetryCount = retryCount;
     }
 
-    /// <summary>
-    /// Builds the context for a delivery: deserializes the command from the raw body and reads every
-    /// envelope value from the transport's typed getters — the mapping lives here, next to the
-    /// record it fills.
-    /// </summary>
-    /// <param name="body">The delivered message's raw body.</param>
-    /// <param name="transport">The delivery's transport.</param>
-    /// <returns>The context handed to the handler.</returns>
-    internal static CommandContext<TCommand> Create(byte[] body, Transport transport)
-        => new(
-            JsonSerializer.Deserialize<TCommand>(body)!,
-            transport,
-            transport.GetGuid(TransportHeaders.MessageId),
-            transport.GetString(TransportHeaders.MessageType),
-            transport.GetStringList(TransportHeaders.MessageTypeUrn),
-            transport.GetString(TransportHeaders.MessageDestinationAddress),
-            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
-            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
-            transport.GetGuid(TransportHeaders.ConversationId),
-            transport.GetString(TransportHeaders.ConversationAddress),
-            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateConsumers),
-            transport.GetGuid(TransportHeaders.AggregateId),
-            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
-            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RetryCount));
 }

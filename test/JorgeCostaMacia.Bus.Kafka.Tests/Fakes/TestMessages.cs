@@ -1,21 +1,33 @@
+using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
-/// <summary>Command used across the tests, forwarding the traceability metadata to the base.</summary>
+/// <summary>Command used across the tests — the serializer's constructor on top, the convenient one below.</summary>
 internal sealed record TestCommand : Command
 {
     public string Name { get; init; }
+
+    [JsonConstructor]
+    public TestCommand(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string name)
+        : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
+        => Name = name;
 
     public TestCommand(string name, Guid? aggregateId = null, Guid? aggregateCorrelationId = null, DateTime? aggregateOccurredAt = null, IEnumerable<string>? aggregateConsumers = null)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
         => Name = name;
 }
 
-/// <summary>Event used across the tests, forwarding the traceability metadata to the base.</summary>
+/// <summary>Event used across the tests — the serializer's constructor on top, the convenient one below.</summary>
 internal sealed record TestEvent : Event
 {
     public string Name { get; init; }
+
+    [JsonConstructor]
+    public TestEvent(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string name)
+        : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
+        => Name = name;
 
     public TestEvent(string name, Guid? aggregateId = null, Guid? aggregateCorrelationId = null, DateTime? aggregateOccurredAt = null, IEnumerable<string>? aggregateConsumers = null)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)

@@ -101,7 +101,7 @@ public class BusTests
     [Fact]
     public async Task Send_ProduceFails_Rethrows()
     {
-        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+        _producer.Failure = new ProduceException<Null, byte[]>(new Confluent.Kafka.Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
 
         await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(
             () => CreateSut((typeof(TestCommand), "orders")).Send(new TestCommand("pepe"), TestContext.Current.CancellationToken));
