@@ -86,18 +86,25 @@ public sealed class BusContextConfigurator
             ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
-                .SetErrorHandler((_, error) => BusLogger.LogError(logger, error))
+                .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
-            return new CommandConsumerWorker<TCommand, TCommandHandler>(
-                builder,
+            ConsumerError error = new(
                 provider.GetRequiredService<IProducer<Null, byte[]>>(),
-                provider.GetRequiredService<IServiceScopeFactory>(),
+                provider.GetService<IRetryScheduler>(),
                 logger,
                 topic,
                 groupId,
                 retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
                 retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
+
+            return new CommandConsumerWorker<TCommand, TCommandHandler>(
+                builder,
+                error,
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                logger,
+                topic,
+                groupId);
         });
 
         return this;
@@ -131,18 +138,25 @@ public sealed class BusContextConfigurator
             ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
-                .SetErrorHandler((_, error) => BusLogger.LogError(logger, error))
+                .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
-            return new EventConsumerWorker<TEvent, TEventSubscriber>(
-                builder,
+            ConsumerError error = new(
                 provider.GetRequiredService<IProducer<Null, byte[]>>(),
-                provider.GetRequiredService<IServiceScopeFactory>(),
+                provider.GetService<IRetryScheduler>(),
                 logger,
                 topic,
                 groupId,
                 retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
                 retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
+
+            return new EventConsumerWorker<TEvent, TEventSubscriber>(
+                builder,
+                error,
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                logger,
+                topic,
+                groupId);
         });
 
         return this;

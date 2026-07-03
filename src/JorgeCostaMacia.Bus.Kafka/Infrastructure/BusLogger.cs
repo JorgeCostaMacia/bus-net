@@ -118,6 +118,23 @@ internal static class BusLogger
         }
     }
 
+    /// <summary>Logs a failed handling parked for a delayed retry, with the retry number and its time in the scope.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="exception">The handling failure.</param>
+    /// <param name="retry">The retry number stamped on the parked delivery.</param>
+    /// <param name="scheduledAt">The UTC time the retry is produced back at.</param>
+    public static void LogRetry(ILogger logger, Exception exception, int retry, DateTime scheduledAt)
+    {
+        using (logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Retry"] = retry,
+            ["ScheduledAt"] = scheduledAt
+        }))
+        {
+            logger.LogWarning(exception, "Handling failed; scheduled to retry.");
+        }
+    }
+
     /// <summary>Decodes every envelope header into the scope — Guids and counters typed, the rest as text.</summary>
     /// <param name="context">The scope dictionary to fill.</param>
     /// <param name="headers">The delivery's headers.</param>

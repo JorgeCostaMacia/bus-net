@@ -20,25 +20,21 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
     where TCommand : Domain.Command
     where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
 {
-    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory, the logger and its custom policy.</summary>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
-    /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
+    /// <param name="error">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
-    /// <param name="logger">The logger for the deliveries and retries.</param>
+    /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
-    /// <param name="retryIntervals">Delays before each retry — <c>00:00</c> requeues immediately (empty means no retries).</param>
-    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry.</param>
     public CommandConsumerWorker(
         ConsumerBuilder<Null, byte[]> builder,
-        IProducer<Null, byte[]> producer,
+        ConsumerError error,
         IServiceScopeFactory scopeFactory,
         ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger,
         string topic,
-        string groupId,
-        ImmutableList<TimeSpan> retryIntervals,
-        ImmutableList<Type> retryExcludeExceptionTypes)
-        : base(builder, producer, scopeFactory, logger, topic, groupId, retryIntervals, retryExcludeExceptionTypes) { }
+        string groupId)
+        : base(builder, error, scopeFactory, logger, topic, groupId) { }
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)

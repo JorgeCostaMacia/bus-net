@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
@@ -17,11 +15,11 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// custom policy — topic, group id, resilience — through the constructor. The whole delivery flow and
 /// its error policy live here once: consume → filter → rebuild transport/context → handle in its own
 /// service scope (the whole delivery in the logging scope) → store the offset (the store is the ack;
-/// the background thread commits it without blocking). A retryable failure follows the interval
-/// ladder — a zero interval requeues through the topic immediately, a positive one is scheduled; the
-/// concrete consumers plug in only what differs — building their context, invoking their handler, and
-/// the pub/sub-only behaviors (consumer-side filtering and retry targeting). On shutdown the
-/// loop is cancelled and the consumer closed gracefully.
+/// the background thread commits it without blocking). Failures are handed to the
+/// <see cref="ConsumerError"/> policy — retry ladder, retry scheduler, error topic; the concrete
+/// consumers plug in only what differs — building their context, invoking their handler, and the
+/// pub/sub-only behaviors (consumer-side filtering and retry targeting). On shutdown the loop is
+/// cancelled and the consumer closed gracefully.
 /// </summary>
 /// <typeparam name="TContext">The context type delivered to the handler.</typeparam>
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
@@ -34,44 +32,36 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly ConsumerBuilder<Null, byte[]> _builder;
     private IConsumer<Null, byte[]>? _consumer;
 
-    private readonly IProducer<Null, byte[]> _producer;
+    private readonly ConsumerError _error;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
 
     private readonly string _topic;
-    private readonly ImmutableList<TimeSpan> _retryIntervals;
-    private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
 
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory, the logger and its custom policy.</summary>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
-    /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
+    /// <param name="error">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
-    /// <param name="logger">The logger for the deliveries and retries.</param>
+    /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
-    /// <param name="retryIntervals">Delays before each retry when handling fails — one entry per attempt, <c>00:00</c> requeues immediately (empty means no retries).</param>
-    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry.</param>
     protected ConsumerWorker(
         ConsumerBuilder<Null, byte[]> builder,
-        IProducer<Null, byte[]> producer,
+        ConsumerError error,
         IServiceScopeFactory scopeFactory,
         ILogger logger,
         string topic,
-        string groupId,
-        ImmutableList<TimeSpan> retryIntervals,
-        ImmutableList<Type> retryExcludeExceptionTypes)
+        string groupId)
     {
         _builder = builder;
-        _producer = producer;
+        _error = error;
         _scopeFactory = scopeFactory;
         _logger = logger;
         _topic = topic;
         GroupId = groupId;
-        _retryIntervals = retryIntervals;
-        _retryExcludeExceptionTypes = retryExcludeExceptionTypes;
     }
 
     /// <summary>Builds the consumer, subscribes to the topic and launches the consumer loop.</summary>
@@ -136,11 +126,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     protected virtual void Target(Headers headers) { }
 
     /// <summary>
-    /// The consumer loop — the whole delivery flow and its error policy in one place. Each failure
-    /// has its own lane: our shutdown exits through the while condition; consume errors back off (the
-    /// client reconnects on its own); a retryable failure follows the interval ladder (the requeue
-    /// is the ack); everything else — produce failures, malformed deliveries, handling errors — is
-    /// logged with the delivery attached and left unacked, until the error-topic policy lands.
+    /// The consumer loop — the delivery flow with each failure in its own lane: our shutdown exits
+    /// through the while condition; consume errors back off (the client reconnects on its own);
+    /// malformed deliveries park to the error topic; every other handling failure is decided by the
+    /// <see cref="ConsumerError"/> policy — retry ladder, retry scheduler, error topic. A dealt-with
+    /// delivery is acked; an unresolved one is logged with the delivery attached and left unacked.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -164,7 +154,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                     continue;
                 }
 
-                Transport transport = CreateTransport(result);
+                Transport transport = Transport.Create(result);
                 TContext context = CreateContext(result, transport);
 
                 using (IServiceScope services = _scopeFactory.CreateScope())
@@ -184,95 +174,30 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
-            catch (ProduceException<Null, byte[]> exception)
-            {
-                _logger.LogError(exception, "Produce failed; the delivery is not acked.");
-            }
             catch (JsonException exception)
             {
-                _logger.LogError(exception, "Malformed delivery; the body cannot be deserialized.");
+                if (await _error.Malformed(result!, exception, cancellationToken)) Store(result!);
             }
             catch (KeyNotFoundException exception)
             {
-                _logger.LogError(exception, "Malformed delivery; an envelope header is missing.");
+                if (await _error.Malformed(result!, exception, cancellationToken)) Store(result!);
             }
             catch (InvalidCastException exception)
             {
-                _logger.LogError(exception, "Malformed delivery; an envelope header is invalid.");
+                if (await _error.Malformed(result!, exception, cancellationToken)) Store(result!);
             }
-            catch (Exception exception) when (Retryable(result, exception))
+            catch (Exception exception) when (result is not null)
             {
-                if (await Retry(result!, exception, cancellationToken)) Store(result!);
+                if (await _error.Handle(result, exception, Target, cancellationToken)) Store(result);
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Handling failed; the delivery is not acked.");
+                _logger.LogError(exception, "Consume failed.");
             }
             finally
             {
                 logContext?.Dispose();
             }
-        }
-    }
-
-    /// <summary>
-    /// Whether a failed delivery is retried: the envelope's <c>RetryCount</c> has interval
-    /// ladder entries left and the exception type is not excluded. Malformed deliveries never reach
-    /// this lane — retrying the same bytes is pointless.
-    /// </summary>
-    private bool Retryable(ConsumeResult<Null, byte[]>? result, Exception exception)
-    {
-        if (result is null || !result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
-
-        return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
-            && retries < _retryIntervals.Count
-            && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
-    }
-
-    /// <summary>
-    /// Retries through the topic itself, following the interval ladder: the envelope is cloned,
-    /// <c>RetryCount</c> incremented and the concrete consumer's targeting stamped — nothing is
-    /// held in memory and the retry survives a restart. A <c>00:00</c> interval requeues at the
-    /// tail immediately; a positive one is scheduled (pending the scheduler package). Returns whether
-    /// the retry succeeded (the caller then acks the original); a failure is logged and leaves
-    /// the delivery unacked — nothing thrown here can escape the loop.
-    /// </summary>
-    private async Task<bool> Retry(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
-    {
-        Transport transport = CreateTransport(result);
-        int retry = transport.GetInt(TransportHeaders.RetryCount);
-        TimeSpan interval = _retryIntervals[retry];
-
-        Headers headers = transport.CloneHeaders();
-
-        Restamp(headers, TransportHeaders.RetryCount, Encoding.UTF8.GetBytes((retry + 1).ToString()));
-
-        Target(headers);
-
-        if (interval > TimeSpan.Zero)
-        {
-            _logger.LogError(exception, "Handling failed; scheduled retry is not available yet and the delivery is not acked.");
-
-            return false;
-        }
-
-        try
-        {
-            await _producer.ProduceAsync(_topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
-
-            BusLogger.LogRetry(_logger, exception, retry + 1);
-
-            return true;
-        }
-        catch (OperationCanceledException)
-        {
-            return false;
-        }
-        catch (ProduceException<Null, byte[]> produce)
-        {
-            _logger.LogError(produce, "Produce failed; the delivery is not acked.");
-
-            return false;
         }
     }
 
@@ -287,15 +212,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             _logger.LogWarning("Partition lost in a rebalance; its new owner will handle the message again.");
         }
     }
-
-    private static Transport CreateTransport(ConsumeResult<Null, byte[]> result)
-        => new(
-            result.Message.Headers.ToImmutableList(),
-            result.Topic,
-            result.Partition,
-            result.Offset,
-            result.LeaderEpoch,
-            result.Message.Timestamp);
 
     /// <summary>Replaces every value of a header key with the given one.</summary>
     /// <param name="headers">The headers to restamp.</param>

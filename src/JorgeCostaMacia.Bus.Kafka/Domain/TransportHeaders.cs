@@ -22,6 +22,10 @@ internal static class TransportHeaders
     public const string AggregateOccurredAt = Prefix + "aggregate_occurred_at";
     public const string AggregateConsumers = Prefix + "aggregate_consumers";
     public const string RetryCount = Prefix + "retry_count";
+    public const string ErrorType = Prefix + "error_type";
+    public const string ErrorMessage = Prefix + "error_message";
+    public const string ErrorGroupId = Prefix + "error_group_id";
+    public const string ErrorOccurredAt = Prefix + "error_occurred_at";
 
     /// <summary>The keys whose values travel as 16 raw <see cref="Guid"/> bytes.</summary>
     public static readonly ImmutableList<string> GuidHeaders =

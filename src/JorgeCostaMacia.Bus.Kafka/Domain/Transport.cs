@@ -49,6 +49,18 @@ public sealed record Transport : ITransport
         Timestamp = timestamp;
     }
 
+    /// <summary>Creates the transport for a delivered message from the broker-provided consume result.</summary>
+    /// <param name="result">The delivered message.</param>
+    /// <returns>The delivery's transport.</returns>
+    public static Transport Create(ConsumeResult<Null, byte[]> result)
+        => new(
+            result.Message.Headers.ToImmutableList(),
+            result.Topic,
+            result.Partition,
+            result.Offset,
+            result.LeaderEpoch,
+            result.Message.Timestamp);
+
     /// <summary>
     /// Clones this delivery's headers, deep-copying each value's bytes, so the result can be re-stamped
     /// for an outbound message without mutating the original delivery's headers.
