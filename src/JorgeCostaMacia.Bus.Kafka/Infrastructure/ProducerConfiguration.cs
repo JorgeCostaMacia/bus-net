@@ -12,11 +12,11 @@ public sealed record ProducerConfiguration
     /// <summary>Comma-separated list of Kafka brokers. Required.</summary>
     public required string BootstrapServers { get; init; }
 
-    /// <summary>SASL username, when authenticating.</summary>
-    public string? SaslUsername { get; init; }
+    /// <summary>SASL username. Required.</summary>
+    public required string SaslUsername { get; init; }
 
-    /// <summary>SASL password, when authenticating.</summary>
-    public string? SaslPassword { get; init; }
+    /// <summary>SASL password. Required.</summary>
+    public required string SaslPassword { get; init; }
 
     /// <summary>Security protocol, or <see langword="null"/> for the default.</summary>
     public SecurityProtocol? SecurityProtocol { get; init; }

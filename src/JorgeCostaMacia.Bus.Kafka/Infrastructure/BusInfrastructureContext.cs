@@ -57,16 +57,15 @@ internal static class BusInfrastructureContext
     /// </summary>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The global producer configuration.</returns>
-    /// <exception cref="InvalidOperationException">The <c>Bus:Producer</c> section or its <c>BootstrapServers</c> is missing.</exception>
+    /// <exception cref="InvalidOperationException">The <c>Bus:Producer</c> section or one of its required values is missing.</exception>
     private static ProducerConfiguration CreateProducerConfiguration(IConfiguration configuration)
     {
         ProducerConfiguration producerConfiguration = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>()
             ?? throw new InvalidOperationException($"'{PRODUCER_SECTION}' is null.");
 
-        if (string.IsNullOrWhiteSpace(producerConfiguration.BootstrapServers))
-        {
-            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
-        }
+        Validate(PRODUCER_SECTION, nameof(producerConfiguration.BootstrapServers), producerConfiguration.BootstrapServers);
+        Validate(PRODUCER_SECTION, nameof(producerConfiguration.SaslUsername), producerConfiguration.SaslUsername);
+        Validate(PRODUCER_SECTION, nameof(producerConfiguration.SaslPassword), producerConfiguration.SaslPassword);
 
         return producerConfiguration;
     }
@@ -80,17 +79,34 @@ internal static class BusInfrastructureContext
     /// </summary>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The global consumer configuration, or <see langword="null"/> when the section is absent.</returns>
-    /// <exception cref="InvalidOperationException">The section is present but its <c>BootstrapServers</c> is missing.</exception>
+    /// <exception cref="InvalidOperationException">The section is present but one of its required values is missing.</exception>
     private static ConsumerConfiguration? CreateConsumerConfiguration(IConfiguration configuration)
     {
         ConsumerConfiguration? consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>();
 
-        if (consumerConfiguration is not null && string.IsNullOrWhiteSpace(consumerConfiguration.BootstrapServers))
+        if (consumerConfiguration is null)
         {
-            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
+            return null;
         }
 
+        Validate(CONSUMER_SECTION, nameof(consumerConfiguration.BootstrapServers), consumerConfiguration.BootstrapServers);
+        Validate(CONSUMER_SECTION, nameof(consumerConfiguration.SaslUsername), consumerConfiguration.SaslUsername);
+        Validate(CONSUMER_SECTION, nameof(consumerConfiguration.SaslPassword), consumerConfiguration.SaslPassword);
+
         return consumerConfiguration;
+    }
+
+    /// <summary>Throws when a required configuration value is missing — the binder does not enforce <see langword="required"/> members.</summary>
+    /// <param name="section">The configuration section the value belongs to.</param>
+    /// <param name="name">The value's name within the section.</param>
+    /// <param name="value">The bound value.</param>
+    /// <exception cref="InvalidOperationException">The value is missing.</exception>
+    private static void Validate(string section, string name, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"'{section}:{name}' is null.");
+        }
     }
 
     private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
