@@ -22,16 +22,16 @@ namespace JorgeCostaMacia.Bus.Kafka;
 public sealed class BusContextConfigurator
 {
     private readonly IServiceCollection _services;
-    private readonly KafkaConsumerConfiguration _consumer;
+    private readonly KafkaConsumerConfiguration _configuration;
     private readonly Dictionary<Type, string> _messages = [];
 
     /// <summary>The type → topic routing map accumulated by the contexts.</summary>
     internal IReadOnlyDictionary<Type, string> Messages => _messages;
 
-    internal BusContextConfigurator(IServiceCollection services, KafkaConsumerConfiguration consumer)
+    internal BusContextConfigurator(IServiceCollection services, KafkaConsumerConfiguration configuration)
     {
         _services = services;
-        _consumer = consumer;
+        _configuration = configuration;
     }
 
     /// <summary>Registers a command this service sends, mapping its type to a topic.</summary>
@@ -77,14 +77,14 @@ public sealed class BusContextConfigurator
         where TCommand : Domain.Command
         where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
     {
-        ConsumerConfig consumer = _consumer.ConsumerConfig(groupId);
+        ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
 
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
 
-            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(consumer)
+            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
                 .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
                 .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
 
@@ -121,14 +121,14 @@ public sealed class BusContextConfigurator
         where TEvent : Domain.Event
         where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
     {
-        ConsumerConfig consumer = _consumer.ConsumerConfig(groupId);
+        ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
 
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
 
-            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(consumer)
+            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
                 .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
                 .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
 
