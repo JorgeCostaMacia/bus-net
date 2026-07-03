@@ -17,7 +17,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// Every outcome that succeeds acks the original delivery; every failure here is logged and leaves it
 /// unacked — nothing thrown can escape the consumer loop.
 /// </summary>
-internal sealed class ConsumerError
+internal sealed class ConsumerErrorHandler
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";
 
@@ -38,7 +38,7 @@ internal sealed class ConsumerError
     /// <param name="groupId">The consumer group id, stamped on parked failures as the failing group.</param>
     /// <param name="retryIntervals">Delays before each retry — one entry per attempt, <c>00:00</c> requeues immediately (empty means no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry — they park directly.</param>
-    public ConsumerError(
+    public ConsumerErrorHandler(
         Bus bus,
         IRetryScheduler? retryScheduler,
         ILogger logger,

@@ -22,19 +22,19 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
 {
     /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
-    /// <param name="error">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
+    /// <param name="errorHandler">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandConsumerWorker(
         ConsumerBuilder<Null, byte[]> builder,
-        ConsumerError error,
+        ConsumerErrorHandler errorHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger,
         string topic,
         string groupId)
-        : base(builder, error, scopeFactory, logger, topic, groupId) { }
+        : base(builder, errorHandler, scopeFactory, logger, topic, groupId) { }
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)

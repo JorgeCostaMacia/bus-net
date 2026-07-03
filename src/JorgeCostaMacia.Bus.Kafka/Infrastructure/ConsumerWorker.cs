@@ -16,7 +16,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// its error policy live here once: consume → filter → rebuild transport/context → handle in its own
 /// service scope (the whole delivery in the logging scope) → store the offset (the store is the ack;
 /// the background thread commits it without blocking). Failures are handed to the
-/// <see cref="ConsumerError"/> policy — retry ladder, retry scheduler, error topic; the concrete
+/// <see cref="ConsumerErrorHandler"/> policy — retry ladder, retry scheduler, error topic; the concrete
 /// consumers plug in only what differs — building their context, invoking their handler, and the
 /// pub/sub-only behaviors (consumer-side filtering and retry targeting). On shutdown the loop is
 /// cancelled and the consumer closed gracefully.
@@ -32,7 +32,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly ConsumerBuilder<Null, byte[]> _builder;
     private IConsumer<Null, byte[]>? _consumer;
 
-    private readonly ConsumerError _error;
+    private readonly ConsumerErrorHandler _errorHandler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
 
@@ -43,21 +43,21 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
-    /// <param name="error">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
+    /// <param name="errorHandler">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
         ConsumerBuilder<Null, byte[]> builder,
-        ConsumerError error,
+        ConsumerErrorHandler errorHandler,
         IServiceScopeFactory scopeFactory,
         ILogger logger,
         string topic,
         string groupId)
     {
         _builder = builder;
-        _error = error;
+        _errorHandler = errorHandler;
         _scopeFactory = scopeFactory;
         _logger = logger;
         _topic = topic;
@@ -129,7 +129,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// The consumer loop — the delivery flow with each failure in its own lane: our shutdown exits
     /// through the while condition; consume errors back off (the client reconnects on its own);
     /// malformed deliveries park to the error topic; every other handling failure is decided by the
-    /// <see cref="ConsumerError"/> policy — retry ladder, retry scheduler, error topic. A dealt-with
+    /// <see cref="ConsumerErrorHandler"/> policy — retry ladder, retry scheduler, error topic. A dealt-with
     /// delivery is acked; an unresolved one is logged with the delivery attached and left unacked.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
@@ -176,19 +176,19 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (JsonException exception)
             {
-                if (await _error.Malformed(result!, exception, cancellationToken)) Store(result!);
+                if (await _errorHandler.Malformed(result!, exception, cancellationToken)) Store(result!);
             }
             catch (KeyNotFoundException exception)
             {
-                if (await _error.Malformed(result!, exception, cancellationToken)) Store(result!);
+                if (await _errorHandler.Malformed(result!, exception, cancellationToken)) Store(result!);
             }
             catch (InvalidCastException exception)
             {
-                if (await _error.Malformed(result!, exception, cancellationToken)) Store(result!);
+                if (await _errorHandler.Malformed(result!, exception, cancellationToken)) Store(result!);
             }
             catch (Exception exception) when (result is not null)
             {
-                if (await _error.Handle(result, exception, Target, cancellationToken)) Store(result);
+                if (await _errorHandler.Handle(result, exception, Target, cancellationToken)) Store(result);
             }
             catch (Exception exception)
             {

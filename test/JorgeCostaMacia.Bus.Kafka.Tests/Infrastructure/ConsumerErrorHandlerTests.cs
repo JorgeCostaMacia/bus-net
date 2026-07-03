@@ -9,7 +9,7 @@ using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
-public class ConsumerErrorTests
+public class ConsumerErrorHandlerTests
 {
     private const string TOPIC = "orders";
     private const string GROUP_ID = "orders.handler";
@@ -21,7 +21,7 @@ public class ConsumerErrorTests
     private readonly ProducerFake _producer = new();
     private readonly RetrySchedulerFake _scheduler = new();
 
-    private ConsumerError CreateSut(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
+    private ConsumerErrorHandler CreateSut(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
         => new(
             new KafkaBus(_producer, new Dictionary<Type, string>(), NullLogger<KafkaBus>.Instance),
             scheduler ? _scheduler : null,

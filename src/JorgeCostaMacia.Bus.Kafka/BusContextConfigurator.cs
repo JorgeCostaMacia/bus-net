@@ -86,7 +86,7 @@ public sealed class BusContextConfigurator
                 .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
-            ConsumerError error = new(
+            ConsumerErrorHandler errorHandler = new(
                 provider.GetRequiredService<Infrastructure.Bus>(),
                 provider.GetService<IRetryScheduler>(),
                 logger,
@@ -97,7 +97,7 @@ public sealed class BusContextConfigurator
 
             return new CommandConsumerWorker<TCommand, TCommandHandler>(
                 builder,
-                error,
+                errorHandler,
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 topic,
@@ -138,7 +138,7 @@ public sealed class BusContextConfigurator
                 .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
-            ConsumerError error = new(
+            ConsumerErrorHandler errorHandler = new(
                 provider.GetRequiredService<Infrastructure.Bus>(),
                 provider.GetService<IRetryScheduler>(),
                 logger,
@@ -149,7 +149,7 @@ public sealed class BusContextConfigurator
 
             return new EventConsumerWorker<TEvent, TEventSubscriber>(
                 builder,
-                error,
+                errorHandler,
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 topic,
