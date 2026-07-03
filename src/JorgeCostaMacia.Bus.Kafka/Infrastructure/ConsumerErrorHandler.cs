@@ -141,7 +141,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.ProduceFailed)) _logger.LogError(produce, "Produce failed.");
+            using (BusLogger.ActionContext(_logger, BusLoggerActions.ProduceFailed)) _logger.LogError(produce, "Producer failed.");
 
             return false;
         }
@@ -212,7 +212,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.ErrorProduceFailed)) _logger.LogError(produce, "Error produce failed.");
+            using (BusLogger.ActionContext(_logger, BusLoggerActions.ErrorProduceFailed)) _logger.LogError(produce, "Producer failed.");
 
             return false;
         }
