@@ -86,8 +86,8 @@ public sealed class Bus : IBus
 
     /// <summary>
     /// Builds the message with a fresh envelope: a new message id, the conversation begins here (its
-    /// id/address/time mirror this message), no origin, counters at zero. The domain trace comes from
-    /// the message itself.
+    /// id/address/time mirror this message), no origin, the redelivery counter at zero. The domain
+    /// trace comes from the message itself.
     /// </summary>
     private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message)
         where TMessage : ITracedMessage, IFilteredMessage
@@ -110,7 +110,6 @@ public sealed class Bus : IBus
             { TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId) },
             { TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")) },
             { TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers) },
-            { TransportHeaders.RetryCount, Bytes("0") },
             { TransportHeaders.RedeliveryCount, Bytes("0") }
         };
 
@@ -121,7 +120,7 @@ public sealed class Bus : IBus
     /// Builds the message continuing an inbound flow: the inbound envelope is cloned from the
     /// <paramref name="transport"/>, the message-level fields are re-stamped for this hop (new id/type/
     /// urn/occurred-at, origin = the inbound destination, destination = this message's topic, domain
-    /// trace from the message), and the conversation and resilience counters are carried over unchanged.
+    /// trace from the message), and the conversation and the redelivery counter are carried over unchanged.
     /// </summary>
     private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage

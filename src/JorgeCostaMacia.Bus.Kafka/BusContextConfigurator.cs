@@ -66,16 +66,12 @@ public sealed class BusContextConfigurator
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
     /// <param name="topic">The Kafka topic to consume from.</param>
     /// <param name="groupId">The consumer group id (e.g. <c>{topic}.handler</c>) — a stable contract, it holds the group's offsets.</param>
-    /// <param name="retryAttempts">Maximum retry requeues to the topic, or <see langword="null"/> for the default (no retries).</param>
-    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
-    /// <param name="redeliveryIntervals">Delays between scheduled redeliveries (one entry per redelivery), or <see langword="null"/> for the default (none).</param>
+    /// <param name="redeliveryIntervals">Delays before each redelivery when handling fails (one entry per attempt, <c>00:00</c> requeues immediately), or <see langword="null"/> for the default (none).</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddCommandHandler<TCommand, TCommandHandler>(
         string topic,
         string groupId,
-        int? retryAttempts = null,
-        ImmutableList<Type>? retryExcludeExceptionTypes = null,
         ImmutableList<TimeSpan>? redeliveryIntervals = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null)
         where TCommand : Domain.Command
@@ -99,8 +95,6 @@ public sealed class BusContextConfigurator
                 logger,
                 topic,
                 groupId,
-                retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
-                retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
                 redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
                 redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES);
         });
@@ -116,16 +110,12 @@ public sealed class BusContextConfigurator
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
     /// <param name="topic">The Kafka topic to consume from.</param>
     /// <param name="groupId">The consumer group id (e.g. <c>{consumer}.on.{topic}.subscriber</c>) — a stable contract, unique per subscriber, it holds the group's offsets.</param>
-    /// <param name="retryAttempts">Maximum retry requeues to the topic, or <see langword="null"/> for the default (no retries).</param>
-    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retries, or <see langword="null"/> for none.</param>
-    /// <param name="redeliveryIntervals">Delays between scheduled redeliveries (one entry per redelivery), or <see langword="null"/> for the default (none).</param>
+    /// <param name="redeliveryIntervals">Delays before each redelivery when handling fails (one entry per attempt, <c>00:00</c> requeues immediately), or <see langword="null"/> for the default (none).</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exceptions excluded from redelivery, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
         string topic,
         string groupId,
-        int? retryAttempts = null,
-        ImmutableList<Type>? retryExcludeExceptionTypes = null,
         ImmutableList<TimeSpan>? redeliveryIntervals = null,
         ImmutableList<Type>? redeliveryExcludeExceptionTypes = null)
         where TEvent : Domain.Event
@@ -149,8 +139,6 @@ public sealed class BusContextConfigurator
                 logger,
                 topic,
                 groupId,
-                retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
-                retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
                 redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
                 redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES);
         });

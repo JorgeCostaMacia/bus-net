@@ -17,10 +17,11 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// custom policy — topic, group id, resilience — through the constructor. The whole delivery flow and
 /// its error policy live here once: consume → filter → rebuild transport/context → handle in its own
 /// service scope (the whole delivery in the logging scope) → store the offset (the store is the ack;
-/// the background thread commits it without blocking). A retryable failure is requeued through the
-/// topic itself; the concrete consumers plug in only what differs — building their context, invoking
-/// their handler, and the pub/sub-only behaviors (consumer-side filtering and retry targeting). On
-/// shutdown the loop is cancelled and the consumer closed gracefully.
+/// the background thread commits it without blocking). A redeliverable failure follows the interval
+/// ladder — a zero interval requeues through the topic immediately, a positive one is scheduled; the
+/// concrete consumers plug in only what differs — building their context, invoking their handler, and
+/// the pub/sub-only behaviors (consumer-side filtering and redelivery targeting). On shutdown the
+/// loop is cancelled and the consumer closed gracefully.
 /// </summary>
 /// <typeparam name="TContext">The context type delivered to the handler.</typeparam>
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
@@ -38,8 +39,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly ILogger _logger;
 
     private readonly string _topic;
-    private readonly int _retryAttempts;
-    private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
     private readonly ImmutableList<TimeSpan> _redeliveryIntervals;
     private readonly ImmutableList<Type> _redeliveryExcludeExceptionTypes;
 
@@ -53,9 +52,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="logger">The logger for the deliveries and retries.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
-    /// <param name="retryAttempts">Maximum retry attempts when handling fails — each retry requeues the delivery to the topic's tail (0 means no retries).</param>
-    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retries.</param>
-    /// <param name="redeliveryIntervals">Delays between scheduled redeliveries after the retries are exhausted — one entry per redelivery, waited before it (empty means no redeliveries).</param>
+    /// <param name="redeliveryIntervals">Delays before each redelivery when handling fails — one entry per attempt, <c>00:00</c> requeues immediately (empty means no redeliveries).</param>
     /// <param name="redeliveryExcludeExceptionTypes">Exception types excluded from redelivery.</param>
     protected ConsumerWorker(
         ConsumerBuilder<Null, byte[]> builder,
@@ -64,8 +61,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         ILogger logger,
         string topic,
         string groupId,
-        int retryAttempts,
-        ImmutableList<Type> retryExcludeExceptionTypes,
         ImmutableList<TimeSpan> redeliveryIntervals,
         ImmutableList<Type> redeliveryExcludeExceptionTypes)
     {
@@ -75,8 +70,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _logger = logger;
         _topic = topic;
         GroupId = groupId;
-        _retryAttempts = retryAttempts;
-        _retryExcludeExceptionTypes = retryExcludeExceptionTypes;
         _redeliveryIntervals = redeliveryIntervals;
         _redeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes;
     }
@@ -136,18 +129,18 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     protected virtual bool Filtered(ConsumeResult<Null, byte[]> result) => false;
 
     /// <summary>
-    /// Stamps the requeued retry's targeting. Point-to-point consumers keep the default (none — the
+    /// Stamps the redelivery's targeting. Point-to-point consumers keep the default (none — the
     /// envelope travels unchanged); pub/sub consumers override it to target their own group.
     /// </summary>
-    /// <param name="headers">The requeued delivery's headers.</param>
+    /// <param name="headers">The redelivery's headers.</param>
     protected virtual void Target(Headers headers) { }
 
     /// <summary>
     /// The consumer loop — the whole delivery flow and its error policy in one place. Each failure
     /// has its own lane: our shutdown exits through the while condition; consume errors back off (the
-    /// client reconnects on its own); a retryable failure requeues to the topic (the requeue is the
-    /// ack); everything else — produce failures, malformed deliveries, handling errors — is logged
-    /// with the delivery attached and left unacked, until the redelivery / error-topic policy lands.
+    /// client reconnects on its own); a redeliverable failure follows the interval ladder (the requeue
+    /// is the ack); everything else — produce failures, malformed deliveries, handling errors — is
+    /// logged with the delivery attached and left unacked, until the error-topic policy lands.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -211,9 +204,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             {
                 _logger.LogError(exception, "Malformed delivery; an envelope header is invalid.");
             }
-            catch (Exception exception) when (Retryable(result, exception))
+            catch (Exception exception) when (Redeliverable(result, exception))
             {
-                if (await Retry(result!, exception, cancellationToken)) Store(result!);
+                if (await Redeliver(result!, exception, cancellationToken)) Store(result!);
             }
             catch (Exception exception)
             {
@@ -227,36 +220,45 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     }
 
     /// <summary>
-    /// Whether a failed delivery is requeued: the envelope's <c>RetryCount</c> has attempts left and
-    /// the exception type is not excluded. Malformed deliveries never reach this lane — retrying the
-    /// same bytes is pointless.
+    /// Whether a failed delivery is redelivered: the envelope's <c>RedeliveryCount</c> has interval
+    /// ladder entries left and the exception type is not excluded. Malformed deliveries never reach
+    /// this lane — redelivering the same bytes is pointless.
     /// </summary>
-    private bool Retryable(ConsumeResult<Null, byte[]>? result, Exception exception)
+    private bool Redeliverable(ConsumeResult<Null, byte[]>? result, Exception exception)
     {
-        if (result is null || !result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
+        if (result is null || !result.Message.Headers.TryGetLastBytes(TransportHeaders.RedeliveryCount, out byte[] header)) return false;
 
-        return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
-            && retries < _retryAttempts
-            && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
+        return int.TryParse(Encoding.UTF8.GetString(header), out int redeliveries)
+            && redeliveries < _redeliveryIntervals.Count
+            && !_redeliveryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
     }
 
     /// <summary>
-    /// Retries through the topic itself: the delivery is requeued at the tail with the envelope
-    /// cloned, <c>RetryCount</c> incremented and the concrete consumer's targeting stamped — nothing
-    /// is held in memory and the retry survives a restart. Returns whether the requeue succeeded (the
-    /// caller then acks the original); a failed requeue is logged and leaves the delivery unacked —
-    /// nothing thrown here can escape the loop.
+    /// Redelivers through the topic itself, following the interval ladder: the envelope is cloned,
+    /// <c>RedeliveryCount</c> incremented and the concrete consumer's targeting stamped — nothing is
+    /// held in memory and the redelivery survives a restart. A <c>00:00</c> interval requeues at the
+    /// tail immediately; a positive one is scheduled (pending the scheduler package). Returns whether
+    /// the redelivery succeeded (the caller then acks the original); a failure is logged and leaves
+    /// the delivery unacked — nothing thrown here can escape the loop.
     /// </summary>
-    private async Task<bool> Retry(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    private async Task<bool> Redeliver(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
         Transport transport = CreateTransport(result);
-        int retry = transport.GetInt(TransportHeaders.RetryCount) + 1;
+        int redelivery = transport.GetInt(TransportHeaders.RedeliveryCount);
+        TimeSpan interval = _redeliveryIntervals[redelivery];
 
         Headers headers = transport.CloneHeaders();
 
-        Restamp(headers, TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(retry.ToString()));
+        Restamp(headers, TransportHeaders.RedeliveryCount, Encoding.UTF8.GetBytes((redelivery + 1).ToString()));
 
         Target(headers);
+
+        if (interval > TimeSpan.Zero)
+        {
+            _logger.LogError(exception, "Handling failed; scheduled redelivery is not available yet and the delivery is not acked.");
+
+            return false;
+        }
 
         try
         {
@@ -264,10 +266,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
             using (_logger.BeginScope(new Dictionary<string, object?>
             {
-                ["Retry"] = retry
+                ["Redelivery"] = redelivery + 1
             }))
             {
-                _logger.LogWarning(exception, "Handling failed; requeued to retry.");
+                _logger.LogWarning(exception, "Handling failed; requeued to redeliver.");
             }
 
             return true;
