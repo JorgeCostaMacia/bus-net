@@ -16,6 +16,7 @@ internal static class BusLoggerDescriptions
     public const string SendFaulted = "The send faulted.";
     public const string ConsumeRetried = "The consume is retried.";
     public const string WorkerStopped = "The worker stopped.";
+    public const string WorkerAbandoned = "The stop grace period expired; the consumer leaves the group by session timeout and is reclaimed at process exit.";
     public const string RedeliveredToNewOwner = "Lost in a rebalance; the new owner will handle the message again.";
     public const string QueuedMessagesMayBeLost = "Queued messages may be lost.";
 }

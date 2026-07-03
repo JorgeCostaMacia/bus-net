@@ -79,15 +79,30 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         return Task.CompletedTask;
     }
 
-    /// <summary>Cancels the consumer loop, awaits it and closes the consumer gracefully.</summary>
-    /// <param name="cancellationToken">A token to cancel shutdown.</param>
+    /// <summary>
+    /// Cancels the consumer loop, awaits it and closes the consumer gracefully — leaving the group
+    /// cleanly (final offsets committed, its partitions reassigned right away). When the shutdown's
+    /// grace period runs out before the loop ends, the worker is abandoned instead of failing the
+    /// host's stop: disposing under a live loop is unsafe, so the consumer leaves the group by
+    /// session timeout and the process teardown reclaims it.
+    /// </summary>
+    /// <param name="cancellationToken">A token bounding how long the stop may wait.</param>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         if (_cancellation is null || _loop is null || _consumer is null) return;
 
         _cancellation.Cancel();
 
-        await _loop.WaitAsync(cancellationToken);
+        try
+        {
+            await _loop.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerAbandoned)) _logger.LogWarning("Stop canceled.");
+
+            return;
+        }
 
         _consumer.Close();
         _consumer.Dispose();
