@@ -31,16 +31,16 @@ public class ConsumerErrorHandlerTests
             intervals ?? [],
             excludes ?? []);
 
-    private static ConsumeResult<Null, byte[]> Delivery(int? retryCount = 0, byte[]? body = null)
+    private static ConsumeResult<Ignore, byte[]> Delivery(int? retryCount = 0, byte[]? body = null)
     {
         Headers headers = [];
 
         if (retryCount is not null) headers.Add(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(retryCount.Value.ToString()));
 
-        return new ConsumeResult<Null, byte[]>
+        return new ConsumeResult<Ignore, byte[]>
         {
             TopicPartitionOffset = new TopicPartitionOffset(TOPIC, new Partition(0), new Offset(10)),
-            Message = new Message<Null, byte[]> { Value = body ?? "{}"u8.ToArray(), Headers = headers }
+            Message = new Message<Ignore, byte[]> { Value = body ?? "{}"u8.ToArray(), Headers = headers }
         };
     }
 
@@ -159,7 +159,7 @@ public class ConsumerErrorHandlerTests
     [Fact]
     public async Task Malformed_ParksToErrorTopic_WithTheOriginalEnvelope()
     {
-        ConsumeResult<Null, byte[]> delivery = Delivery(retryCount: 3, body: "not json"u8.ToArray());
+        ConsumeResult<Ignore, byte[]> delivery = Delivery(retryCount: 3, body: "not json"u8.ToArray());
 
         bool acked = await CreateSut([TimeSpan.Zero]).Malformed(delivery, new InvalidCastException("bad header"), TestContext.Current.CancellationToken);
 
@@ -184,7 +184,7 @@ public class ConsumerErrorHandlerTests
     [Fact]
     public async Task Handle_Requeue_DoesNotMutateTheOriginalDelivery()
     {
-        ConsumeResult<Null, byte[]> delivery = Delivery();
+        ConsumeResult<Ignore, byte[]> delivery = Delivery();
 
         await CreateSut([TimeSpan.Zero]).Handle(delivery, new InvalidOperationException(), headers => headers.Add("targeted", "yes"u8.ToArray()), TestContext.Current.CancellationToken);
 

@@ -29,8 +29,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>The consumer group id — the consumer's identity for offsets and consumer-side filtering.</summary>
     protected string GroupId { get; }
 
-    private readonly ConsumerBuilder<Null, byte[]> _builder;
-    private IConsumer<Null, byte[]>? _consumer;
+    private readonly ConsumerBuilder<Ignore, byte[]> _builder;
+    private IConsumer<Ignore, byte[]>? _consumer;
 
     private readonly ConsumerErrorHandler _errorHandler;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -49,7 +49,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
-        ConsumerBuilder<Null, byte[]> builder,
+        ConsumerBuilder<Ignore, byte[]> builder,
         ConsumerErrorHandler errorHandler,
         IServiceScopeFactory scopeFactory,
         ILogger logger,
@@ -102,7 +102,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="result">The delivered message.</param>
     /// <param name="transport">The delivery's transport.</param>
     /// <returns>The context handed to the handler.</returns>
-    protected abstract TContext CreateContext(ConsumeResult<Null, byte[]> result, Transport transport);
+    protected abstract TContext CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport);
 
     /// <summary>Invokes the concrete handler for a delivery.</summary>
     /// <param name="handler">The handler resolved from the delivery's service scope.</param>
@@ -116,7 +116,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     /// <param name="result">The delivered message.</param>
     /// <returns>Whether the delivery is skipped.</returns>
-    protected virtual bool Filtered(ConsumeResult<Null, byte[]> result) => false;
+    protected virtual bool Filtered(ConsumeResult<Ignore, byte[]> result) => false;
 
     /// <summary>
     /// Stamps the retry's targeting. Point-to-point consumers keep the default (none — the
@@ -138,7 +138,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            ConsumeResult<Null, byte[]>? result = null;
+            ConsumeResult<Ignore, byte[]>? result = null;
             IDisposable? logContext = null;
 
             try
@@ -201,7 +201,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
     }
 
-    private void Store(ConsumeResult<Null, byte[]> result)
+    private void Store(ConsumeResult<Ignore, byte[]> result)
     {
         try
         {

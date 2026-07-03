@@ -27,7 +27,7 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandConsumerWorker(
-        ConsumerBuilder<Null, byte[]> builder,
+        ConsumerBuilder<Ignore, byte[]> builder,
         ConsumerErrorHandler errorHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger,
@@ -36,7 +36,7 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
         : base(builder, errorHandler, scopeFactory, logger, topic, groupId) { }
 
     /// <inheritdoc />
-    protected override CommandContext<TCommand> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
+    protected override CommandContext<TCommand> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
         => new(
             JsonSerializer.Deserialize<TCommand>(result.Message.Value)!,
             transport,

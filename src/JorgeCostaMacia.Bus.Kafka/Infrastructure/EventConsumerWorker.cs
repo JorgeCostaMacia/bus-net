@@ -29,7 +29,7 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     public EventConsumerWorker(
-        ConsumerBuilder<Null, byte[]> builder,
+        ConsumerBuilder<Ignore, byte[]> builder,
         ConsumerErrorHandler errorHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger,
@@ -38,7 +38,7 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
         : base(builder, errorHandler, scopeFactory, logger, topic, groupId) { }
 
     /// <inheritdoc />
-    protected override EventContext<TEvent> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
+    protected override EventContext<TEvent> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
         => new(
             JsonSerializer.Deserialize<TEvent>(result.Message.Value)!,
             transport,
@@ -68,7 +68,7 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     /// </summary>
     /// <param name="result">The delivered message.</param>
     /// <returns>Whether the delivery is skipped.</returns>
-    protected override bool Filtered(ConsumeResult<Null, byte[]> result)
+    protected override bool Filtered(ConsumeResult<Ignore, byte[]> result)
     {
         if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header)) return false;
 

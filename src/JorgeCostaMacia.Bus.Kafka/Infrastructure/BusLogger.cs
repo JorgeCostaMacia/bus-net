@@ -83,7 +83,7 @@ internal static class BusLogger
     /// <param name="logger">The logger.</param>
     /// <param name="result">The delivered message.</param>
     /// <returns>The scope to dispose when the delivery's iteration ends.</returns>
-    public static IDisposable? ConsumerContext(ILogger logger, ConsumeResult<Null, byte[]> result)
+    public static IDisposable? ConsumerContext(ILogger logger, ConsumeResult<Ignore, byte[]> result)
     {
         Dictionary<string, object?> context = new()
         {

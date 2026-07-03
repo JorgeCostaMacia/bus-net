@@ -82,7 +82,7 @@ public sealed class BusContextConfigurator
         {
             ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
 
-            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
+            ConsumerBuilder<Ignore, byte[]> builder = new ConsumerBuilder<Ignore, byte[]>(configuration)
                 .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
@@ -134,7 +134,7 @@ public sealed class BusContextConfigurator
         {
             ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
 
-            ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
+            ConsumerBuilder<Ignore, byte[]> builder = new ConsumerBuilder<Ignore, byte[]>(configuration)
                 .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 

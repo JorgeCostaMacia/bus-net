@@ -65,7 +65,7 @@ internal sealed class ConsumerErrorHandler
     /// <param name="target">The concrete consumer's retry targeting, stamped on the requeued envelope.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>Whether the delivery is dealt with (the caller then acks it).</returns>
-    public async Task<bool> Handle(ConsumeResult<Null, byte[]> result, Exception exception, Action<Headers> target, CancellationToken cancellationToken)
+    public async Task<bool> Handle(ConsumeResult<Ignore, byte[]> result, Exception exception, Action<Headers> target, CancellationToken cancellationToken)
     {
         if (!Retryable(result, exception))
         {
@@ -99,7 +99,7 @@ internal sealed class ConsumerErrorHandler
     /// <param name="exception">The deserialization or envelope failure.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>Whether the delivery is parked (the caller then acks it).</returns>
-    public async Task<bool> Malformed(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    public async Task<bool> Malformed(ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
         if (!await Park(result, exception, cancellationToken)) return false;
 
@@ -112,7 +112,7 @@ internal sealed class ConsumerErrorHandler
     /// Whether a failed delivery is retried: the envelope's <c>RetryCount</c> has interval ladder
     /// entries left and the exception type is not excluded.
     /// </summary>
-    private bool Retryable(ConsumeResult<Null, byte[]> result, Exception exception)
+    private bool Retryable(ConsumeResult<Ignore, byte[]> result, Exception exception)
     {
         if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
 
@@ -125,7 +125,7 @@ internal sealed class ConsumerErrorHandler
     /// Requeues the retry at the topic's tail — nothing is held in memory and the retry survives a
     /// restart. A failed requeue is logged and leaves the delivery unacked.
     /// </summary>
-    private async Task<bool> Requeue(ConsumeResult<Null, byte[]> result, Exception exception, Headers headers, int retry, CancellationToken cancellationToken)
+    private async Task<bool> Requeue(ConsumeResult<Ignore, byte[]> result, Exception exception, Headers headers, int retry, CancellationToken cancellationToken)
     {
         try
         {
@@ -152,7 +152,7 @@ internal sealed class ConsumerErrorHandler
     /// a registered scheduler, or when scheduling fails, the failure is logged and the delivery left
     /// unacked.
     /// </summary>
-    private async Task<bool> Schedule(ConsumeResult<Null, byte[]> result, Exception exception, Headers headers, int retry, TimeSpan interval, CancellationToken cancellationToken)
+    private async Task<bool> Schedule(ConsumeResult<Ignore, byte[]> result, Exception exception, Headers headers, int retry, TimeSpan interval, CancellationToken cancellationToken)
     {
         if (_retryScheduler is null)
         {
@@ -189,7 +189,7 @@ internal sealed class ConsumerErrorHandler
     /// inspectable in Kafka and reinjectable targeted to the failing group. A failed park is logged
     /// and leaves the delivery unacked.
     /// </summary>
-    private async Task<bool> Park(ConsumeResult<Null, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    private async Task<bool> Park(ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
         Type type = exception.GetType();
 

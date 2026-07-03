@@ -13,10 +13,10 @@ public class TransportTests
     [Fact]
     public void Create_FromConsumeResult_MapsTheDelivery()
     {
-        ConsumeResult<Null, byte[]> result = new()
+        ConsumeResult<Ignore, byte[]> result = new()
         {
             TopicPartitionOffset = new TopicPartitionOffset("orders", new Partition(3), new Offset(42)),
-            Message = new Message<Null, byte[]> { Value = [], Headers = new Headers { { "key", "value"u8.ToArray() } } }
+            Message = new Message<Ignore, byte[]> { Value = [], Headers = new Headers { { "key", "value"u8.ToArray() } } }
         };
 
         Transport transport = Transport.Create(result);

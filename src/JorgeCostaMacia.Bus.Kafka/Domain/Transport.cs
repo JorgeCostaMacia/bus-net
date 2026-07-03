@@ -52,7 +52,7 @@ public sealed record Transport : ITransport
     /// <summary>Creates the transport for a delivered message from the broker-provided consume result.</summary>
     /// <param name="result">The delivered message.</param>
     /// <returns>The delivery's transport.</returns>
-    public static Transport Create(ConsumeResult<Null, byte[]> result)
+    public static Transport Create(ConsumeResult<Ignore, byte[]> result)
         => new(
             result.Message.Headers.ToImmutableList(),
             result.Topic,
