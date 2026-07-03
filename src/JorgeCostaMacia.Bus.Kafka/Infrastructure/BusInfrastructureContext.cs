@@ -17,8 +17,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 internal static class BusInfrastructureContext
 {
-    private const string PRODUCER_SECTION = "Bus:Producer";
-    private const string CONSUMER_SECTION = "Bus:Consumer";
+    internal const string PRODUCER_SECTION = "Bus:Producer";
+    internal const string CONSUMER_SECTION = "Bus:Consumer";
 
     /// <summary>
     /// Registers the bus over the application configuration and lets each context map its messages
@@ -112,18 +112,18 @@ internal static class BusInfrastructureContext
     /// </summary>
     private static Bus CreateBus(IServiceProvider provider, ProducerConfig configuration, IReadOnlyDictionary<Type, string> messages)
     {
-        ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(BusLogger.KafkaCategory);
+        ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
         IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
         IProducer<Null, byte[]> producer = new ProducerBuilder<Null, byte[]>(configuration)
             .SetErrorHandler((_, error) =>
             {
-                BusLogger.LogError(kafkaLogger, error);
+                KafkaLogger.LogError(kafkaLogger, error);
 
                 if (error.IsFatal) lifetime.StopApplication();
             })
-            .SetLogHandler((_, log) => BusLogger.Log(kafkaLogger, log))
-            .SetStatisticsHandler((_, statistics) => BusLogger.LogStatistics(kafkaLogger, statistics))
+            .SetLogHandler((_, log) => KafkaLogger.Log(kafkaLogger, log))
+            .SetStatisticsHandler((_, statistics) => KafkaLogger.LogStatistics(kafkaLogger, statistics))
             .Build();
 
         return new Bus(producer, messages, provider.GetRequiredService<ILogger<Bus>>());

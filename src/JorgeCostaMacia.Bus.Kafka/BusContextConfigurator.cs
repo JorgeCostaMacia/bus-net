@@ -75,41 +75,17 @@ public sealed class BusContextConfigurator
         where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
     {
         ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
-            ?? throw new InvalidOperationException("'Bus:Consumer' is null.");
+            ?? throw new InvalidOperationException($"'{BusInfrastructureContext.CONSUMER_SECTION}' is null.");
 
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
-            ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(BusLogger.KafkaCategory);
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
-            ConsumerBuilder<Ignore, byte[]> builder = new ConsumerBuilder<Ignore, byte[]>(configuration)
-                .SetErrorHandler((_, kafkaError) =>
-                {
-                    BusLogger.LogError(kafkaLogger, kafkaError);
-
-                    if (kafkaError.IsFatal) lifetime.StopApplication();
-                })
-                .SetLogHandler((_, log) => BusLogger.Log(kafkaLogger, log))
-                .SetStatisticsHandler((_, statistics) => BusLogger.LogStatistics(kafkaLogger, statistics))
-                .SetOffsetsCommittedHandler((_, committed) => BusLogger.LogCommit(logger, committed))
-                .SetPartitionsAssignedHandler((_, partitions) => BusLogger.LogPartitionsAssigned(logger, partitions))
-                .SetPartitionsRevokedHandler((_, partitions) => BusLogger.LogPartitionsRevoked(logger, partitions))
-                .SetPartitionsLostHandler((_, partitions) => BusLogger.LogPartitionsLost(logger, partitions));
-
-            ConsumerErrorHandler errorHandler = new(
-                provider.GetRequiredService<Infrastructure.Bus>(),
-                provider.GetService<IRetryScheduler>(),
-                logger,
-                topic,
-                groupId,
-                retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
-                retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
-
             return new CommandConsumerWorker<TCommand, TCommandHandler>(
-                builder,
-                errorHandler,
+                CreateBuilder(provider, configuration, logger, lifetime),
+                CreateErrorHandler(provider, logger, topic, groupId, retryIntervals, retryExcludeExceptionTypes),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
@@ -140,41 +116,17 @@ public sealed class BusContextConfigurator
         where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
     {
         ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
-            ?? throw new InvalidOperationException("'Bus:Consumer' is null.");
+            ?? throw new InvalidOperationException($"'{BusInfrastructureContext.CONSUMER_SECTION}' is null.");
 
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
-            ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(BusLogger.KafkaCategory);
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
-            ConsumerBuilder<Ignore, byte[]> builder = new ConsumerBuilder<Ignore, byte[]>(configuration)
-                .SetErrorHandler((_, kafkaError) =>
-                {
-                    BusLogger.LogError(kafkaLogger, kafkaError);
-
-                    if (kafkaError.IsFatal) lifetime.StopApplication();
-                })
-                .SetLogHandler((_, log) => BusLogger.Log(kafkaLogger, log))
-                .SetStatisticsHandler((_, statistics) => BusLogger.LogStatistics(kafkaLogger, statistics))
-                .SetOffsetsCommittedHandler((_, committed) => BusLogger.LogCommit(logger, committed))
-                .SetPartitionsAssignedHandler((_, partitions) => BusLogger.LogPartitionsAssigned(logger, partitions))
-                .SetPartitionsRevokedHandler((_, partitions) => BusLogger.LogPartitionsRevoked(logger, partitions))
-                .SetPartitionsLostHandler((_, partitions) => BusLogger.LogPartitionsLost(logger, partitions));
-
-            ConsumerErrorHandler errorHandler = new(
-                provider.GetRequiredService<Infrastructure.Bus>(),
-                provider.GetService<IRetryScheduler>(),
-                logger,
-                topic,
-                groupId,
-                retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
-                retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
-
             return new EventConsumerWorker<TEvent, TEventSubscriber>(
-                builder,
-                errorHandler,
+                CreateBuilder(provider, configuration, logger, lifetime),
+                CreateErrorHandler(provider, logger, topic, groupId, retryIntervals, retryExcludeExceptionTypes),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
@@ -184,4 +136,39 @@ public sealed class BusContextConfigurator
 
         return this;
     }
+
+    /// <summary>
+    /// Composes a consumer's Kafka builder: the settings plus every callback wired — the client's
+    /// error/log/statistics to the Kafka category (a fatal error stops the application), the commit
+    /// results and the partition lifecycle to the worker's logger.
+    /// </summary>
+    private static ConsumerBuilder<Ignore, byte[]> CreateBuilder(IServiceProvider provider, ConsumerConfig configuration, ILogger logger, IHostApplicationLifetime lifetime)
+    {
+        ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
+
+        return new ConsumerBuilder<Ignore, byte[]>(configuration)
+            .SetErrorHandler((_, kafkaError) =>
+            {
+                KafkaLogger.LogError(kafkaLogger, kafkaError);
+
+                if (kafkaError.IsFatal) lifetime.StopApplication();
+            })
+            .SetLogHandler((_, log) => KafkaLogger.Log(kafkaLogger, log))
+            .SetStatisticsHandler((_, statistics) => KafkaLogger.LogStatistics(kafkaLogger, statistics))
+            .SetOffsetsCommittedHandler((_, committed) => BusLogger.LogCommit(logger, committed))
+            .SetPartitionsAssignedHandler((_, partitions) => BusLogger.LogPartitionsAssigned(logger, partitions))
+            .SetPartitionsRevokedHandler((_, partitions) => BusLogger.LogPartitionsRevoked(logger, partitions))
+            .SetPartitionsLostHandler((_, partitions) => BusLogger.LogPartitionsLost(logger, partitions));
+    }
+
+    /// <summary>Composes a consumer's failure policy, the defaults applied.</summary>
+    private static ConsumerErrorHandler CreateErrorHandler(IServiceProvider provider, ILogger logger, string topic, string groupId, ImmutableList<TimeSpan>? retryIntervals, ImmutableList<Type>? retryExcludeExceptionTypes)
+        => new(
+            provider.GetRequiredService<Infrastructure.Bus>(),
+            provider.GetService<IRetryScheduler>(),
+            logger,
+            topic,
+            groupId,
+            retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
+            retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
 }

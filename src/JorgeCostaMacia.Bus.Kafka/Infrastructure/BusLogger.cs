@@ -6,24 +6,15 @@ using Microsoft.Extensions.Logging;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The bus's logging: the librdkafka callbacks (connection-level and fatal errors, and the client's
-/// internal logs mapped to their severity — routed to the logger with the details as scope
-/// properties, so the producer and consumer builders map their handlers directly), the logging
-/// scopes (the worker's identity, the inbound delivery, the outbound delivery — body and envelope
-/// decoded, inspectable and reinjectable from the log platform), the retry warnings, and the
-/// <c>BusDescription</c> stamping — the template is the minimal, groupable fact and every outcome
-/// log expands it with a <see cref="BusLoggerDescriptions"/> value, so the failures are indexable
-/// and manageable from the log platform.
+/// The bus's logging: the scopes (the worker's identity, the inbound delivery, the outbound
+/// delivery — body and envelope decoded, inspectable and reinjectable from the log platform), the
+/// retry warnings, the commit failures and the partition lifecycle — every outcome log carries the
+/// minimal, groupable template and a <c>BusDescription</c> expansion from
+/// <see cref="BusLoggerDescriptions"/>, so the failures are indexable and manageable from the log
+/// platform. The Kafka client's own callbacks log apart, through <see cref="KafkaLogger"/>.
 /// </summary>
 internal static class BusLogger
 {
-    /// <summary>
-    /// The logger category every librdkafka callback logs under — separate from the bus's own
-    /// categories, so the client's noise is silenced independently (e.g.
-    /// <c>Logging:LogLevel:JorgeCostaMacia.Bus.Kafka.Client = Warning</c>).
-    /// </summary>
-    public const string KafkaCategory = "JorgeCostaMacia.Bus.Kafka.Client";
-
     /// <summary>
     /// Opens a scope stamping the outcome's <c>BusDescription</c> (one of
     /// <see cref="BusLoggerDescriptions"/>) on the log written inside it.
@@ -36,54 +27,6 @@ internal static class BusLogger
         {
             ["BusDescription"] = description
         });
-    /// <summary>
-    /// Logs a Kafka client error with the error destructured in the scope — critical when the client
-    /// is in an unrecoverable state (<see cref="Error.IsFatal"/>), a warning otherwise (the client
-    /// recovers on its own; the docs call these informational).
-    /// </summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="error">The Kafka error.</param>
-    public static void LogError(ILogger logger, Error error)
-    {
-        using (logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["@KafkaError"] = error
-        }))
-        {
-            logger.Log(error.IsFatal ? LogLevel.Critical : LogLevel.Warning, "Kafka error.");
-        }
-    }
-
-    /// <summary>Logs an internal (librdkafka) message with its source and text in the scope, mapped to its severity.</summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="log">The Kafka log message.</param>
-    public static void Log(ILogger logger, LogMessage log)
-    {
-        using (logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["KafkaName"] = log.Name,
-            ["KafkaFacility"] = log.Facility,
-            ["KafkaMessage"] = log.Message
-        }))
-        {
-            logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "Kafka log.");
-        }
-    }
-
-    /// <summary>Logs the client's statistics JSON — emitted only when <c>StatisticsIntervalMs</c> is configured.</summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="statistics">The librdkafka statistics JSON.</param>
-    public static void LogStatistics(ILogger logger, string statistics)
-    {
-        using (logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["KafkaStatistics"] = statistics
-        }))
-        {
-            logger.LogDebug("Kafka statistics.");
-        }
-    }
-
     /// <summary>
     /// Logs a failed background offset commit — a silent failure otherwise: the stored offsets stay
     /// uncommitted and the crash-redelivery window widens. Successful commits are not logged.

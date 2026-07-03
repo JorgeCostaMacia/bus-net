@@ -248,13 +248,4 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
     }
 
-    /// <summary>Replaces every value of a header key with the given one.</summary>
-    /// <param name="headers">The headers to restamp.</param>
-    /// <param name="key">The header key.</param>
-    /// <param name="value">The new value.</param>
-    protected static void Restamp(Headers headers, string key, byte[] value)
-    {
-        headers.Remove(key);
-        headers.Add(key, value);
-    }
 }

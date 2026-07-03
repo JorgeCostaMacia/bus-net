@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 using JorgeCostaMacia.Bus.Domain.Contexts;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
@@ -107,4 +108,31 @@ public sealed record EventContext<TEvent> :
         AggregateOccurredAt = aggregateOccurredAt;
         RetryCount = retryCount;
     }
+
+    /// <summary>
+    /// Builds the context for a delivery: deserializes the event from the raw body and reads every
+    /// envelope value from the transport's typed getters — the mapping lives here, next to the
+    /// record it fills.
+    /// </summary>
+    /// <param name="body">The delivered message's raw body.</param>
+    /// <param name="transport">The delivery's transport.</param>
+    /// <returns>The context handed to the subscriber.</returns>
+    internal static EventContext<TEvent> Create(byte[] body, Transport transport)
+        => new(
+            JsonSerializer.Deserialize<TEvent>(body)!,
+            transport,
+            transport.GetGuid(TransportHeaders.MessageId),
+            transport.GetString(TransportHeaders.MessageType),
+            transport.GetStringList(TransportHeaders.MessageTypeUrn),
+            transport.GetString(TransportHeaders.MessageDestinationAddress),
+            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
+            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
+            transport.GetGuid(TransportHeaders.ConversationId),
+            transport.GetString(TransportHeaders.ConversationAddress),
+            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
+            transport.GetStringList(TransportHeaders.AggregateConsumers),
+            transport.GetGuid(TransportHeaders.AggregateId),
+            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
+            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
+            transport.GetInt(TransportHeaders.RetryCount));
 }

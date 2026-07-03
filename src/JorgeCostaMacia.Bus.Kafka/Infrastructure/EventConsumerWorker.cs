@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
@@ -42,23 +41,7 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
-        => new(
-            JsonSerializer.Deserialize<TEvent>(result.Message.Value)!,
-            transport,
-            transport.GetGuid(TransportHeaders.MessageId),
-            transport.GetString(TransportHeaders.MessageType),
-            transport.GetStringList(TransportHeaders.MessageTypeUrn),
-            transport.GetString(TransportHeaders.MessageDestinationAddress),
-            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
-            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
-            transport.GetGuid(TransportHeaders.ConversationId),
-            transport.GetString(TransportHeaders.ConversationAddress),
-            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateConsumers),
-            transport.GetGuid(TransportHeaders.AggregateId),
-            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
-            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RetryCount));
+        => EventContext<TEvent>.Create(result.Message.Value, transport);
 
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
@@ -91,5 +74,5 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     /// </summary>
     /// <param name="headers">The retry's headers.</param>
     protected override void Target(Headers headers)
-        => Restamp(headers, TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(GroupId));
+        => headers.Restamp(TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(GroupId));
 }

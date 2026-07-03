@@ -130,16 +130,16 @@ public sealed class Bus : IBus, IDisposable
 
         Headers headers = inbound.CloneHeaders();
 
-        Restamp(headers, TransportHeaders.MessageId, Bytes(messageId));
-        Restamp(headers, TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name));
-        Restamp(headers, TransportHeaders.MessageTypeUrn, Bytes(UrnFactory.Domain.UrnFactory.Create(type)));
-        Restamp(headers, TransportHeaders.MessageOriginAddress, Bytes(inbound.GetString(TransportHeaders.MessageDestinationAddress)));
-        Restamp(headers, TransportHeaders.MessageDestinationAddress, Bytes(topic));
-        Restamp(headers, TransportHeaders.MessageOccurredAt, Bytes(DateTime.UtcNow.ToString("O")));
-        Restamp(headers, TransportHeaders.AggregateId, Bytes(message.AggregateId));
-        Restamp(headers, TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId));
-        Restamp(headers, TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
-        Restamp(headers, TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers));
+        headers.Restamp(TransportHeaders.MessageId, Bytes(messageId));
+        headers.Restamp(TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name));
+        headers.Restamp(TransportHeaders.MessageTypeUrn, Bytes(UrnFactory.Domain.UrnFactory.Create(type)));
+        headers.Restamp(TransportHeaders.MessageOriginAddress, Bytes(inbound.GetString(TransportHeaders.MessageDestinationAddress)));
+        headers.Restamp(TransportHeaders.MessageDestinationAddress, Bytes(topic));
+        headers.Restamp(TransportHeaders.MessageOccurredAt, Bytes(DateTime.UtcNow.ToString("O")));
+        headers.Restamp(TransportHeaders.AggregateId, Bytes(message.AggregateId));
+        headers.Restamp(TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId));
+        headers.Restamp(TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
+        headers.Restamp(TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers));
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
     }
@@ -176,12 +176,6 @@ public sealed class Bus : IBus, IDisposable
 
             throw;
         }
-    }
-
-    private static void Restamp(Headers headers, string key, byte[] value)
-    {
-        headers.Remove(key);
-        headers.Add(key, value);
     }
 
     /// <summary>Waits until the producer's outbound queue is fully delivered — the shutdown flush.</summary>

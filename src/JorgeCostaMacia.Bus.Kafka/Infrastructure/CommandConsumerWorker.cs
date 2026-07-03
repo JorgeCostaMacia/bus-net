@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
@@ -40,23 +39,7 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
-        => new(
-            JsonSerializer.Deserialize<TCommand>(result.Message.Value)!,
-            transport,
-            transport.GetGuid(TransportHeaders.MessageId),
-            transport.GetString(TransportHeaders.MessageType),
-            transport.GetStringList(TransportHeaders.MessageTypeUrn),
-            transport.GetString(TransportHeaders.MessageDestinationAddress),
-            transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress),
-            transport.GetDateTime(TransportHeaders.MessageOccurredAt),
-            transport.GetGuid(TransportHeaders.ConversationId),
-            transport.GetString(TransportHeaders.ConversationAddress),
-            transport.GetDateTime(TransportHeaders.ConversationOccurredAt),
-            transport.GetStringList(TransportHeaders.AggregateConsumers),
-            transport.GetGuid(TransportHeaders.AggregateId),
-            transport.GetGuid(TransportHeaders.AggregateCorrelationId),
-            transport.GetDateTime(TransportHeaders.AggregateOccurredAt),
-            transport.GetInt(TransportHeaders.RetryCount));
+        => CommandContext<TCommand>.Create(result.Message.Value, transport);
 
     /// <inheritdoc />
     protected override Task Handle(TCommandHandler handler, CommandContext<TCommand> context, CancellationToken cancellationToken)

@@ -84,7 +84,7 @@ internal sealed class ConsumerErrorHandler
 
         Headers headers = transport.CloneHeaders();
 
-        Restamp(headers, TransportHeaders.RetryCount, Encoding.UTF8.GetBytes((retry + 1).ToString()));
+        headers.Restamp(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes((retry + 1).ToString()));
 
         target(headers);
 
@@ -222,10 +222,4 @@ internal sealed class ConsumerErrorHandler
         }
     }
 
-    /// <summary>Replaces every value of a header key with the given one.</summary>
-    private static void Restamp(Headers headers, string key, byte[] value)
-    {
-        headers.Remove(key);
-        headers.Add(key, value);
-    }
 }
