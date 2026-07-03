@@ -70,6 +70,11 @@ public static class ConsumerConfigurationDefaults
     /// <summary>Kafka client identifier. Default: <see cref="Environment.MachineName"/>.</summary>
     public static string CLIENT_ID => Environment.MachineName;
 
-    /// <summary>Static consumer group instance id. Default: <see cref="Environment.MachineName"/>.</summary>
+    /// <summary>
+    /// Static consumer group instance id. Default: <see cref="Environment.MachineName"/> (unique per
+    /// container) — a restart within the session timeout keeps the partition assignment with no
+    /// rebalance; note a static member does not leave the group on close (eviction is by session
+    /// timeout).
+    /// </summary>
     public static string GROUP_INSTANCE_ID => Environment.MachineName;
 }

@@ -156,6 +156,16 @@ public sealed class Bus : IBus, IDisposable
         {
             return await _producer.ProduceAsync(topic, message, cancellationToken);
         }
+        catch (ProduceException<Null, byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
+        {
+            using (BusLogger.ProducerContext(_logger, topic, message))
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ProducerQueueFull))
+            {
+                _logger.LogError(exception, "Producer failed.");
+            }
+
+            throw;
+        }
         catch (ProduceException<Null, byte[]> exception)
         {
             using (BusLogger.ProducerContext(_logger, topic, message))

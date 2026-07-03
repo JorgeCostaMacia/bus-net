@@ -3,6 +3,7 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -24,6 +25,7 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
     /// <param name="errorHandler">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
+    /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandConsumerWorker(
@@ -31,9 +33,10 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
         ConsumerErrorHandler errorHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger,
+        IHostApplicationLifetime lifetime,
         string topic,
         string groupId)
-        : base(builder, errorHandler, scopeFactory, logger, topic, groupId) { }
+        : base(builder, errorHandler, scopeFactory, logger, lifetime, topic, groupId) { }
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)

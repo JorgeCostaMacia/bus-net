@@ -60,6 +60,18 @@ public sealed record ProducerConfiguration
     /// <summary>Client id, or <see langword="null"/> for the default (machine name).</summary>
     public string? ClientId { get; init; }
 
+    /// <summary>Maximum messages in the producer's local queue — a full queue throws <c>Local_QueueFull</c> (the client's back-pressure signal) — or <see langword="null"/> for the client default (100000).</summary>
+    public int? QueueBufferingMaxMessages { get; init; }
+
+    /// <summary>Maximum kbytes in the producer's local queue (takes priority over the message count), or <see langword="null"/> for the client default (1048576).</summary>
+    public int? QueueBufferingMaxKbytes { get; init; }
+
+    /// <summary>Delivery report fields to marshal back (e.g. <c>none</c> when only the error is checked), or <see langword="null"/> for the client default (<c>all</c> — the setter rejects null, so the default is composed explicitly).</summary>
+    public string? DeliveryReportFields { get; init; }
+
+    /// <summary>Interval (ms) between statistics emissions (logged at Debug under the Kafka category), or <see langword="null"/> for none.</summary>
+    public int? StatisticsIntervalMs { get; init; }
+
     /// <summary>librdkafka debug contexts (comma-separated, e.g. <c>broker,topic,msg</c>), or <see langword="null"/> for none.</summary>
     public string? Debug { get; init; }
 
@@ -86,6 +98,10 @@ public sealed record ProducerConfiguration
         RetryBackoffMs = RetryBackoffMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MS,
         RetryBackoffMaxMs = RetryBackoffMaxMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
         ClientId = ClientId ?? ProducerConfigurationDefaults.CLIENT_ID,
+        QueueBufferingMaxMessages = QueueBufferingMaxMessages,
+        QueueBufferingMaxKbytes = QueueBufferingMaxKbytes,
+        DeliveryReportFields = DeliveryReportFields ?? "all",
+        StatisticsIntervalMs = StatisticsIntervalMs,
         Debug = Debug,
         LogConnectionClose = LogConnectionClose
     };

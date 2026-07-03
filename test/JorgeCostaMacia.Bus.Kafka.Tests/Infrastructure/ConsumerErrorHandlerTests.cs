@@ -157,7 +157,7 @@ public class ConsumerErrorHandlerTests
     }
 
     [Fact]
-    public async Task Malformed_ParksToErrorTopic_WithTheOriginalEnvelope()
+    public async Task Malformed_ParksToFaultTopic_WithTheOriginalEnvelope()
     {
         ConsumeResult<Ignore, byte[]> delivery = Delivery(retryCount: 3, body: "not json"u8.ToArray());
 
@@ -165,7 +165,7 @@ public class ConsumerErrorHandlerTests
 
         Assert.True(acked);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{TOPIC}.error", topic);
+        Assert.Equal($"{TOPIC}.fault", topic);
         Assert.Equal("not json"u8.ToArray(), message.Value);
         Assert.Equal("3", Header(message, TransportHeaders.RetryCount));
         Assert.Equal(typeof(InvalidCastException).FullName, Header(message, TransportHeaders.ErrorType));

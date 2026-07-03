@@ -10,7 +10,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
 /// Base for the hosted consumers — one per handler, one consumer loop on its topic (scale out by
-/// running more app instances; the consumer group balances the partitions). Its Kafka configuration
+/// running more app instances; the consumer group balances the partitions). The loop is strictly
+/// sequential: a handler outrunning <c>MaxPollIntervalMs</c> (5 minutes by default) evicts the
+/// consumer from the group until the next consume rejoins — raise that knob for slower handlers.
+/// Its Kafka configuration
 /// arrives as a ready-made builder (settings and logging handlers wired where it is composed); its
 /// custom policy — topic, group id, resilience — through the constructor. The whole delivery flow and
 /// its error policy live here once: consume → filter → rebuild transport/context → handle in its own
@@ -35,6 +38,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly ConsumerErrorHandler _errorHandler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
+    private readonly IHostApplicationLifetime _lifetime;
 
     private readonly string _topic;
 
@@ -46,6 +50,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="errorHandler">The failure policy deciding a failed delivery's outcome — retry ladder, retry scheduler, error topic.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
+    /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
@@ -53,6 +58,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         ConsumerErrorHandler errorHandler,
         IServiceScopeFactory scopeFactory,
         ILogger logger,
+        IHostApplicationLifetime lifetime,
         string topic,
         string groupId)
     {
@@ -60,6 +66,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _errorHandler = errorHandler;
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _lifetime = lifetime;
         _topic = topic;
         GroupId = groupId;
     }
@@ -80,11 +87,12 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     }
 
     /// <summary>
-    /// Cancels the consumer loop, awaits it and closes the consumer gracefully — leaving the group
-    /// cleanly (final offsets committed, its partitions reassigned right away). When the shutdown's
-    /// grace period runs out before the loop ends, the worker is abandoned instead of failing the
-    /// host's stop: disposing under a live loop is unsafe, so the consumer leaves the group by
-    /// session timeout and the process teardown reclaims it.
+    /// Cancels the consumer loop, awaits it and closes the consumer gracefully — final offsets
+    /// committed. With the default static membership (<c>GroupInstanceId</c>) closing does NOT leave
+    /// the group: the assignment is retained for a restart within the session timeout, so rolling
+    /// deploys do not rebalance. When the shutdown's grace period runs out before the loop ends, the
+    /// worker is abandoned instead of failing the host's stop: disposing under a live loop is
+    /// unsafe, so the consumer is evicted by session timeout and the process teardown reclaims it.
     /// </summary>
     /// <param name="cancellationToken">A token bounding how long the stop may wait.</param>
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -143,7 +151,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>
     /// The consumer loop — the delivery flow with each failure in its own lane: our shutdown exits
     /// through the while condition; consume errors back off (the client reconnects on its own);
-    /// malformed deliveries park to the error topic; every other handling failure is decided by the
+    /// malformed deliveries park to the fault topic; every other handling failure is decided by the
     /// <see cref="ConsumerErrorHandler"/> policy — retry ladder, retry scheduler, error topic. A dealt-with
     /// delivery is acked; an unresolved one is logged with the delivery attached and left unacked.
     /// </summary>
@@ -182,6 +190,14 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Consume canceled.");
+            }
+            catch (ConsumeException exception) when (exception.Error.IsFatal)
+            {
+                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ApplicationStopped)) _logger.LogCritical(exception, "Consume failed.");
+
+                _lifetime.StopApplication();
+
+                return;
             }
             catch (ConsumeException exception)
             {

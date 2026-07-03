@@ -68,6 +68,15 @@ public sealed class ConsumerConfiguration
     /// <summary>Static group instance id, or <see langword="null"/> for the default (machine name).</summary>
     public string? GroupInstanceId { get; init; }
 
+    /// <summary>Minimum messages the client prefetches per partition, or <see langword="null"/> for the client default (100000).</summary>
+    public int? QueuedMinMessages { get; init; }
+
+    /// <summary>Maximum kbytes the client prefetches per partition — dominates the consumer's memory footprint when a process hosts many workers — or <see langword="null"/> for the client default (65536).</summary>
+    public int? QueuedMaxMessagesKbytes { get; init; }
+
+    /// <summary>Interval (ms) between statistics emissions (logged at Debug under the Kafka category), or <see langword="null"/> for none.</summary>
+    public int? StatisticsIntervalMs { get; init; }
+
     /// <summary>librdkafka debug contexts (comma-separated, e.g. <c>consumer,cgrp,topic,fetch</c>), or <see langword="null"/> for none.</summary>
     public string? Debug { get; init; }
 
@@ -103,6 +112,9 @@ public sealed class ConsumerConfiguration
             ClientId = ClientId ?? ConsumerConfigurationDefaults.CLIENT_ID,
             GroupId = groupId,
             GroupInstanceId = GroupInstanceId ?? ConsumerConfigurationDefaults.GROUP_INSTANCE_ID,
+            QueuedMinMessages = QueuedMinMessages,
+            QueuedMaxMessagesKbytes = QueuedMaxMessagesKbytes,
+            StatisticsIntervalMs = StatisticsIntervalMs,
             Debug = Debug,
             LogConnectionClose = LogConnectionClose
         };

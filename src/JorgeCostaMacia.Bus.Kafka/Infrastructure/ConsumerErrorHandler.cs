@@ -10,16 +10,18 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// The consumer's failure policy — one place deciding what happens to a failed delivery. A retryable
 /// failure follows the interval ladder: a <c>00:00</c> interval requeues to the topic's tail
 /// immediately (envelope cloned, <c>RetryCount</c> incremented, the consumer's targeting stamped), a
-/// positive one is parked through the retry scheduler to be produced back at its time. A final
-/// failure — retries exhausted, an excluded exception, no ladder, or a malformed delivery — is parked
-/// to the topic's <c>.error</c> topic with the original envelope plus the failure stamped as headers
-/// (Grafana stays the global control point; the error topic is the durable Kafka-side parking).
+/// positive one is parked through the retry scheduler to be produced back at its time. Final
+/// failures park by blame: a handler failure — retries exhausted, an excluded exception, no ladder —
+/// to the topic's <c>.error</c>; a malformed delivery — broken body or envelope, the handler never
+/// ran — to the topic's <c>.fault</c>. Both carry the original envelope plus the failure stamped as
+/// headers (Grafana stays the global control point; the parking topics are the durable Kafka side).
 /// Every outcome that succeeds acks the original delivery; every failure here is logged and leaves it
 /// unacked — nothing thrown can escape the consumer loop.
 /// </summary>
 internal sealed class ConsumerErrorHandler
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";
+    private const string FAULT_TOPIC_SUFFIX = ".fault";
 
     private readonly Bus _bus;
     private readonly IRetryScheduler? _retryScheduler;
@@ -69,7 +71,7 @@ internal sealed class ConsumerErrorHandler
     {
         if (!Retryable(result, exception))
         {
-            if (!await Park(result, exception, cancellationToken)) return false;
+            if (!await Park(result, exception, ERROR_TOPIC_SUFFIX, cancellationToken)) return false;
 
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(exception, "Handler failed.");
 
@@ -92,8 +94,9 @@ internal sealed class ConsumerErrorHandler
     }
 
     /// <summary>
-    /// Parks a malformed delivery to the error topic — its bytes can never be processed, retrying is
-    /// pointless.
+    /// Parks a malformed delivery to the fault topic — its bytes can never be processed and the
+    /// handler never ran: the blame is the message, not the code, so it parks apart from the handler
+    /// failures.
     /// </summary>
     /// <param name="result">The malformed delivery.</param>
     /// <param name="exception">The deserialization or envelope failure.</param>
@@ -101,9 +104,9 @@ internal sealed class ConsumerErrorHandler
     /// <returns>Whether the delivery is parked (the caller then acks it).</returns>
     public async Task<bool> Malformed(ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
-        if (!await Park(result, exception, cancellationToken)) return false;
+        if (!await Park(result, exception, FAULT_TOPIC_SUFFIX, cancellationToken)) return false;
 
-        using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(exception, "Malformed delivery.");
+        using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToFaultTopic)) _logger.LogError(exception, "Malformed delivery.");
 
         return true;
     }
@@ -184,12 +187,13 @@ internal sealed class ConsumerErrorHandler
     }
 
     /// <summary>
-    /// Parks a final failure to the topic's <c>.error</c> topic: the original bytes and envelope plus
+    /// Parks a final failure to the topic's parking topic (<c>.error</c> for handler failures,
+    /// <c>.fault</c> for malformed deliveries): the original bytes and envelope plus
     /// the failure stamped as headers (exception type/message, the failing group, the UTC time) —
     /// inspectable in Kafka and reinjectable targeted to the failing group. A failed park is logged
     /// and leaves the delivery unacked.
     /// </summary>
-    private async Task<bool> Park(ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    private async Task<bool> Park(ConsumeResult<Ignore, byte[]> result, Exception exception, string topicSuffix, CancellationToken cancellationToken)
     {
         Type type = exception.GetType();
 
@@ -202,7 +206,7 @@ internal sealed class ConsumerErrorHandler
 
         try
         {
-            await _bus.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
+            await _bus.Produce(_topic + topicSuffix, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
 
             return true;
         }

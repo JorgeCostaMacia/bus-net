@@ -2,6 +2,7 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -112,10 +113,17 @@ internal static class BusInfrastructureContext
     private static Bus CreateBus(IServiceProvider provider, ProducerConfig configuration, IReadOnlyDictionary<Type, string> messages)
     {
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(BusLogger.KafkaCategory);
+        IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
         IProducer<Null, byte[]> producer = new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) => BusLogger.LogError(kafkaLogger, error))
+            .SetErrorHandler((_, error) =>
+            {
+                BusLogger.LogError(kafkaLogger, error);
+
+                if (error.IsFatal) lifetime.StopApplication();
+            })
             .SetLogHandler((_, log) => BusLogger.Log(kafkaLogger, log))
+            .SetStatisticsHandler((_, statistics) => BusLogger.LogStatistics(kafkaLogger, statistics))
             .Build();
 
         return new Bus(producer, messages, provider.GetRequiredService<ILogger<Bus>>());
