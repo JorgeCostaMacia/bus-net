@@ -1,6 +1,6 @@
 # JorgeCostaMacia.Bus.UrnFactory
 
-**URN factory for `JorgeCostaMacia.Bus`** — builds the ordered `MessageTypeUrn` list from a message type: its own URN plus the URNs of its (non-system) interfaces and base types, as `urn:message:{FullTypeName}`. Gives every message a hierarchical identity for **polymorphic routing** and **versioning** (e.g. subscribing to `IEvent` to receive every domain event). Shared by the transports so they build the URN list the same way.
+**URN factory for `JorgeCostaMacia.Bus`** — builds the ordered `MessageTypeUrn` list from a message type: its own URN plus the URNs of its (non-system) interfaces and base types, as `urn:message:{FullTypeName}`. Gives every message a hierarchical identity for **polymorphic routing** and **versioning** (e.g. subscribing to a shared base event type to receive every event under it). Shared by the transports so they build the URN list the same way.
 
 [![NuGet](https://img.shields.io/nuget/v/JorgeCostaMacia.Bus.UrnFactory.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.UrnFactory/)
 [![Downloads](https://img.shields.io/nuget/dt/JorgeCostaMacia.Bus.UrnFactory.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.UrnFactory/)
@@ -19,7 +19,7 @@ dotnet add package JorgeCostaMacia.Bus.UrnFactory
 
 ```csharp
 ImmutableList<string> urns = UrnFactory.Create<OrderPlaced>();
-// urn:message:MyApp.OrderPlaced, urn:message:…IEvent, …  (ordered by length)
+// urn:message:MyApp.OrderPlaced, urn:message:…Event, …  (ordered by length)
 ```
 
 ## Requirements

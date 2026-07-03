@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Domain.Buses;
 /// conversation, or pass the inbound transport to continue from a message being handled — its
 /// envelope (conversation, resilience counters) is propagated from there.
 /// </summary>
-/// <typeparam name="TMessage">The message family this bus accepts (e.g. <c>ICommand</c>).</typeparam>
+/// <typeparam name="TMessage">The message family this bus accepts (e.g. the transport's <c>Command</c> base).</typeparam>
 public interface ISenderBus<TMessage> : IBus
     where TMessage : IMessage
 {

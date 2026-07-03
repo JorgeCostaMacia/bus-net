@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.UrnFactory.Domain;
 /// Builds the ordered <c>MessageTypeUrn</c> list for a message type: its own URN plus the URNs of
 /// its (non-system) interfaces and base types, in the form <c>urn:message:{FullTypeName}</c>. This
 /// gives every message a hierarchical identity, enabling <b>polymorphic routing</b> and
-/// <b>versioning</b> across the bus (e.g. subscribing to <c>IEvent</c> to receive every domain event).
+/// <b>versioning</b> across the bus (e.g. subscribing to a shared base event type to receive every event under it).
 /// </summary>
 public static class UrnFactory
 {

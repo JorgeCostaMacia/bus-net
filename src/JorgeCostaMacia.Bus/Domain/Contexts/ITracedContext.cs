@@ -18,7 +18,7 @@ public interface ITracedContext : IContext
 
     /// <summary>
     /// Ordered URNs of the message type and its base types/interfaces, enabling polymorphic routing
-    /// and versioning (e.g. subscribing to <c>IEvent</c> to receive every domain event).
+    /// and versioning (e.g. subscribing to a shared base event type to receive every event under it).
     /// </summary>
     ImmutableList<string> MessageTypeUrn { get; }
 
