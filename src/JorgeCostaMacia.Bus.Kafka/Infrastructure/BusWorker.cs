@@ -40,7 +40,7 @@ internal sealed class BusWorker : IHostedService
         }
         catch (OperationCanceledException)
         {
-            using (BusLogger.Action(_logger, BusLoggerActions.FlushCanceled)) _logger.LogWarning("Flush canceled; queued messages may be lost.");
+            using (BusLogger.ActionContext(_logger, BusLoggerActions.FlushCanceled)) _logger.LogWarning("Flush canceled; queued messages may be lost.");
         }
 
         return Task.CompletedTask;

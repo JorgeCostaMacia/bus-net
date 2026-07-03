@@ -24,7 +24,7 @@ internal static class BusLogger
     /// <param name="logger">The logger.</param>
     /// <param name="action">The outcome, from <see cref="BusLoggerActions"/>.</param>
     /// <returns>The scope to dispose after logging the outcome.</returns>
-    public static IDisposable? Action(ILogger logger, string action)
+    public static IDisposable? ActionContext(ILogger logger, string action)
         => logger.BeginScope(new Dictionary<string, object?>
         {
             ["Action"] = action
