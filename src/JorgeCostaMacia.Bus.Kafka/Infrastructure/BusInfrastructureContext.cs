@@ -1,8 +1,8 @@
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 

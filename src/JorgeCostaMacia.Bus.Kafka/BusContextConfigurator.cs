@@ -36,7 +36,7 @@ public sealed class BusContextConfigurator
     /// <param name="topic">The Kafka topic the command is sent to.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddCommand<TCommand>(string topic)
-        where TCommand : Domain.Command
+        where TCommand : Command
     {
         _messages.Add(typeof(TCommand), topic);
 
@@ -48,7 +48,7 @@ public sealed class BusContextConfigurator
     /// <param name="topic">The Kafka topic the event is published to.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddEvent<TEvent>(string topic)
-        where TEvent : Domain.Event
+        where TEvent : Event
     {
         _messages.Add(typeof(TEvent), topic);
 
@@ -71,7 +71,7 @@ public sealed class BusContextConfigurator
         string groupId,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
-        where TCommand : Domain.Command
+        where TCommand : Command
         where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
     {
         ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
@@ -123,7 +123,7 @@ public sealed class BusContextConfigurator
         string groupId,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
-        where TEvent : Domain.Event
+        where TEvent : Event
         where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
     {
         ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)

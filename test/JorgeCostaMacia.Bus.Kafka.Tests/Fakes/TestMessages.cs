@@ -1,7 +1,9 @@
+using JorgeCostaMacia.Bus.Kafka.Domain;
+
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
 /// <summary>Command used across the tests, forwarding the traceability metadata to the base.</summary>
-internal sealed record TestCommand : Domain.Command
+internal sealed record TestCommand : Command
 {
     public string Name { get; init; }
 
@@ -11,7 +13,7 @@ internal sealed record TestCommand : Domain.Command
 }
 
 /// <summary>Event used across the tests, forwarding the traceability metadata to the base.</summary>
-internal sealed record TestEvent : Domain.Event
+internal sealed record TestEvent : Event
 {
     public string Name { get; init; }
 
@@ -21,15 +23,15 @@ internal sealed record TestEvent : Domain.Event
 }
 
 /// <summary>No-op handler used to exercise the configurator registrations.</summary>
-internal sealed class TestCommandHandler : Domain.CommandHandler<TestCommand>
+internal sealed class TestCommandHandler : CommandHandler<TestCommand>
 {
-    public override Task Handle(Domain.CommandContext<TestCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(CommandContext<TestCommand> context, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 }
 
 /// <summary>No-op subscriber used to exercise the configurator registrations.</summary>
-internal sealed class TestEventSubscriber : Domain.EventSubscriber<TestEvent>
+internal sealed class TestEventSubscriber : EventSubscriber<TestEvent>
 {
-    public override Task Handle(Domain.EventContext<TestEvent> context, CancellationToken cancellationToken = default)
+    public override Task Handle(EventContext<TestEvent> context, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 }

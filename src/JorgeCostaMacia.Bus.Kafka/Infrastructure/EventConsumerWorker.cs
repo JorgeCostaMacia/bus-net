@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
@@ -19,7 +18,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
 internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
-    where TEvent : Domain.Event
+    where TEvent : Event
     where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
 {
     /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
