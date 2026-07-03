@@ -11,23 +11,23 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// properties, so the producer and consumer builders map their handlers directly), the logging
 /// scopes (the worker's identity, the inbound delivery, the outbound delivery — body and envelope
 /// decoded, inspectable and reinjectable from the log platform), the retry warnings, and the
-/// <c>Action</c> outcome stamping — every outcome log carries a low-cardinality
-/// <see cref="BusLoggerActions"/> value, so the failures are indexable and manageable from the log
-/// platform.
+/// <c>BusDescription</c> stamping — the template is the minimal, groupable fact and every outcome
+/// log expands it with a <see cref="BusLoggerDescriptions"/> value, so the failures are indexable
+/// and manageable from the log platform.
 /// </summary>
 internal static class BusLogger
 {
     /// <summary>
-    /// Opens a scope stamping the outcome's <c>Action</c> (one of <see cref="BusLoggerActions"/>) on
-    /// the log written inside it.
+    /// Opens a scope stamping the outcome's <c>BusDescription</c> (one of
+    /// <see cref="BusLoggerDescriptions"/>) on the log written inside it.
     /// </summary>
     /// <param name="logger">The logger.</param>
-    /// <param name="action">The outcome, from <see cref="BusLoggerActions"/>.</param>
+    /// <param name="description">The expansion, from <see cref="BusLoggerDescriptions"/>.</param>
     /// <returns>The scope to dispose after logging the outcome.</returns>
-    public static IDisposable? ActionContext(ILogger logger, string action)
+    public static IDisposable? DescriptionContext(ILogger logger, string description)
         => logger.BeginScope(new Dictionary<string, object?>
         {
-            ["Action"] = action
+            ["BusDescription"] = description
         });
     /// <summary>Logs a bus client error (connection-level or fatal) with the error destructured in the scope.</summary>
     /// <param name="logger">The logger.</param>
@@ -127,7 +127,7 @@ internal static class BusLogger
         using (logger.BeginScope(new Dictionary<string, object?>
         {
             ["Retry"] = retry,
-            ["Action"] = BusLoggerActions.RequeuedToRetry
+            ["BusDescription"] = BusLoggerDescriptions.RequeuedToRetry
         }))
         {
             logger.LogWarning(exception, "Handler failed.");
@@ -145,7 +145,7 @@ internal static class BusLogger
         {
             ["Retry"] = retry,
             ["ScheduledAt"] = scheduledAt,
-            ["Action"] = BusLoggerActions.ScheduledToRetry
+            ["BusDescription"] = BusLoggerDescriptions.ScheduledToRetry
         }))
         {
             logger.LogWarning(exception, "Handler failed.");

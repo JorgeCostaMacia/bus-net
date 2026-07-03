@@ -71,7 +71,7 @@ internal sealed class ConsumerErrorHandler
         {
             if (!await Park(result, exception, cancellationToken)) return false;
 
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.ParkedToErrorTopic)) _logger.LogError(exception, "Handler failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(exception, "Handler failed.");
 
             return true;
         }
@@ -103,7 +103,7 @@ internal sealed class ConsumerErrorHandler
     {
         if (!await Park(result, exception, cancellationToken)) return false;
 
-        using (BusLogger.ActionContext(_logger, BusLoggerActions.ParkedToErrorTopic)) _logger.LogError(exception, "Malformed delivery.");
+        using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(exception, "Malformed delivery.");
 
         return true;
     }
@@ -141,7 +141,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
             return false;
         }
@@ -156,7 +156,7 @@ internal sealed class ConsumerErrorHandler
     {
         if (_retryScheduler is null)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(exception, "No retry scheduler is registered.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(exception, "Handler failed.");
 
             return false;
         }
@@ -177,7 +177,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (Exception schedule)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(schedule, "Retry scheduling failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ScheduleFailed)) _logger.LogError(schedule, "Retry failed.");
 
             return false;
         }
@@ -212,7 +212,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
             return false;
         }

@@ -166,11 +166,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                using (BusLogger.ActionContext(_logger, BusLoggerActions.WorkerStopped)) _logger.LogInformation("Consume canceled.");
+                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Consume canceled.");
             }
             catch (ConsumeException exception)
             {
-                using (BusLogger.ActionContext(_logger, BusLoggerActions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
+                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
 
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
@@ -192,7 +192,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (Exception exception)
             {
-                using (BusLogger.ActionContext(_logger, BusLoggerActions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
+                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
             }
             finally
             {
@@ -209,7 +209,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.RedeliveredToNewOwner)) _logger.LogWarning("Partition lost in a rebalance.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RedeliveredToNewOwner)) _logger.LogWarning("Partition lost.");
         }
     }
 
