@@ -15,7 +15,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 /// <typeparam name="TCommand">The command type consumed.</typeparam>
 /// <typeparam name="TCommandHandler">The handler type resolved per delivery.</typeparam>
-internal sealed class CommandConsumer<TCommand, TCommandHandler> : ConsumerWorker<CommandContext<TCommand>, TCommandHandler>
+internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : ConsumerWorker<CommandContext<TCommand>, TCommandHandler>
     where TCommand : Domain.Command
     where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
 {
@@ -24,7 +24,7 @@ internal sealed class CommandConsumer<TCommand, TCommandHandler> : ConsumerWorke
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries and retries.</param>
-    public CommandConsumer(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<CommandConsumer<TCommand, TCommandHandler>> logger)
+    public CommandConsumerWorker(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger)
         : base(builder, producer, scopeFactory, logger) { }
 
     /// <inheritdoc />

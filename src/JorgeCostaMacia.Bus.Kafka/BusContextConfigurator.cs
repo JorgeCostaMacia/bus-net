@@ -86,13 +86,13 @@ public sealed class BusContextConfigurator
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<CommandConsumer<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumer<TCommand, TCommandHandler>>>();
+            ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(consumer)
                 .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
                 .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
 
-            return new CommandConsumer<TCommand, TCommandHandler>(
+            return new CommandConsumerWorker<TCommand, TCommandHandler>(
                 builder,
                 provider.GetRequiredService<IProducer<Null, byte[]>>(),
                 provider.GetRequiredService<IServiceScopeFactory>(),
@@ -138,13 +138,13 @@ public sealed class BusContextConfigurator
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<EventConsumer<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumer<TEvent, TEventSubscriber>>>();
+            ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(consumer)
                 .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
                 .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
 
-            return new EventConsumer<TEvent, TEventSubscriber>(
+            return new EventConsumerWorker<TEvent, TEventSubscriber>(
                 builder,
                 provider.GetRequiredService<IProducer<Null, byte[]>>(),
                 provider.GetRequiredService<IServiceScopeFactory>(),

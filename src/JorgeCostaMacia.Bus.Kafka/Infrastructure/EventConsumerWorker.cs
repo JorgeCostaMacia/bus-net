@@ -17,7 +17,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
-internal sealed class EventConsumer<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
+internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
     where TEvent : Domain.Event
     where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
 {
@@ -26,7 +26,7 @@ internal sealed class EventConsumer<TEvent, TEventSubscriber> : ConsumerWorker<E
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries and retries.</param>
-    public EventConsumer(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumer<TEvent, TEventSubscriber>> logger)
+    public EventConsumerWorker(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger)
         : base(builder, producer, scopeFactory, logger) { }
 
     /// <inheritdoc />
