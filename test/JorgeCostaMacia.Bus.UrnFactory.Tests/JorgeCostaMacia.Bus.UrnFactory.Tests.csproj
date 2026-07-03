@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\JorgeCostaMacia.Bus.UrnFactory\JorgeCostaMacia.Bus.UrnFactory.csproj" />
+	</ItemGroup>
+
+</Project>
