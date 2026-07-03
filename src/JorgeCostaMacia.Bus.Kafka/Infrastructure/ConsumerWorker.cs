@@ -159,7 +159,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             {
                 result = _consumer!.Consume(cancellationToken);
 
-                logContext = LogContext(result);
+                logContext = BusLogger.ConsumerContext(_logger, result);
 
                 if (Filtered(result))
                 {
@@ -296,35 +296,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         {
             _logger.LogWarning("Partition lost in a rebalance; its new owner will handle the message again.");
         }
-    }
-
-    /// <summary>
-    /// Logging scope carrying the whole delivery — the partition/offset pointer to refetch it, the
-    /// raw body and every header — opened right after consume and disposed in the iteration's
-    /// finally, so every log of the iteration (the handler's own included, and the failure lanes) is
-    /// fully traced and a failed message can be inspected and reprocessed from the log platform.
-    /// </summary>
-    private IDisposable? LogContext(ConsumeResult<Null, byte[]> result)
-    {
-        Dictionary<string, object?> logContext = new()
-        {
-            ["Partition"] = result.Partition.Value,
-            ["Offset"] = result.Offset.Value,
-            ["Body"] = result.Message.Value is null ? null : Encoding.UTF8.GetString(result.Message.Value)
-        };
-
-        foreach (IHeader header in result.Message.Headers)
-        {
-            byte[] value = header.GetValueBytes();
-
-            logContext[header.Key] = TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
-                ? new Guid(value)
-                : TransportHeaders.IntHeaders.Contains(header.Key) && int.TryParse(Encoding.UTF8.GetString(value), out int count)
-                    ? count
-                    : Encoding.UTF8.GetString(value);
-        }
-
-        return _logger.BeginScope(logContext);
     }
 
     private static Transport CreateTransport(ConsumeResult<Null, byte[]> result)
