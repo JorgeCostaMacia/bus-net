@@ -158,36 +158,10 @@ public sealed class Bus : IBus
         }
         catch (ProduceException<Null, byte[]> exception)
         {
-            using (LogContext(topic, message)) _logger.LogError(exception, "Produce failed.");
+            using (BusLogger.ProducerContext(_logger, topic, message)) _logger.LogError(exception, "Produce failed.");
 
             throw;
         }
-    }
-
-    /// <summary>
-    /// Logging scope carrying the outbound delivery — topic, raw body and every header — so a failed
-    /// send can be inspected and reprocessed from the log platform.
-    /// </summary>
-    private IDisposable? LogContext(string topic, Message<Null, byte[]> message)
-    {
-        Dictionary<string, object?> logContext = new()
-        {
-            ["Topic"] = topic,
-            ["Body"] = message.Value is null ? null : Encoding.UTF8.GetString(message.Value)
-        };
-
-        foreach (IHeader header in message.Headers)
-        {
-            byte[] value = header.GetValueBytes();
-
-            logContext[header.Key] = TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
-                ? new Guid(value)
-                : TransportHeaders.IntHeaders.Contains(header.Key) && int.TryParse(Encoding.UTF8.GetString(value), out int count)
-                    ? count
-                    : Encoding.UTF8.GetString(value);
-        }
-
-        return _logger.BeginScope(logContext);
     }
 
     private static void Restamp(Headers headers, string key, byte[] value)

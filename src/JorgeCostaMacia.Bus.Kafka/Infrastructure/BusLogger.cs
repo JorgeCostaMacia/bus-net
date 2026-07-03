@@ -8,8 +8,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The bus's logging: the librdkafka callbacks (connection-level and fatal errors, and the client's
 /// internal logs mapped to their severity — routed to the logger with the details as scope
-/// properties, so the producer and consumer builders map their handlers directly) and the delivery
-/// logging scope the consumers open per message.
+/// properties, so the producer and consumer builders map their handlers directly), the logging
+/// scopes (the worker's identity, the inbound delivery, the outbound delivery — body and envelope
+/// decoded, inspectable and reinjectable from the log platform) and the retry warning.
 /// </summary>
 internal static class BusLogger
 {
@@ -43,10 +44,25 @@ internal static class BusLogger
     }
 
     /// <summary>
-    /// Opens the logging scope carrying the whole delivery — the partition/offset pointer to refetch
-    /// it, the raw body and every envelope header decoded to its type — so every log inside it (the
-    /// handler's own included, and the failure lanes) is fully traced and a failed message can be
-    /// inspected and reprocessed from the log platform.
+    /// Opens the logging scope carrying the consumer worker's identity — topic and group id — for the
+    /// whole life of its loop.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="topic">The Kafka topic the worker consumes.</param>
+    /// <param name="groupId">The worker's consumer group id.</param>
+    /// <returns>The scope to dispose when the loop ends.</returns>
+    public static IDisposable? WorkerContext(ILogger logger, string topic, string groupId)
+        => logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Topic"] = topic,
+            ["GroupId"] = groupId
+        });
+
+    /// <summary>
+    /// Opens the logging scope carrying the whole inbound delivery — the partition/offset pointer to
+    /// refetch it, the raw body and every envelope header decoded to its type — so every log inside
+    /// it (the handler's own included, and the failure lanes) is fully traced and a failed message
+    /// can be inspected and reprocessed from the log platform.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="result">The delivered message.</param>
@@ -60,7 +76,54 @@ internal static class BusLogger
             ["Body"] = result.Message.Value is null ? null : Encoding.UTF8.GetString(result.Message.Value)
         };
 
-        foreach (IHeader header in result.Message.Headers)
+        Decode(context, result.Message.Headers);
+
+        return logger.BeginScope(context);
+    }
+
+    /// <summary>
+    /// Opens the logging scope carrying the whole outbound delivery — topic, raw body and every
+    /// envelope header decoded to its type — so a failed send can be inspected and reprocessed from
+    /// the log platform.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="topic">The Kafka topic produced to.</param>
+    /// <param name="message">The outbound message.</param>
+    /// <returns>The scope to dispose after logging the failure.</returns>
+    public static IDisposable? ProducerContext(ILogger logger, string topic, Message<Null, byte[]> message)
+    {
+        Dictionary<string, object?> context = new()
+        {
+            ["Topic"] = topic,
+            ["Body"] = message.Value is null ? null : Encoding.UTF8.GetString(message.Value)
+        };
+
+        Decode(context, message.Headers);
+
+        return logger.BeginScope(context);
+    }
+
+    /// <summary>Logs a failed handling requeued to retry, with the retry number in the scope.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="exception">The handling failure.</param>
+    /// <param name="retry">The retry number stamped on the requeued delivery.</param>
+    public static void LogRetry(ILogger logger, Exception exception, int retry)
+    {
+        using (logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Retry"] = retry
+        }))
+        {
+            logger.LogWarning(exception, "Handling failed; requeued to retry.");
+        }
+    }
+
+    /// <summary>Decodes every envelope header into the scope — Guids and counters typed, the rest as text.</summary>
+    /// <param name="context">The scope dictionary to fill.</param>
+    /// <param name="headers">The delivery's headers.</param>
+    private static void Decode(Dictionary<string, object?> context, Headers headers)
+    {
+        foreach (IHeader header in headers)
         {
             byte[] value = header.GetValueBytes();
 
@@ -70,7 +133,5 @@ internal static class BusLogger
                     ? count
                     : Encoding.UTF8.GetString(value);
         }
-
-        return logger.BeginScope(context);
     }
 }

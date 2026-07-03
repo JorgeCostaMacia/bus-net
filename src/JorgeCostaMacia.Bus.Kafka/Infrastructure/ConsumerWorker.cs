@@ -144,11 +144,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
-        using IDisposable? scope = _logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["Topic"] = _topic,
-            ["GroupId"] = GroupId
-        });
+        using IDisposable? scope = BusLogger.WorkerContext(_logger, _topic, GroupId);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -264,13 +260,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         {
             await _producer.ProduceAsync(_topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
 
-            using (_logger.BeginScope(new Dictionary<string, object?>
-            {
-                ["Retry"] = retry + 1
-            }))
-            {
-                _logger.LogWarning(exception, "Handling failed; requeued to retry.");
-            }
+            BusLogger.LogRetry(_logger, exception, retry + 1);
 
             return true;
         }
