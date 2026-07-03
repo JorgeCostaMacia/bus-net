@@ -40,7 +40,7 @@ public static class ConsumerConfigurationDefaults
     public const bool ALLOW_AUTO_CREATE_TOPICS = true;
 
     /// <summary>Where to start when no offset is stored. Default: <c>Latest</c>.</summary>
-    public static AutoOffsetReset AUTO_OFFSET_RESET => AutoOffsetReset.Latest;
+    public const AutoOffsetReset AUTO_OFFSET_RESET = AutoOffsetReset.Latest;
 
     /// <summary>Socket timeout (ms). Default: <c>90000</c>.</summary>
     public const int SOCKET_TIMEOUT_MS = 90_000;

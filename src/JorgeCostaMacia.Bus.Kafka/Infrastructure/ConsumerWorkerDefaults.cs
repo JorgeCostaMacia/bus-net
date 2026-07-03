@@ -3,8 +3,8 @@ using System.Collections.Immutable;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default custom-policy settings (retry) a consumer falls back to when the configurator is
-/// not given a value.
+/// Default custom-policy settings (the retry ladder and its exclusions) a consumer falls back to
+/// when the configurator is not given a value.
 /// </summary>
 public static class ConsumerWorkerDefaults
 {

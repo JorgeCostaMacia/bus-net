@@ -10,7 +10,7 @@ public interface IHandler { }
 /// Handles a delivered <typeparamref name="TMessage"/>, receiving a context of the exact shape
 /// (<typeparamref name="TContext"/>) it needs — compose the context from the facets in
 /// <c>JorgeCostaMacia.Bus.Domain.Contexts</c>. Completing the returned task acknowledges the
-/// message; throwing triggers the transport's retry/retry.
+/// message; throwing triggers the transport's retry policy.
 /// </summary>
 /// <typeparam name="TMessage">The message type this handler processes.</typeparam>
 /// <typeparam name="TContext">The context shape the handler requires for that message.</typeparam>
