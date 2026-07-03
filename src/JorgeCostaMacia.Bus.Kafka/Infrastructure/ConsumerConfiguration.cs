@@ -12,7 +12,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 public sealed class ConsumerConfiguration
 {
     /// <summary>Comma-separated list of Kafka brokers. Required when the service consumes.</summary>
-    public string? BootstrapServers { get; init; }
+    public required string BootstrapServers { get; init; }
 
     /// <summary>SASL username, when authenticating.</summary>
     public string? SaslUsername { get; init; }
@@ -71,15 +71,8 @@ public sealed class ConsumerConfiguration
     /// </summary>
     /// <param name="groupId">The consumer group id.</param>
     /// <returns>The assembled consumer configuration.</returns>
-    /// <exception cref="InvalidOperationException"><c>Bus:Consumer:BootstrapServers</c> is missing.</exception>
     public ConsumerConfig ConsumerConfig(string groupId)
-    {
-        if (string.IsNullOrWhiteSpace(BootstrapServers))
-        {
-            throw new InvalidOperationException($"'Bus:Consumer:{nameof(BootstrapServers)}' is null.");
-        }
-
-        return new ConsumerConfig
+        => new()
         {
             BootstrapServers = BootstrapServers,
             SecurityProtocol = SecurityProtocol ?? ConsumerConfigurationDefaults.SECURITY_PROTOCOL,
@@ -101,5 +94,4 @@ public sealed class ConsumerConfiguration
             GroupId = groupId,
             GroupInstanceId = GroupInstanceId ?? ConsumerConfigurationDefaults.GROUP_INSTANCE_ID
         };
-    }
 }

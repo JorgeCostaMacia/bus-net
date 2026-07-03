@@ -74,13 +74,24 @@ internal static class BusInfrastructureContext
     /// <summary>
     /// Maps the <c>Bus:Consumer</c> section onto a <see cref="ConsumerConfiguration"/> (the
     /// curated setting surface; unset values fall back to the defaults when it composes each
-    /// consumer's configuration). The connection is validated lazily — a producer-only service needs
-    /// no <c>Bus:Consumer</c> section.
+    /// consumer's configuration), or <see langword="null"/> when the section is absent — a
+    /// producer-only service maps no handlers and needs no section; the configurator throws when a
+    /// handler is mapped without it.
     /// </summary>
     /// <param name="configuration">The application configuration.</param>
-    /// <returns>The global consumer configuration.</returns>
-    private static ConsumerConfiguration CreateConsumerConfiguration(IConfiguration configuration)
-        => configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>() ?? new ConsumerConfiguration();
+    /// <returns>The global consumer configuration, or <see langword="null"/> when the section is absent.</returns>
+    /// <exception cref="InvalidOperationException">The section is present but its <c>BootstrapServers</c> is missing.</exception>
+    private static ConsumerConfiguration? CreateConsumerConfiguration(IConfiguration configuration)
+    {
+        ConsumerConfiguration? consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>();
+
+        if (consumerConfiguration is not null && string.IsNullOrWhiteSpace(consumerConfiguration.BootstrapServers))
+        {
+            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
+        }
+
+        return consumerConfiguration;
+    }
 
     private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
     {

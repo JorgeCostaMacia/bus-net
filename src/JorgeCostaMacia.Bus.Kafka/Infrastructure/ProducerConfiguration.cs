@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 public sealed record ProducerConfiguration
 {
     /// <summary>Comma-separated list of Kafka brokers. Required.</summary>
-    public string? BootstrapServers { get; init; }
+    public required string BootstrapServers { get; init; }
 
     /// <summary>SASL username, when authenticating.</summary>
     public string? SaslUsername { get; init; }

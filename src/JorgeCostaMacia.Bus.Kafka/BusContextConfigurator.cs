@@ -22,13 +22,13 @@ namespace JorgeCostaMacia.Bus.Kafka;
 public sealed class BusContextConfigurator
 {
     private readonly IServiceCollection _services;
-    private readonly ConsumerConfiguration _configuration;
+    private readonly ConsumerConfiguration? _configuration;
     private readonly Dictionary<Type, string> _messages = [];
 
     /// <summary>The type → topic routing map accumulated by the contexts.</summary>
     internal IReadOnlyDictionary<Type, string> Messages => _messages;
 
-    internal BusContextConfigurator(IServiceCollection services, ConsumerConfiguration configuration)
+    internal BusContextConfigurator(IServiceCollection services, ConsumerConfiguration? configuration)
     {
         _services = services;
         _configuration = configuration;
@@ -77,7 +77,8 @@ public sealed class BusContextConfigurator
         where TCommand : Domain.Command
         where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
     {
-        ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
+        ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
+            ?? throw new InvalidOperationException("'Bus:Consumer' is null.");
 
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider =>
@@ -121,7 +122,8 @@ public sealed class BusContextConfigurator
         where TEvent : Domain.Event
         where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
     {
-        ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
+        ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
+            ?? throw new InvalidOperationException("'Bus:Consumer' is null.");
 
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider =>
