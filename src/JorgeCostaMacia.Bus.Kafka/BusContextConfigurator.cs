@@ -86,8 +86,8 @@ public sealed class BusContextConfigurator
             ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
-                .SetErrorHandler((_, error) => ClientLogger.LogError(logger, error))
-                .SetLogHandler((_, log) => ClientLogger.Log(logger, log));
+                .SetErrorHandler((_, error) => BusLogger.LogError(logger, error))
+                .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
             return new CommandConsumerWorker<TCommand, TCommandHandler>(
                 builder,
@@ -131,8 +131,8 @@ public sealed class BusContextConfigurator
             ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
-                .SetErrorHandler((_, error) => ClientLogger.LogError(logger, error))
-                .SetLogHandler((_, log) => ClientLogger.Log(logger, log));
+                .SetErrorHandler((_, error) => BusLogger.LogError(logger, error))
+                .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
             return new EventConsumerWorker<TEvent, TEventSubscriber>(
                 builder,

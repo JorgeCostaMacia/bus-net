@@ -31,7 +31,7 @@ internal static class BusInfrastructureContext
     internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<BusContextConfigurator> configure)
     {
         ProducerConfiguration producerConfiguration = CreateProducerConfiguration(configuration);
-        ConsumerConfiguration consumerConfiguration = CreateConsumerConfiguration(configuration);
+        ConsumerConfiguration? consumerConfiguration = CreateConsumerConfiguration(configuration);
 
         services.AddSingleton(provider => CreateProducer(provider, producerConfiguration.ProducerConfig));
 
@@ -114,8 +114,8 @@ internal static class BusInfrastructureContext
         ILogger<ProducerWorker> logger = provider.GetRequiredService<ILogger<ProducerWorker>>();
 
         return new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) => ClientLogger.LogError(logger, error))
-            .SetLogHandler((_, log) => ClientLogger.Log(logger, log))
+            .SetErrorHandler((_, error) => BusLogger.LogError(logger, error))
+            .SetLogHandler((_, log) => BusLogger.Log(logger, log))
             .Build();
     }
 }
