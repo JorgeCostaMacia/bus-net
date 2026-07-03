@@ -29,32 +29,33 @@ internal static class BusLogger
         {
             ["BusDescription"] = description
         });
-    /// <summary>Logs a bus client error (connection-level or fatal) with the error destructured in the scope.</summary>
+    /// <summary>Logs a Kafka client error (connection-level or fatal) with the error destructured in the scope.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="error">The Kafka error.</param>
     public static void LogError(ILogger logger, Error error)
     {
         using (logger.BeginScope(new Dictionary<string, object?>
         {
-            ["@Error"] = error
+            ["@KafkaError"] = error
         }))
         {
-            logger.LogError("Bus error.");
+            logger.LogError("Kafka error.");
         }
     }
 
-    /// <summary>Logs an internal (librdkafka) message with its severity and source in the scope.</summary>
+    /// <summary>Logs an internal (librdkafka) message with its source and text in the scope, mapped to its severity.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="log">The Kafka log message.</param>
     public static void Log(ILogger logger, LogMessage log)
     {
         using (logger.BeginScope(new Dictionary<string, object?>
         {
-            ["Name"] = log.Name,
-            ["Facility"] = log.Facility
+            ["KafkaName"] = log.Name,
+            ["KafkaFacility"] = log.Facility,
+            ["KafkaMessage"] = log.Message
         }))
         {
-            logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "{Message}", log.Message);
+            logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "Kafka log.");
         }
     }
 
