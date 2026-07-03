@@ -141,7 +141,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.ProduceFailed)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
             return false;
         }
@@ -156,7 +156,7 @@ internal sealed class ConsumerErrorHandler
     {
         if (_retryScheduler is null)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.RetrySchedulerMissing)) _logger.LogError(exception, "Handler failed.");
+            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(exception, "No retry scheduler is registered.");
 
             return false;
         }
@@ -177,7 +177,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (Exception schedule)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.ScheduleFailed)) _logger.LogError(schedule, "Retry scheduling failed.");
+            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(schedule, "Retry scheduling failed.");
 
             return false;
         }
@@ -212,7 +212,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.ActionContext(_logger, BusLoggerActions.ErrorProduceFailed)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.ActionContext(_logger, BusLoggerActions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
             return false;
         }
