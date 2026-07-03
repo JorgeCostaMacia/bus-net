@@ -81,10 +81,11 @@ public sealed class BusContextConfigurator
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
+            ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(BusLogger.KafkaCategory);
 
             ConsumerBuilder<Ignore, byte[]> builder = new ConsumerBuilder<Ignore, byte[]>(configuration)
-                .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
-                .SetLogHandler((_, log) => BusLogger.Log(logger, log));
+                .SetErrorHandler((_, kafkaError) => BusLogger.LogError(kafkaLogger, kafkaError))
+                .SetLogHandler((_, log) => BusLogger.Log(kafkaLogger, log));
 
             ConsumerErrorHandler errorHandler = new(
                 provider.GetRequiredService<Infrastructure.Bus>(),
@@ -133,10 +134,11 @@ public sealed class BusContextConfigurator
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
+            ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(BusLogger.KafkaCategory);
 
             ConsumerBuilder<Ignore, byte[]> builder = new ConsumerBuilder<Ignore, byte[]>(configuration)
-                .SetErrorHandler((_, kafkaError) => BusLogger.LogError(logger, kafkaError))
-                .SetLogHandler((_, log) => BusLogger.Log(logger, log));
+                .SetErrorHandler((_, kafkaError) => BusLogger.LogError(kafkaLogger, kafkaError))
+                .SetLogHandler((_, log) => BusLogger.Log(kafkaLogger, log));
 
             ConsumerErrorHandler errorHandler = new(
                 provider.GetRequiredService<Infrastructure.Bus>(),

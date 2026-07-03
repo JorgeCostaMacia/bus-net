@@ -111,13 +111,13 @@ internal static class BusInfrastructureContext
     /// </summary>
     private static Bus CreateBus(IServiceProvider provider, ProducerConfig configuration, IReadOnlyDictionary<Type, string> messages)
     {
-        ILogger<Bus> logger = provider.GetRequiredService<ILogger<Bus>>();
+        ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(BusLogger.KafkaCategory);
 
         IProducer<Null, byte[]> producer = new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) => BusLogger.LogError(logger, error))
-            .SetLogHandler((_, log) => BusLogger.Log(logger, log))
+            .SetErrorHandler((_, error) => BusLogger.LogError(kafkaLogger, error))
+            .SetLogHandler((_, log) => BusLogger.Log(kafkaLogger, log))
             .Build();
 
-        return new Bus(producer, messages, logger);
+        return new Bus(producer, messages, provider.GetRequiredService<ILogger<Bus>>());
     }
 }

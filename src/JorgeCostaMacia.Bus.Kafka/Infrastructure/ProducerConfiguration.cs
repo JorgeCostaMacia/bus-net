@@ -60,6 +60,12 @@ public sealed record ProducerConfiguration
     /// <summary>Client id, or <see langword="null"/> for the default (machine name).</summary>
     public string? ClientId { get; init; }
 
+    /// <summary>librdkafka debug contexts (comma-separated, e.g. <c>broker,topic,msg</c>), or <see langword="null"/> for none.</summary>
+    public string? Debug { get; init; }
+
+    /// <summary>Whether broker disconnects are logged, or <see langword="null"/> for the client default (true) — the classic idle-connection noise.</summary>
+    public bool? LogConnectionClose { get; init; }
+
     /// <summary>The Kafka producer configuration — supplied values, defaults for the rest.</summary>
     public ProducerConfig ProducerConfig => new()
     {
@@ -79,6 +85,8 @@ public sealed record ProducerConfiguration
         MessageSendMaxRetries = MessageSendMaxRetries ?? ProducerConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
         RetryBackoffMs = RetryBackoffMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MS,
         RetryBackoffMaxMs = RetryBackoffMaxMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
-        ClientId = ClientId ?? ProducerConfigurationDefaults.CLIENT_ID
+        ClientId = ClientId ?? ProducerConfigurationDefaults.CLIENT_ID,
+        Debug = Debug,
+        LogConnectionClose = LogConnectionClose
     };
 }

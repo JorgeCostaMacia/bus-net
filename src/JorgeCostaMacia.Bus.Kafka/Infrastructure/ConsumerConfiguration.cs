@@ -65,6 +65,12 @@ public sealed class ConsumerConfiguration
     /// <summary>Static group instance id, or <see langword="null"/> for the default (machine name).</summary>
     public string? GroupInstanceId { get; init; }
 
+    /// <summary>librdkafka debug contexts (comma-separated, e.g. <c>consumer,cgrp,topic,fetch</c>), or <see langword="null"/> for none.</summary>
+    public string? Debug { get; init; }
+
+    /// <summary>Whether broker disconnects are logged, or <see langword="null"/> for the client default (true) — the classic idle-connection noise.</summary>
+    public bool? LogConnectionClose { get; init; }
+
     /// <summary>
     /// Composes the Kafka consumer configuration for one consumer — supplied values, defaults for the
     /// rest, and the consumer's own group id.
@@ -92,6 +98,8 @@ public sealed class ConsumerConfiguration
             RetryBackoffMaxMs = RetryBackoffMaxMs ?? ConsumerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
             ClientId = ClientId ?? ConsumerConfigurationDefaults.CLIENT_ID,
             GroupId = groupId,
-            GroupInstanceId = GroupInstanceId ?? ConsumerConfigurationDefaults.GROUP_INSTANCE_ID
+            GroupInstanceId = GroupInstanceId ?? ConsumerConfigurationDefaults.GROUP_INSTANCE_ID,
+            Debug = Debug,
+            LogConnectionClose = LogConnectionClose
         };
 }

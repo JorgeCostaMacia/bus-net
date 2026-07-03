@@ -18,6 +18,13 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 internal static class BusLogger
 {
     /// <summary>
+    /// The logger category every librdkafka callback logs under — separate from the bus's own
+    /// categories, so the client's noise is silenced independently (e.g.
+    /// <c>Logging:LogLevel:JorgeCostaMacia.Bus.Kafka.Client = Warning</c>).
+    /// </summary>
+    public const string KafkaCategory = "JorgeCostaMacia.Bus.Kafka.Client";
+
+    /// <summary>
     /// Opens a scope stamping the outcome's <c>BusDescription</c> (one of
     /// <see cref="BusLoggerDescriptions"/>) on the log written inside it.
     /// </summary>
@@ -29,7 +36,11 @@ internal static class BusLogger
         {
             ["BusDescription"] = description
         });
-    /// <summary>Logs a Kafka client error (connection-level or fatal) with the error destructured in the scope.</summary>
+    /// <summary>
+    /// Logs a Kafka client error with the error destructured in the scope — critical when the client
+    /// is in an unrecoverable state (<see cref="Error.IsFatal"/>), a warning otherwise (the client
+    /// recovers on its own; the docs call these informational).
+    /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="error">The Kafka error.</param>
     public static void LogError(ILogger logger, Error error)
@@ -39,7 +50,7 @@ internal static class BusLogger
             ["@KafkaError"] = error
         }))
         {
-            logger.LogError("Kafka error.");
+            logger.Log(error.IsFatal ? LogLevel.Critical : LogLevel.Warning, "Kafka error.");
         }
     }
 
