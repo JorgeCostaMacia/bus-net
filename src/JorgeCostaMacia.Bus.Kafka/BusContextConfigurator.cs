@@ -95,8 +95,8 @@ public sealed class BusContextConfigurator
                 logger,
                 topic,
                 groupId,
-                retryIntervals ?? ConsumerConfigurationDefaults.RETRY_INTERVALS,
-                retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
+                retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
+                retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
         });
 
         return this;
@@ -139,8 +139,8 @@ public sealed class BusContextConfigurator
                 logger,
                 topic,
                 groupId,
-                retryIntervals ?? ConsumerConfigurationDefaults.RETRY_INTERVALS,
-                retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
+                retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS,
+                retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES);
         });
 
         return this;

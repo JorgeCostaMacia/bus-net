@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// Default custom-policy settings (retry) a consumer falls back to when the configurator is
 /// not given a value.
 /// </summary>
-public static class ConsumerConfigurationDefaults
+public static class ConsumerWorkerDefaults
 {
     /// <summary>Delays before each retry — <c>00:00</c> requeues immediately. Default: empty (no retries).</summary>
     public static ImmutableList<TimeSpan> RETRY_INTERVALS => [];
