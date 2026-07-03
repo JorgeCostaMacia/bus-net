@@ -71,7 +71,7 @@ internal sealed class ConsumerErrorHandler
         {
             if (!await Park(result, exception, cancellationToken)) return false;
 
-            _logger.LogError(exception, "Handling failed; parked to the error topic.");
+            using (BusLogger.Action(_logger, BusLogger.Actions.ParkedToErrorTopic)) _logger.LogError(exception, "Handling failed; parked to the error topic.");
 
             return true;
         }
@@ -103,7 +103,7 @@ internal sealed class ConsumerErrorHandler
     {
         if (!await Park(result, exception, cancellationToken)) return false;
 
-        _logger.LogError(exception, "Malformed delivery; parked to the error topic.");
+        using (BusLogger.Action(_logger, BusLogger.Actions.ParkedToErrorTopic)) _logger.LogError(exception, "Malformed delivery; parked to the error topic.");
 
         return true;
     }
@@ -141,7 +141,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            _logger.LogError(produce, "Produce failed; the delivery is not acked.");
+            using (BusLogger.Action(_logger, BusLogger.Actions.ProduceFailed)) _logger.LogError(produce, "Produce failed; the delivery is not acked.");
 
             return false;
         }
@@ -156,7 +156,7 @@ internal sealed class ConsumerErrorHandler
     {
         if (_retryScheduler is null)
         {
-            _logger.LogError(exception, "Handling failed; no retry scheduler is registered and the delivery is not acked.");
+            using (BusLogger.Action(_logger, BusLogger.Actions.RetrySchedulerMissing)) _logger.LogError(exception, "Handling failed; no retry scheduler is registered and the delivery is not acked.");
 
             return false;
         }
@@ -177,7 +177,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (Exception schedule)
         {
-            _logger.LogError(schedule, "Retry scheduling failed; the delivery is not acked.");
+            using (BusLogger.Action(_logger, BusLogger.Actions.ScheduleFailed)) _logger.LogError(schedule, "Retry scheduling failed; the delivery is not acked.");
 
             return false;
         }
@@ -212,7 +212,7 @@ internal sealed class ConsumerErrorHandler
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            _logger.LogError(produce, "Error produce failed; the delivery is not acked.");
+            using (BusLogger.Action(_logger, BusLogger.Actions.ErrorProduceFailed)) _logger.LogError(produce, "Error produce failed; the delivery is not acked.");
 
             return false;
         }

@@ -158,7 +158,11 @@ public sealed class Bus : IBus, IDisposable
         }
         catch (ProduceException<Null, byte[]> exception)
         {
-            using (BusLogger.ProducerContext(_logger, topic, message)) _logger.LogError(exception, "Produce failed.");
+            using (BusLogger.ProducerContext(_logger, topic, message))
+            using (BusLogger.Action(_logger, BusLogger.Actions.ProduceFailed))
+            {
+                _logger.LogError(exception, "Produce failed.");
+            }
 
             throw;
         }

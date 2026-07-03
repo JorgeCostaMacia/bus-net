@@ -10,10 +10,40 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// internal logs mapped to their severity — routed to the logger with the details as scope
 /// properties, so the producer and consumer builders map their handlers directly), the logging
 /// scopes (the worker's identity, the inbound delivery, the outbound delivery — body and envelope
-/// decoded, inspectable and reinjectable from the log platform) and the retry warning.
+/// decoded, inspectable and reinjectable from the log platform), the retry warnings, and the
+/// <see cref="Actions"/> vocabulary — every outcome log carries a low-cardinality <c>Action</c>
+/// property, so the failures are indexable and manageable from the log platform.
 /// </summary>
 internal static class BusLogger
 {
+    /// <summary>The outcome vocabulary stamped as the <c>Action</c> scope property.</summary>
+    internal static class Actions
+    {
+        public const string RequeuedToRetry = nameof(RequeuedToRetry);
+        public const string ScheduledToRetry = nameof(ScheduledToRetry);
+        public const string ParkedToErrorTopic = nameof(ParkedToErrorTopic);
+        public const string ProduceFailed = nameof(ProduceFailed);
+        public const string ErrorProduceFailed = nameof(ErrorProduceFailed);
+        public const string ScheduleFailed = nameof(ScheduleFailed);
+        public const string RetrySchedulerMissing = nameof(RetrySchedulerMissing);
+        public const string ConsumeCanceled = nameof(ConsumeCanceled);
+        public const string ConsumeFailed = nameof(ConsumeFailed);
+        public const string PartitionLost = nameof(PartitionLost);
+        public const string FlushCanceled = nameof(FlushCanceled);
+    }
+
+    /// <summary>
+    /// Opens a scope stamping the outcome's <c>Action</c> (one of <see cref="Actions"/>) on the log
+    /// written inside it.
+    /// </summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="action">The outcome, from <see cref="Actions"/>.</param>
+    /// <returns>The scope to dispose after logging the outcome.</returns>
+    public static IDisposable? Action(ILogger logger, string action)
+        => logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Action"] = action
+        });
     /// <summary>Logs a bus client error (connection-level or fatal) with the error destructured in the scope.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="error">The Kafka error.</param>
@@ -111,7 +141,8 @@ internal static class BusLogger
     {
         using (logger.BeginScope(new Dictionary<string, object?>
         {
-            ["Retry"] = retry
+            ["Retry"] = retry,
+            ["Action"] = Actions.RequeuedToRetry
         }))
         {
             logger.LogWarning(exception, "Handling failed; requeued to retry.");
@@ -128,7 +159,8 @@ internal static class BusLogger
         using (logger.BeginScope(new Dictionary<string, object?>
         {
             ["Retry"] = retry,
-            ["ScheduledAt"] = scheduledAt
+            ["ScheduledAt"] = scheduledAt,
+            ["Action"] = Actions.ScheduledToRetry
         }))
         {
             logger.LogWarning(exception, "Handling failed; scheduled to retry.");
