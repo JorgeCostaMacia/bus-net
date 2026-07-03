@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// internal logs mapped to their severity — routed to the logger with the details as scope
 /// properties, so the consumer builder maps its handlers directly.
 /// </summary>
-internal static class KafkaConsumerLogger
+internal static class ConsumerLogger
 {
     /// <summary>Logs a consumer error (connection-level or fatal) with the error destructured in the scope.</summary>
     /// <param name="logger">The logger.</param>

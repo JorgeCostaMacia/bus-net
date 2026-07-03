@@ -22,13 +22,13 @@ namespace JorgeCostaMacia.Bus.Kafka;
 public sealed class BusContextConfigurator
 {
     private readonly IServiceCollection _services;
-    private readonly KafkaConsumerConfiguration _configuration;
+    private readonly ConsumerConfiguration _configuration;
     private readonly Dictionary<Type, string> _messages = [];
 
     /// <summary>The type → topic routing map accumulated by the contexts.</summary>
     internal IReadOnlyDictionary<Type, string> Messages => _messages;
 
-    internal BusContextConfigurator(IServiceCollection services, KafkaConsumerConfiguration configuration)
+    internal BusContextConfigurator(IServiceCollection services, ConsumerConfiguration configuration)
     {
         _services = services;
         _configuration = configuration;
@@ -85,8 +85,8 @@ public sealed class BusContextConfigurator
             ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
-                .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
-                .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
+                .SetErrorHandler((_, error) => ConsumerLogger.LogError(logger, error))
+                .SetLogHandler((_, log) => ConsumerLogger.Log(logger, log));
 
             return new CommandConsumerWorker<TCommand, TCommandHandler>(
                 builder,
@@ -129,8 +129,8 @@ public sealed class BusContextConfigurator
             ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
 
             ConsumerBuilder<Null, byte[]> builder = new ConsumerBuilder<Null, byte[]>(configuration)
-                .SetErrorHandler((_, error) => KafkaConsumerLogger.LogError(logger, error))
-                .SetLogHandler((_, log) => KafkaConsumerLogger.Log(logger, log));
+                .SetErrorHandler((_, error) => ConsumerLogger.LogError(logger, error))
+                .SetLogHandler((_, log) => ConsumerLogger.Log(logger, log));
 
             return new EventConsumerWorker<TEvent, TEventSubscriber>(
                 builder,

@@ -5,11 +5,11 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <summary>
 /// The global consumer configuration, bound from the <c>Bus:Consumer</c> section: the connection plus
 /// the tuning overrides this bus supports (a curated surface, not every client knob). Unset values
-/// fall back to <see cref="KafkaConsumerConfigurationDefaults"/> when composing each consumer's
+/// fall back to <see cref="ConsumerConfigurationDefaults"/> when composing each consumer's
 /// <see cref="ConsumerConfig"/> — shared settings live here once; what varies per consumer (the group
 /// id) is supplied when composing.
 /// </summary>
-public sealed class KafkaConsumerConfiguration
+public sealed class ConsumerConfiguration
 {
     /// <summary>Comma-separated list of Kafka brokers. Required when the service consumes.</summary>
     public string? BootstrapServers { get; init; }
@@ -82,24 +82,24 @@ public sealed class KafkaConsumerConfiguration
         return new ConsumerConfig
         {
             BootstrapServers = BootstrapServers,
-            SecurityProtocol = SecurityProtocol ?? KafkaConsumerConfigurationDefaults.SECURITY_PROTOCOL,
-            SaslMechanism = SaslMechanism ?? KafkaConsumerConfigurationDefaults.SASL_MECHANISM,
+            SecurityProtocol = SecurityProtocol ?? ConsumerConfigurationDefaults.SECURITY_PROTOCOL,
+            SaslMechanism = SaslMechanism ?? ConsumerConfigurationDefaults.SASL_MECHANISM,
             SaslUsername = SaslUsername,
             SaslPassword = SaslPassword,
-            EnableAutoCommit = EnableAutoCommit ?? KafkaConsumerConfigurationDefaults.ENABLE_AUTO_COMMIT,
-            EnableAutoOffsetStore = EnableAutoOffsetStore ?? KafkaConsumerConfigurationDefaults.ENABLE_AUTO_OFFSET_STORE,
-            AutoCommitIntervalMs = AutoCommitIntervalMs ?? KafkaConsumerConfigurationDefaults.AUTO_COMMIT_INTERVAL_MS,
-            AllowAutoCreateTopics = AllowAutoCreateTopics ?? KafkaConsumerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
-            AutoOffsetReset = AutoOffsetReset ?? KafkaConsumerConfigurationDefaults.AUTO_OFFSET_RESET,
-            SocketTimeoutMs = SocketTimeoutMs ?? KafkaConsumerConfigurationDefaults.SOCKET_TIMEOUT_MS,
-            MaxPollIntervalMs = MaxPollIntervalMs ?? KafkaConsumerConfigurationDefaults.MAX_POLL_INTERVAL_MS,
-            SessionTimeoutMs = SessionTimeoutMs ?? KafkaConsumerConfigurationDefaults.SESSION_TIMEOUT_MS,
-            HeartbeatIntervalMs = HeartbeatIntervalMs ?? KafkaConsumerConfigurationDefaults.HEARTBEAT_INTERVAL_MS,
-            RetryBackoffMs = RetryBackoffMs ?? KafkaConsumerConfigurationDefaults.RETRY_BACKOFF_MS,
-            RetryBackoffMaxMs = RetryBackoffMaxMs ?? KafkaConsumerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
-            ClientId = ClientId ?? KafkaConsumerConfigurationDefaults.CLIENT_ID,
+            EnableAutoCommit = EnableAutoCommit ?? ConsumerConfigurationDefaults.ENABLE_AUTO_COMMIT,
+            EnableAutoOffsetStore = EnableAutoOffsetStore ?? ConsumerConfigurationDefaults.ENABLE_AUTO_OFFSET_STORE,
+            AutoCommitIntervalMs = AutoCommitIntervalMs ?? ConsumerConfigurationDefaults.AUTO_COMMIT_INTERVAL_MS,
+            AllowAutoCreateTopics = AllowAutoCreateTopics ?? ConsumerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
+            AutoOffsetReset = AutoOffsetReset ?? ConsumerConfigurationDefaults.AUTO_OFFSET_RESET,
+            SocketTimeoutMs = SocketTimeoutMs ?? ConsumerConfigurationDefaults.SOCKET_TIMEOUT_MS,
+            MaxPollIntervalMs = MaxPollIntervalMs ?? ConsumerConfigurationDefaults.MAX_POLL_INTERVAL_MS,
+            SessionTimeoutMs = SessionTimeoutMs ?? ConsumerConfigurationDefaults.SESSION_TIMEOUT_MS,
+            HeartbeatIntervalMs = HeartbeatIntervalMs ?? ConsumerConfigurationDefaults.HEARTBEAT_INTERVAL_MS,
+            RetryBackoffMs = RetryBackoffMs ?? ConsumerConfigurationDefaults.RETRY_BACKOFF_MS,
+            RetryBackoffMaxMs = RetryBackoffMaxMs ?? ConsumerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
+            ClientId = ClientId ?? ConsumerConfigurationDefaults.CLIENT_ID,
             GroupId = groupId,
-            GroupInstanceId = GroupInstanceId ?? KafkaConsumerConfigurationDefaults.GROUP_INSTANCE_ID
+            GroupInstanceId = GroupInstanceId ?? ConsumerConfigurationDefaults.GROUP_INSTANCE_ID
         };
     }
 }

@@ -3,10 +3,10 @@ using Confluent.Kafka;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default Kafka consumer settings a <see cref="KafkaConsumerConfiguration"/> falls back to for
+/// Default Kafka consumer settings a <see cref="ConsumerConfiguration"/> falls back to for
 /// values the <c>Bus:Consumer</c> section does not supply.
 /// </summary>
-public static class KafkaConsumerConfigurationDefaults
+public static class ConsumerConfigurationDefaults
 {
     /// <summary>Security protocol. Default: <c>Ssl</c>.</summary>
     public const SecurityProtocol SECURITY_PROTOCOL = SecurityProtocol.Ssl;

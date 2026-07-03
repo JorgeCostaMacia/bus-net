@@ -3,11 +3,11 @@ using Confluent.Kafka;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// Default producer settings a <see cref="KafkaProducerConfiguration"/> falls back to for values the
+/// Default producer settings a <see cref="ProducerConfiguration"/> falls back to for values the
 /// <c>Bus:Producer</c> section does not supply. Shared by every message; topics themselves are
 /// infrastructure, auto-created by the broker with its defaults and managed broker-side.
 /// </summary>
-public static class KafkaProducerConfigurationDefaults
+public static class ProducerConfigurationDefaults
 {
     /// <summary>Security protocol used to communicate with the brokers. Default: <c>Ssl</c>.</summary>
     public const SecurityProtocol SECURITY_PROTOCOL = SecurityProtocol.Ssl;

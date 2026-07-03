@@ -30,8 +30,8 @@ internal static class BusInfrastructureContext
     /// <returns>The same service collection, to allow method chaining.</returns>
     internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<BusContextConfigurator> configure)
     {
-        KafkaProducerConfiguration producer = CreateKafkaProducerConfiguration(configuration);
-        KafkaConsumerConfiguration consumer = CreateKafkaConsumerConfiguration(configuration);
+        ProducerConfiguration producer = CreateProducerConfiguration(configuration);
+        ConsumerConfiguration consumer = CreateConsumerConfiguration(configuration);
 
         services.AddSingleton(provider => CreateProducer(provider, producer.ProducerConfig));
 
@@ -51,16 +51,16 @@ internal static class BusInfrastructureContext
     }
 
     /// <summary>
-    /// Maps the <c>Bus:Producer</c> section onto a <see cref="KafkaProducerConfiguration"/> (the
+    /// Maps the <c>Bus:Producer</c> section onto a <see cref="ProducerConfiguration"/> (the
     /// curated setting surface; unset values fall back to the defaults when it composes the producer
     /// configuration).
     /// </summary>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The global producer configuration.</returns>
     /// <exception cref="InvalidOperationException"><c>Bus:Producer:BootstrapServers</c> is missing.</exception>
-    private static KafkaProducerConfiguration CreateKafkaProducerConfiguration(IConfiguration configuration)
+    private static ProducerConfiguration CreateProducerConfiguration(IConfiguration configuration)
     {
-        KafkaProducerConfiguration producer = configuration.GetSection(PRODUCER_SECTION).Get<KafkaProducerConfiguration>() ?? new KafkaProducerConfiguration();
+        ProducerConfiguration producer = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>() ?? new ProducerConfiguration();
 
         if (string.IsNullOrWhiteSpace(producer.BootstrapServers))
         {
@@ -71,23 +71,23 @@ internal static class BusInfrastructureContext
     }
 
     /// <summary>
-    /// Maps the <c>Bus:Consumer</c> section onto a <see cref="KafkaConsumerConfiguration"/> (the
+    /// Maps the <c>Bus:Consumer</c> section onto a <see cref="ConsumerConfiguration"/> (the
     /// curated setting surface; unset values fall back to the defaults when it composes each
     /// consumer's configuration). The connection is validated lazily — a producer-only service needs
     /// no <c>Bus:Consumer</c> section.
     /// </summary>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The global consumer configuration.</returns>
-    private static KafkaConsumerConfiguration CreateKafkaConsumerConfiguration(IConfiguration configuration)
-        => configuration.GetSection(CONSUMER_SECTION).Get<KafkaConsumerConfiguration>() ?? new KafkaConsumerConfiguration();
+    private static ConsumerConfiguration CreateConsumerConfiguration(IConfiguration configuration)
+        => configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>() ?? new ConsumerConfiguration();
 
     private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
     {
         ILogger<ProducerWorker> logger = provider.GetRequiredService<ILogger<ProducerWorker>>();
 
         return new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) => KafkaProducerLogger.LogError(logger, error))
-            .SetLogHandler((_, log) => KafkaProducerLogger.Log(logger, log))
+            .SetErrorHandler((_, error) => ProducerLogger.LogError(logger, error))
+            .SetLogHandler((_, log) => ProducerLogger.Log(logger, log))
             .Build();
     }
 }
