@@ -86,8 +86,8 @@ internal static class BusInfrastructureContext
         ILogger<ProducerWorker> logger = provider.GetRequiredService<ILogger<ProducerWorker>>();
 
         return new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) => ProducerLogger.LogError(logger, error))
-            .SetLogHandler((_, log) => ProducerLogger.Log(logger, log))
+            .SetErrorHandler((_, error) => ClientLogger.LogError(logger, error))
+            .SetLogHandler((_, log) => ClientLogger.Log(logger, log))
             .Build();
     }
 }

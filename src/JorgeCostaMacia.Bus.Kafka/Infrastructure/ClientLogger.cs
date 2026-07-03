@@ -4,13 +4,13 @@ using Microsoft.Extensions.Logging;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The consumer's librdkafka callback logging: connection-level and fatal errors, and the client's
+/// The Kafka client's librdkafka callback logging: connection-level and fatal errors, and the client's
 /// internal logs mapped to their severity — routed to the logger with the details as scope
-/// properties, so the consumer builder maps its handlers directly.
+/// properties, so the producer and consumer builders map their handlers directly.
 /// </summary>
-internal static class ConsumerLogger
+internal static class ClientLogger
 {
-    /// <summary>Logs a consumer error (connection-level or fatal) with the error destructured in the scope.</summary>
+    /// <summary>Logs a client error (connection-level or fatal) with the error destructured in the scope.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="error">The Kafka error.</param>
     public static void LogError(ILogger logger, Error error)
@@ -20,7 +20,7 @@ internal static class ConsumerLogger
             ["@Error"] = error
         }))
         {
-            logger.LogError("Consumer error.");
+            logger.LogError("Client error.");
         }
     }
 
