@@ -96,15 +96,13 @@ public sealed class BusContextConfigurator
                 builder,
                 provider.GetRequiredService<IProducer<Null, byte[]>>(),
                 provider.GetRequiredService<IServiceScopeFactory>(),
-                logger)
-            {
-                Topic = topic,
-                GroupId = groupId,
-                RetryAttempts = retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
-                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
-                RedeliveryIntervals = redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
-                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
-            };
+                logger,
+                topic,
+                groupId,
+                retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
+                retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
+                redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
+                redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES);
         });
 
         return this;
@@ -148,15 +146,13 @@ public sealed class BusContextConfigurator
                 builder,
                 provider.GetRequiredService<IProducer<Null, byte[]>>(),
                 provider.GetRequiredService<IServiceScopeFactory>(),
-                logger)
-            {
-                Topic = topic,
-                GroupId = groupId,
-                RetryAttempts = retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
-                RetryExcludeExceptionTypes = retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
-                RedeliveryIntervals = redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
-                RedeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES
-            };
+                logger,
+                topic,
+                groupId,
+                retryAttempts ?? ConsumerConfigurationDefaults.RETRY_ATTEMPTS,
+                retryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES,
+                redeliveryIntervals ?? ConsumerConfigurationDefaults.REDELIVERY_INTERVALS,
+                redeliveryExcludeExceptionTypes ?? ConsumerConfigurationDefaults.REDELIVERY_EXCLUDE_EXCEPTION_TYPES);
         });
 
         return this;

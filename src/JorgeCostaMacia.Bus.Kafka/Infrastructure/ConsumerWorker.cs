@@ -14,7 +14,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// Base for the hosted consumers — one per handler, one consumer loop on its topic (scale out by
 /// running more app instances; the consumer group balances the partitions). Its Kafka configuration
 /// arrives as a ready-made builder (settings and logging handlers wired where it is composed); its
-/// custom policy — topic, group id, resilience — as required properties. The whole delivery flow and
+/// custom policy — topic, group id, resilience — through the constructor. The whole delivery flow and
 /// its error policy live here once: consume → filter → rebuild transport/context → handle in its own
 /// service scope (the whole delivery in the logging scope) → store the offset (the store is the ack;
 /// the background thread commits it without blocking). A retryable failure is requeued through the
@@ -27,29 +27,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     where THandler : IHandler
 {
-    /// <summary>The Kafka topic the consumer subscribes to.</summary>
-    public required string Topic { get; init; }
-
     /// <summary>The consumer group id — the consumer's identity for offsets and consumer-side filtering.</summary>
-    public required string GroupId { get; init; }
-
-    /// <summary>
-    /// Maximum retry attempts when handling fails — each retry requeues the delivery to the topic's
-    /// tail (0 means no retries).
-    /// </summary>
-    public required int RetryAttempts { get; init; }
-
-    /// <summary>Exception types excluded from retries.</summary>
-    public required ImmutableList<Type> RetryExcludeExceptionTypes { get; init; }
-
-    /// <summary>
-    /// Delays between scheduled redeliveries after the retries are exhausted — one entry per
-    /// redelivery, waited before it (empty means no redeliveries).
-    /// </summary>
-    public required ImmutableList<TimeSpan> RedeliveryIntervals { get; init; }
-
-    /// <summary>Exception types excluded from redelivery.</summary>
-    public required ImmutableList<Type> RedeliveryExcludeExceptionTypes { get; init; }
+    protected string GroupId { get; }
 
     private readonly ConsumerBuilder<Null, byte[]> _builder;
     private IConsumer<Null, byte[]>? _consumer;
@@ -57,20 +36,49 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
+
+    private readonly string _topic;
+    private readonly int _retryAttempts;
+    private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
+    private readonly ImmutableList<TimeSpan> _redeliveryIntervals;
+    private readonly ImmutableList<Type> _redeliveryExcludeExceptionTypes;
+
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory and the logger.</summary>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory, the logger and its custom policy.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries and retries.</param>
-    protected ConsumerWorker(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger logger)
+    /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
+    /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
+    /// <param name="retryAttempts">Maximum retry attempts when handling fails — each retry requeues the delivery to the topic's tail (0 means no retries).</param>
+    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retries.</param>
+    /// <param name="redeliveryIntervals">Delays between scheduled redeliveries after the retries are exhausted — one entry per redelivery, waited before it (empty means no redeliveries).</param>
+    /// <param name="redeliveryExcludeExceptionTypes">Exception types excluded from redelivery.</param>
+    protected ConsumerWorker(
+        ConsumerBuilder<Null, byte[]> builder,
+        IProducer<Null, byte[]> producer,
+        IServiceScopeFactory scopeFactory,
+        ILogger logger,
+        string topic,
+        string groupId,
+        int retryAttempts,
+        ImmutableList<Type> retryExcludeExceptionTypes,
+        ImmutableList<TimeSpan> redeliveryIntervals,
+        ImmutableList<Type> redeliveryExcludeExceptionTypes)
     {
         _builder = builder;
         _producer = producer;
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _topic = topic;
+        GroupId = groupId;
+        _retryAttempts = retryAttempts;
+        _retryExcludeExceptionTypes = retryExcludeExceptionTypes;
+        _redeliveryIntervals = redeliveryIntervals;
+        _redeliveryExcludeExceptionTypes = redeliveryExcludeExceptionTypes;
     }
 
     /// <summary>Builds the consumer, subscribes to the topic and launches the consumer loop.</summary>
@@ -78,7 +86,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _consumer = _builder.Build();
-        _consumer.Subscribe(Topic);
+        _consumer.Subscribe(_topic);
 
         _cancellation = new CancellationTokenSource();
         CancellationToken token = _cancellation.Token;
@@ -145,7 +153,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     {
         using IDisposable? scope = _logger.BeginScope(new Dictionary<string, object?>
         {
-            ["Topic"] = Topic,
+            ["Topic"] = _topic,
             ["GroupId"] = GroupId
         });
 
@@ -228,8 +236,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         if (result is null || !result.Message.Headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] header)) return false;
 
         return int.TryParse(Encoding.UTF8.GetString(header), out int retries)
-            && retries < RetryAttempts
-            && !RetryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
+            && retries < _retryAttempts
+            && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(exception));
     }
 
     /// <summary>
@@ -252,7 +260,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         try
         {
-            await _producer.ProduceAsync(Topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
+            await _producer.ProduceAsync(_topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
 
             using (_logger.BeginScope(new Dictionary<string, object?>
             {

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
@@ -21,13 +22,29 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     where TEvent : Domain.Event
     where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
 {
-    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory and the logger.</summary>
+    /// <summary>Creates the consumer over its ready-made Kafka builder, the shared producer, the scope factory, the logger and its custom policy.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
     /// <param name="producer">The shared Kafka producer, used to requeue failed deliveries.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries and retries.</param>
-    public EventConsumerWorker(ConsumerBuilder<Null, byte[]> builder, IProducer<Null, byte[]> producer, IServiceScopeFactory scopeFactory, ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger)
-        : base(builder, producer, scopeFactory, logger) { }
+    /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
+    /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
+    /// <param name="retryAttempts">Maximum retry attempts when handling fails (0 means no retries).</param>
+    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retries.</param>
+    /// <param name="redeliveryIntervals">Delays between scheduled redeliveries (empty means no redeliveries).</param>
+    /// <param name="redeliveryExcludeExceptionTypes">Exception types excluded from redelivery.</param>
+    public EventConsumerWorker(
+        ConsumerBuilder<Null, byte[]> builder,
+        IProducer<Null, byte[]> producer,
+        IServiceScopeFactory scopeFactory,
+        ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger,
+        string topic,
+        string groupId,
+        int retryAttempts,
+        ImmutableList<Type> retryExcludeExceptionTypes,
+        ImmutableList<TimeSpan> redeliveryIntervals,
+        ImmutableList<Type> redeliveryExcludeExceptionTypes)
+        : base(builder, producer, scopeFactory, logger, topic, groupId, retryAttempts, retryExcludeExceptionTypes, redeliveryIntervals, redeliveryExcludeExceptionTypes) { }
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Null, byte[]> result, Transport transport)
