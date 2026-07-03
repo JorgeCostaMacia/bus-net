@@ -30,10 +30,10 @@ internal static class BusInfrastructureContext
     /// <returns>The same service collection, to allow method chaining.</returns>
     internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<BusContextConfigurator> configure)
     {
-        ProducerConfiguration producer = CreateProducerConfiguration(configuration);
-        ConsumerConfiguration consumer = CreateConsumerConfiguration(configuration);
+        ProducerConfiguration producerConfiguration = CreateProducerConfiguration(configuration);
+        ConsumerConfiguration consumerConfiguration = CreateConsumerConfiguration(configuration);
 
-        services.AddSingleton(provider => CreateProducer(provider, producer.ProducerConfig));
+        services.AddSingleton(provider => CreateProducer(provider, producerConfiguration.ProducerConfig));
 
         services.AddHostedService<ProducerWorker>();
 
@@ -41,7 +41,7 @@ internal static class BusInfrastructureContext
         services.AddSingleton<ICommandBus>(static provider => provider.GetRequiredService<IBus>());
         services.AddSingleton<IEventBus>(static provider => provider.GetRequiredService<IBus>());
 
-        BusContextConfigurator configurator = new(services, consumer);
+        BusContextConfigurator configurator = new(services, consumerConfiguration);
 
         configure(configurator);
 
@@ -57,17 +57,18 @@ internal static class BusInfrastructureContext
     /// </summary>
     /// <param name="configuration">The application configuration.</param>
     /// <returns>The global producer configuration.</returns>
-    /// <exception cref="InvalidOperationException"><c>Bus:Producer:BootstrapServers</c> is missing.</exception>
+    /// <exception cref="InvalidOperationException">The <c>Bus:Producer</c> section or its <c>BootstrapServers</c> is missing.</exception>
     private static ProducerConfiguration CreateProducerConfiguration(IConfiguration configuration)
     {
-        ProducerConfiguration producer = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>() ?? new ProducerConfiguration();
+        ProducerConfiguration producerConfiguration = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>()
+            ?? throw new InvalidOperationException($"'{PRODUCER_SECTION}' is null.");
 
-        if (string.IsNullOrWhiteSpace(producer.BootstrapServers))
+        if (string.IsNullOrWhiteSpace(producerConfiguration.BootstrapServers))
         {
-            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producer.BootstrapServers)}' is null.");
+            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
         }
 
-        return producer;
+        return producerConfiguration;
     }
 
     /// <summary>
