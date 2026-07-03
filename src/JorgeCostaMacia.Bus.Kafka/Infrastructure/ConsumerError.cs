@@ -21,7 +21,7 @@ internal sealed class ConsumerError
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";
 
-    private readonly IProducer<Null, byte[]> _producer;
+    private readonly Bus _bus;
     private readonly IRetryScheduler? _retryScheduler;
     private readonly ILogger _logger;
 
@@ -30,8 +30,8 @@ internal sealed class ConsumerError
     private readonly ImmutableList<TimeSpan> _retryIntervals;
     private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
 
-    /// <summary>Creates the policy over the shared producer, the optional retry scheduler, the logger and the consumer's contract.</summary>
-    /// <param name="producer">The shared Kafka producer, used to requeue retries and park final failures.</param>
+    /// <summary>Creates the policy over the bus, the optional retry scheduler, the logger and the consumer's contract.</summary>
+    /// <param name="bus">The bus — every produce (retry requeues, error parking) goes through its internal gate.</param>
     /// <param name="retryScheduler">The scheduler parking delayed retries, or <see langword="null"/> when none is registered — positive intervals are then logged and skipped.</param>
     /// <param name="logger">The consumer's logger.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to — retries requeue to it; final failures park to its <c>.error</c>.</param>
@@ -39,7 +39,7 @@ internal sealed class ConsumerError
     /// <param name="retryIntervals">Delays before each retry — one entry per attempt, <c>00:00</c> requeues immediately (empty means no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry — they park directly.</param>
     public ConsumerError(
-        IProducer<Null, byte[]> producer,
+        Bus bus,
         IRetryScheduler? retryScheduler,
         ILogger logger,
         string topic,
@@ -47,7 +47,7 @@ internal sealed class ConsumerError
         ImmutableList<TimeSpan> retryIntervals,
         ImmutableList<Type> retryExcludeExceptionTypes)
     {
-        _producer = producer;
+        _bus = bus;
         _retryScheduler = retryScheduler;
         _logger = logger;
         _topic = topic;
@@ -129,7 +129,7 @@ internal sealed class ConsumerError
     {
         try
         {
-            await _producer.ProduceAsync(_topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
+            await _bus.Produce(_topic, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
 
             BusLogger.LogRetry(_logger, exception, retry + 1);
 
@@ -202,7 +202,7 @@ internal sealed class ConsumerError
 
         try
         {
-            await _producer.ProduceAsync(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
+            await _bus.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = result.Message.Value, Headers = headers }, cancellationToken);
 
             return true;
         }

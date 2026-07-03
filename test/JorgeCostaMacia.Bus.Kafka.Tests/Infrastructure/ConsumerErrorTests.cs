@@ -5,6 +5,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
@@ -21,7 +22,14 @@ public class ConsumerErrorTests
     private readonly RetrySchedulerFake _scheduler = new();
 
     private ConsumerError CreateSut(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
-        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], excludes ?? []);
+        => new(
+            new KafkaBus(_producer, new Dictionary<Type, string>(), NullLogger<KafkaBus>.Instance),
+            scheduler ? _scheduler : null,
+            NullLogger.Instance,
+            TOPIC,
+            GROUP_ID,
+            intervals ?? [],
+            excludes ?? []);
 
     private static ConsumeResult<Null, byte[]> Delivery(int? retryCount = 0, byte[]? body = null)
     {

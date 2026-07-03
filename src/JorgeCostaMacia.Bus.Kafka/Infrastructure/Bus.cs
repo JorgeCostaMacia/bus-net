@@ -10,14 +10,15 @@ using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The Kafka bus. Sends commands and publishes events through a shared
-/// <see cref="IProducer{TKey, TValue}"/> using <c>ProduceAsync</c> (a completed task means the broker
-/// acked; a failure throws). Send/Publish orchestrate: they resolve the topic, prepare the envelope
-/// (fresh, or continued from an inbound transport) and produce. The consume side lives in the
-/// per-handler consumers (<c>CommandConsumerWorker</c> / <c>EventConsumerWorker</c>), hosted in the application
-/// lifecycle.
+/// The Kafka bus — the single owner of the producer and the routing map: every send in the
+/// application goes through it, the consumers' machinery included (retries and error parking use its
+/// internal produce). Sends commands and publishes events with <c>ProduceAsync</c> (a completed task
+/// means the broker acked; a failure throws). Send/Publish orchestrate: they resolve the topic,
+/// prepare the envelope (fresh, or continued from an inbound transport) and produce. The consume
+/// side lives in the per-handler consumers (<c>CommandConsumerWorker</c> /
+/// <c>EventConsumerWorker</c>); the <see cref="BusWorker"/> flushes it on shutdown.
 /// </summary>
-public sealed class Bus : IBus
+public sealed class Bus : IBus, IDisposable
 {
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IReadOnlyDictionary<Type, string> _messages;
@@ -144,11 +145,12 @@ public sealed class Bus : IBus
     }
 
     /// <summary>
-    /// Produces the prepared message. A failure is logged with the outbound delivery attached (topic,
-    /// body and envelope — inspectable and reinjectable from the log platform) and rethrown: the
-    /// caller's task still faults, awaiting still means broker-acked.
+    /// Produces a message — the single gate every outbound byte goes through (Send/Publish envelopes
+    /// and the consumers' retries and error parking alike). A failure is logged with the outbound
+    /// delivery attached (topic, body and envelope — inspectable and reinjectable from the log
+    /// platform) and rethrown: the caller's task still faults, awaiting still means broker-acked.
     /// </summary>
-    private async Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
+    internal async Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
     {
         try
         {
@@ -167,6 +169,13 @@ public sealed class Bus : IBus
         headers.Remove(key);
         headers.Add(key, value);
     }
+
+    /// <summary>Waits until the producer's outbound queue is fully delivered — the shutdown flush.</summary>
+    /// <param name="cancellationToken">A token bounding how long the flush may wait.</param>
+    internal void Flush(CancellationToken cancellationToken) => _producer.Flush(cancellationToken);
+
+    /// <summary>Disposes the producer the bus owns.</summary>
+    public void Dispose() => _producer.Dispose();
 
     private static byte[] Bytes(string value) => Encoding.UTF8.GetBytes(value);
 

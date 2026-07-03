@@ -22,15 +22,13 @@ public sealed class BusContextConfigurator
 {
     private readonly IServiceCollection _services;
     private readonly ConsumerConfiguration? _configuration;
-    private readonly Dictionary<Type, string> _messages = [];
+    private readonly Dictionary<Type, string> _messages;
 
-    /// <summary>The type → topic routing map accumulated by the contexts.</summary>
-    internal IReadOnlyDictionary<Type, string> Messages => _messages;
-
-    internal BusContextConfigurator(IServiceCollection services, ConsumerConfiguration? configuration)
+    internal BusContextConfigurator(IServiceCollection services, ConsumerConfiguration? configuration, Dictionary<Type, string> messages)
     {
         _services = services;
         _configuration = configuration;
+        _messages = messages;
     }
 
     /// <summary>Registers a command this service sends, mapping its type to a topic.</summary>
@@ -89,7 +87,7 @@ public sealed class BusContextConfigurator
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
             ConsumerError error = new(
-                provider.GetRequiredService<IProducer<Null, byte[]>>(),
+                provider.GetRequiredService<Infrastructure.Bus>(),
                 provider.GetService<IRetryScheduler>(),
                 logger,
                 topic,
@@ -141,7 +139,7 @@ public sealed class BusContextConfigurator
                 .SetLogHandler((_, log) => BusLogger.Log(logger, log));
 
             ConsumerError error = new(
-                provider.GetRequiredService<IProducer<Null, byte[]>>(),
+                provider.GetRequiredService<Infrastructure.Bus>(),
                 provider.GetService<IRetryScheduler>(),
                 logger,
                 topic,

@@ -1,10 +1,10 @@
-using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
+using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
@@ -65,10 +65,9 @@ public class BusContextTests
 
         services.AddBusContext(Configuration(), _ => { });
 
-        Assert.Contains(services, e => e.ServiceType == typeof(IProducer<Null, byte[]>));
-        Assert.Contains(services, e => e.ServiceType == typeof(IHostedService) && e.ImplementationType == typeof(ProducerWorker));
+        Assert.Contains(services, e => e.ServiceType == typeof(KafkaBus));
+        Assert.Contains(services, e => e.ServiceType == typeof(IHostedService) && e.ImplementationType == typeof(BusWorker));
         Assert.Contains(services, e => e.ServiceType == typeof(IBus));
-        Assert.Contains(services, e => e.ServiceType == typeof(IReadOnlyDictionary<Type, string>));
     }
 
     [Fact]
@@ -87,22 +86,6 @@ public class BusContextTests
             () => new ServiceCollection().AddBusContext(configuration, _ => { }));
 
         Assert.Contains("Bus:Consumer", exception.Message);
-    }
-
-    [Fact]
-    public void AddBusContext_MessagesMap_IsRegisteredWithTheMappings()
-    {
-        ServiceCollection services = [];
-
-        services.AddBusContext(Configuration(), bus => bus
-            .AddCommand<TestCommand>("orders")
-            .AddEvent<TestEvent>("orders.created"));
-
-        IReadOnlyDictionary<Type, string> messages = Assert.IsAssignableFrom<IReadOnlyDictionary<Type, string>>(
-            Assert.Single(services, e => e.ServiceType == typeof(IReadOnlyDictionary<Type, string>)).ImplementationInstance);
-
-        Assert.Equal("orders", messages[typeof(TestCommand)]);
-        Assert.Equal("orders.created", messages[typeof(TestEvent)]);
     }
 
     [Fact]

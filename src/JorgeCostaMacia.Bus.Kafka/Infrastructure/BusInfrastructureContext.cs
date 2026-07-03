@@ -8,10 +8,11 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
 /// The package's wiring: creates the Kafka configurations from the <c>Bus:Producer</c> /
-/// <c>Bus:Consumer</c> sections (declared once, never repeated), registers the shared producer
-/// (error/log callbacks wired to the logger) with its lifecycle worker — registered first so it stops
-/// last, the consumers stop before the final flush — and the <see cref="Bus"/> behind <see cref="IBus"/>,
-/// and lets each context map its messages and handlers through the <see cref="BusContextConfigurator"/>.
+/// <c>Bus:Consumer</c> sections (declared once, never repeated) and registers the <see cref="Bus"/>
+/// behind <see cref="IBus"/> — the single owner of the producer (error/log callbacks wired to its
+/// logger) and of the routing map the contexts fill through the <see cref="BusContextConfigurator"/> —
+/// with its lifecycle worker, registered first so it stops last: the consumers stop before the final
+/// flush.
 /// </summary>
 internal static class BusInfrastructureContext
 {
@@ -31,17 +32,16 @@ internal static class BusInfrastructureContext
         ProducerConfiguration producerConfiguration = CreateProducerConfiguration(configuration);
         ConsumerConfiguration? consumerConfiguration = CreateConsumerConfiguration(configuration);
 
-        services.AddSingleton(provider => CreateProducer(provider, producerConfiguration.ProducerConfig));
+        Dictionary<Type, string> messages = [];
 
-        services.AddHostedService<ProducerWorker>();
+        services.AddSingleton(provider => CreateBus(provider, producerConfiguration.ProducerConfig, messages));
+        services.AddSingleton<IBus>(static provider => provider.GetRequiredService<Bus>());
 
-        services.AddSingleton<IBus, Bus>();
+        services.AddHostedService<BusWorker>();
 
-        BusContextConfigurator configurator = new(services, consumerConfiguration);
+        BusContextConfigurator configurator = new(services, consumerConfiguration, messages);
 
         configure(configurator);
-
-        services.AddSingleton(configurator.Messages);
 
         return services;
     }
@@ -105,13 +105,19 @@ internal static class BusInfrastructureContext
         }
     }
 
-    private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
+    /// <summary>
+    /// Creates the bus over the producer it owns — built here with the error/log callbacks wired to
+    /// the bus's logger — and the routing map the configurator fills.
+    /// </summary>
+    private static Bus CreateBus(IServiceProvider provider, ProducerConfig configuration, IReadOnlyDictionary<Type, string> messages)
     {
-        ILogger<ProducerWorker> logger = provider.GetRequiredService<ILogger<ProducerWorker>>();
+        ILogger<Bus> logger = provider.GetRequiredService<ILogger<Bus>>();
 
-        return new ProducerBuilder<Null, byte[]>(configuration)
+        IProducer<Null, byte[]> producer = new ProducerBuilder<Null, byte[]>(configuration)
             .SetErrorHandler((_, error) => BusLogger.LogError(logger, error))
             .SetLogHandler((_, log) => BusLogger.Log(logger, log))
             .Build();
+
+        return new Bus(producer, messages, logger);
     }
 }
