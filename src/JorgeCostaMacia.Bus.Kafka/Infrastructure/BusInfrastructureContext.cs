@@ -1,6 +1,4 @@
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Command.Domain;
-using JorgeCostaMacia.Bus.Event.Domain;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -12,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// The package's wiring: creates the Kafka configurations from the <c>Bus:Producer</c> /
 /// <c>Bus:Consumer</c> sections (declared once, never repeated), registers the shared producer
 /// (error/log callbacks wired to the logger) with its lifecycle worker — registered first so it stops
-/// last, the consumers stop before the final flush — and the <see cref="Bus"/> behind its facades,
+/// last, the consumers stop before the final flush — and the <see cref="Bus"/> behind <see cref="IBus"/>,
 /// and lets each context map its messages and handlers through the <see cref="BusContextConfigurator"/>.
 /// </summary>
 internal static class BusInfrastructureContext
@@ -38,8 +36,6 @@ internal static class BusInfrastructureContext
         services.AddHostedService<ProducerWorker>();
 
         services.AddSingleton<IBus, Bus>();
-        services.AddSingleton<ICommandBus>(static provider => provider.GetRequiredService<IBus>());
-        services.AddSingleton<IEventBus>(static provider => provider.GetRequiredService<IBus>());
 
         BusContextConfigurator configurator = new(services, consumerConfiguration);
 

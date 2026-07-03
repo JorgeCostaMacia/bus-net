@@ -1,17 +1,23 @@
 using System.Collections.Immutable;
-using JorgeCostaMacia.Bus.Event.Domain;
+using JorgeCostaMacia.Bus.Domain.Contexts;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
-/// The Kafka event context a subscriber receives — implements
-/// <see cref="IEventContext{TEvent, TTransport}"/> for <see cref="Transport"/>, carrying the event,
-/// the transport and the full read-only envelope. Built by the consumer from the delivered message
-/// and its headers; the <b>outbound</b> envelope (new flow / correlated) is computed by the bus when
-/// producing, not here.
+/// The Kafka event context a subscriber receives — composes every envelope facet over
+/// <see cref="Transport"/>, carrying the event, the transport and the full read-only envelope.
+/// Built by the consumer from the delivered message and its headers; the <b>outbound</b> envelope
+/// (new flow / correlated) is computed by the bus when producing, not here.
 /// </summary>
 /// <typeparam name="TEvent">The event type.</typeparam>
-public sealed record EventContext<TEvent> : IEventContext<TEvent, Transport>
+public sealed record EventContext<TEvent> :
+    IMessageContext<TEvent>,
+    ITransportContext<Transport>,
+    ITracedContext,
+    IAggregateTracedContext,
+    IAggregateFilteredContext,
+    IConversationContext,
+    IResilientContext
     where TEvent : Event
 {
     /// <summary>The delivered event.</summary>

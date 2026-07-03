@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.Json;
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Command.Domain;
+using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -18,7 +18,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <typeparam name="TCommandHandler">The handler type resolved per delivery.</typeparam>
 internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : ConsumerWorker<CommandContext<TCommand>, TCommandHandler>
     where TCommand : Domain.Command
-    where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
+    where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
 {
     /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>

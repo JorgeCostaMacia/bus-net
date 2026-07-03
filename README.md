@@ -23,10 +23,8 @@ In development — a MassTransit-free bus, listed here as each ships:
 | Package | What it does |
 | --- | --- |
 | `JorgeCostaMacia.Bus` | Core message + bus contracts (no request/response). |
-| `JorgeCostaMacia.Bus.Command` | Command bus — point-to-point `Send`. |
-| `JorgeCostaMacia.Bus.Event` | Event bus — pub/sub `Publish` (`IEvent : IDomainEvent`). |
-| `JorgeCostaMacia.Bus.RabbitMq` | Transport on the official `RabbitMQ.Client`. |
-| `JorgeCostaMacia.Bus.Kafka` | Transport on `Confluent.Kafka`. |
+| `JorgeCostaMacia.Bus.RabbitMq` | Transport on the official `RabbitMQ.Client` — commands (`Send`) and events (`Publish`). |
+| `JorgeCostaMacia.Bus.Kafka` | Transport on `Confluent.Kafka` — commands (`Send`) and events (`Publish`). |
 
 ## Contact
 

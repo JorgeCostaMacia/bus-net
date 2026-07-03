@@ -19,7 +19,7 @@ dotnet add package JorgeCostaMacia.Bus.Kafka
 
 One of the following SDKs: **.NET 8 / 9 / 10** *(.NET 10 recommended)*.
 
-Brings [JorgeCostaMacia.Bus.Command](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Command/) and [JorgeCostaMacia.Bus.Event](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Event/) (and their contracts) transitively, plus [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka/).
+Brings [JorgeCostaMacia.Bus](https://www.nuget.org/packages/JorgeCostaMacia.Bus/) (the transport-agnostic contracts) transitively, plus [Confluent.Kafka](https://www.nuget.org/packages/Confluent.Kafka/).
 
 ## About
 

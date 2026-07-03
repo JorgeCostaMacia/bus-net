@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using JorgeCostaMacia.Bus.Command.Domain;
+using JorgeCostaMacia.Bus.Domain.Messages;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
@@ -7,9 +7,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// Base implementation for commands on the Kafka bus: an immutable <see langword="record"/> carrying
 /// traceability metadata (id / correlation / UTC timestamp) and optional target consumers,
 /// defaulting the id via JorgeCostaMacia.GuidFactory. Concrete commands forward to it with
-/// <c>: base(...)</c>. Implements the transport-agnostic <see cref="ICommand"/> contract.
+/// <c>: base(...)</c>. Implements the transport-agnostic message contracts
+/// (<see cref="ITracedMessage"/> / <see cref="IFilteredMessage"/>).
 /// </summary>
-public abstract record Command : ICommand
+public abstract record Command : ITracedMessage, IFilteredMessage
 {
     /// <summary>Unique identifier of this command instance.</summary>
     public Guid AggregateId { get; init; }

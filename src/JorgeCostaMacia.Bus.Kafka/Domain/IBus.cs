@@ -1,12 +1,12 @@
-using JorgeCostaMacia.Bus.Command.Domain;
-using JorgeCostaMacia.Bus.Event.Domain;
+using JorgeCostaMacia.Bus.Domain.Buses;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
-/// The bus — the single entry point for a service: it sends commands (<see cref="ICommandBus"/>)
-/// and publishes events (<see cref="IEventBus"/>); the per-message configuration is held and managed
-/// inside it. The consume side lives in the worker, hosted in the application lifecycle — nothing to
-/// start or stop by hand.
+/// The bus — the single entry point for a service: it sends commands
+/// (<see cref="ISenderBus{TMessage}"/> over <see cref="Command"/>) and publishes events
+/// (<see cref="IPublisherBus{TMessage}"/> over <see cref="Event"/>); the per-message configuration is
+/// held and managed inside it. The consume side lives in the worker, hosted in the application
+/// lifecycle — nothing to start or stop by hand.
 /// </summary>
-public interface IBus : ICommandBus, IEventBus { }
+public interface IBus : ISenderBus<Command>, IPublisherBus<Event> { }

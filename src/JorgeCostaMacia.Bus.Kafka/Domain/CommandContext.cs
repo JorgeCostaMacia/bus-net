@@ -1,17 +1,23 @@
 using System.Collections.Immutable;
-using JorgeCostaMacia.Bus.Command.Domain;
+using JorgeCostaMacia.Bus.Domain.Contexts;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
-/// The Kafka command context a handler receives — implements
-/// <see cref="ICommandContext{TCommand, TTransport}"/> for <see cref="Transport"/>, carrying the
-/// command, the transport and the full read-only envelope. Built by the consumer from the delivered
-/// message and its headers; the <b>outbound</b> envelope (new flow / correlated) is computed by the
-/// bus when producing, not here.
+/// The Kafka command context a handler receives — composes every envelope facet over
+/// <see cref="Transport"/>, carrying the command, the transport and the full read-only envelope.
+/// Built by the consumer from the delivered message and its headers; the <b>outbound</b> envelope
+/// (new flow / correlated) is computed by the bus when producing, not here.
 /// </summary>
 /// <typeparam name="TCommand">The command type.</typeparam>
-public sealed record CommandContext<TCommand> : ICommandContext<TCommand, Transport>
+public sealed record CommandContext<TCommand> :
+    IMessageContext<TCommand>,
+    ITransportContext<Transport>,
+    ITracedContext,
+    IAggregateTracedContext,
+    IAggregateFilteredContext,
+    IConversationContext,
+    IResilientContext
     where TCommand : Command
 {
     /// <summary>The delivered command.</summary>

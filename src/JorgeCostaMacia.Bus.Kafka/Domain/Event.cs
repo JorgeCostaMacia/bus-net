@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
-using JorgeCostaMacia.Bus.Event.Domain;
+using JorgeCostaMacia.Bus.Domain.Messages;
+using JorgeCostaMacia.DomainEvent.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
@@ -7,10 +8,11 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// Base implementation for events on the Kafka bus: an immutable <see langword="record"/> carrying
 /// traceability metadata (id / correlation / UTC timestamp) and optional target consumers,
 /// defaulting the id via JorgeCostaMacia.GuidFactory. Concrete events forward to it with
-/// <c>: base(...)</c>. Implements the transport-agnostic <see cref="IEvent"/> contract (and thus
-/// <c>IDomainEvent</c>), so it fits an aggregate's event list.
+/// <c>: base(...)</c>. Implements the transport-agnostic message contracts
+/// (<see cref="ITracedMessage"/> / <see cref="IFilteredMessage"/>) and <see cref="IDomainEvent"/>,
+/// so it fits an aggregate's event list.
 /// </summary>
-public abstract record Event : IEvent
+public abstract record Event : IDomainEvent, ITracedMessage, IFilteredMessage
 {
     /// <summary>Unique identifier of this event instance.</summary>
     public Guid AggregateId { get; init; }

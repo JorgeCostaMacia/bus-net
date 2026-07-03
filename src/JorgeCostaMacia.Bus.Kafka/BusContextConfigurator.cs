@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Command.Domain;
-using JorgeCostaMacia.Bus.Event.Domain;
+using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,7 +38,7 @@ public sealed class BusContextConfigurator
     /// <param name="topic">The Kafka topic the command is sent to.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddCommand<TCommand>(string topic)
-        where TCommand : ICommand
+        where TCommand : Domain.Command
     {
         _messages.Add(typeof(TCommand), topic);
 
@@ -51,7 +50,7 @@ public sealed class BusContextConfigurator
     /// <param name="topic">The Kafka topic the event is published to.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddEvent<TEvent>(string topic)
-        where TEvent : IEvent
+        where TEvent : Domain.Event
     {
         _messages.Add(typeof(TEvent), topic);
 
@@ -75,7 +74,7 @@ public sealed class BusContextConfigurator
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
         where TCommand : Domain.Command
-        where TCommandHandler : class, ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
+        where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
     {
         ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
             ?? throw new InvalidOperationException("'Bus:Consumer' is null.");
@@ -127,7 +126,7 @@ public sealed class BusContextConfigurator
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
         where TEvent : Domain.Event
-        where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
+        where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
     {
         ConsumerConfig configuration = _configuration?.ConsumerConfig(groupId)
             ?? throw new InvalidOperationException("'Bus:Consumer' is null.");

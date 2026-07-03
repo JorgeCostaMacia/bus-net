@@ -1,6 +1,4 @@
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Command.Domain;
-using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Configuration;
@@ -70,8 +68,6 @@ public class BusContextTests
         Assert.Contains(services, e => e.ServiceType == typeof(IProducer<Null, byte[]>));
         Assert.Contains(services, e => e.ServiceType == typeof(IHostedService) && e.ImplementationType == typeof(ProducerWorker));
         Assert.Contains(services, e => e.ServiceType == typeof(IBus));
-        Assert.Contains(services, e => e.ServiceType == typeof(ICommandBus));
-        Assert.Contains(services, e => e.ServiceType == typeof(IEventBus));
         Assert.Contains(services, e => e.ServiceType == typeof(IReadOnlyDictionary<Type, string>));
     }
 

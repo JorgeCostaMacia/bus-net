@@ -1,10 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Command.Domain;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Domain.Messages;
-using JorgeCostaMacia.Bus.Event.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.Logging;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
@@ -38,7 +36,7 @@ public sealed class Bus : IBus
 
     /// <inheritdoc />
     public async Task Send<T>(T message, CancellationToken cancellationToken = default)
-        where T : ICommand
+        where T : Command
     {
         string topic = Topic(message);
 
@@ -47,7 +45,7 @@ public sealed class Bus : IBus
 
     /// <inheritdoc />
     public async Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
-        where T : ICommand
+        where T : Command
     {
         string topic = Topic(message);
 
@@ -56,7 +54,7 @@ public sealed class Bus : IBus
 
     /// <inheritdoc />
     public async Task Publish<T>(T message, CancellationToken cancellationToken = default)
-        where T : IEvent
+        where T : Event
     {
         string topic = Topic(message);
 
@@ -65,7 +63,7 @@ public sealed class Bus : IBus
 
     /// <inheritdoc />
     public async Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
-        where T : IEvent
+        where T : Event
     {
         string topic = Topic(message);
 

@@ -1,4 +1,4 @@
-using JorgeCostaMacia.Bus.Command.Domain;
+using JorgeCostaMacia.Bus.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
@@ -9,7 +9,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// transport and envelope.
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler processes.</typeparam>
-public abstract class CommandHandler<TCommand> : ICommandHandler<TCommand, CommandContext<TCommand>, Transport>
+public abstract class CommandHandler<TCommand> : IHandler<TCommand, CommandContext<TCommand>>
     where TCommand : Command
 {
     /// <summary>Handles the delivered command.</summary>

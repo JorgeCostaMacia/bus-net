@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Event.Domain;
+using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,7 +20,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
 internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
     where TEvent : Domain.Event
-    where TEventSubscriber : class, IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
+    where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
 {
     /// <summary>Creates the consumer over its ready-made Kafka builder, its failure policy, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>

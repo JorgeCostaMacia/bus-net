@@ -1,4 +1,4 @@
-using JorgeCostaMacia.Bus.Event.Domain;
+using JorgeCostaMacia.Bus.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
@@ -9,7 +9,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// envelope.
 /// </summary>
 /// <typeparam name="TEvent">The event type this subscriber processes.</typeparam>
-public abstract class EventSubscriber<TEvent> : IEventSubscriber<TEvent, EventContext<TEvent>, Transport>
+public abstract class EventSubscriber<TEvent> : IHandler<TEvent, EventContext<TEvent>>
     where TEvent : Event
 {
     /// <summary>Handles the delivered event.</summary>

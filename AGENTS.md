@@ -7,24 +7,27 @@ Messaging building blocks — CQRS **command** and **event** buses and message a
 - `src/<Package>/` — one package per folder. `test/<Package>.Tests/` — its tests. `assets/` — icons + social preview.
 - **3-tier `Directory.Build.props`**: **root** (repo identity + the single lockstep `VersionPrefix`; TFMs `net8.0;net9.0;net10.0`; ImplicitUsings, Nullable, AnalysisLevel, EnforceCodeStyleInBuild) → **`src/`** (package-output: icon / readme / license, SourceLink, symbols, `GenerateDocumentationFile`, pack of LICENSE/COPYRIGHT/icon/README) → **`test/`** (test settings). Each `src` csproj declares **only** `Description` / `PackageTags`; everything else is inherited.
 
-## Architecture — the 5-package design (locked)
+## Architecture — concrete-first transports over agnostic contracts (locked)
 
 ```
-JorgeCostaMacia.Bus            root: IMessage / ITracedMessage / IFilteredMessage + IBus core (NO requester / request-response)
-├─ Bus.Command                ICommand + command bus (Send, point-to-point)
-├─ Bus.Event                  IEvent (: IDomainEvent) + event bus (Publish, pub/sub)
+JorgeCostaMacia.Bus            root: transport- AND pattern-agnostic vocabulary — IMessage / ITracedMessage /
+│                              IFilteredMessage, ITransport, IContext + envelope facets, ISenderBus<T> /
+│                              IPublisherBus<T>, IHandler (NO requester / request-response, NO ICommand/IEvent)
+├─ Bus.UrnFactory             urn:message:{type} lists for MessageTypeUrn (polymorphic routing)
 ├─ Bus.RabbitMq               own implementation on the official RabbitMQ.Client (NOT MassTransit)
 └─ Bus.Kafka                  own implementation on Confluent.Kafka
 ```
 
+- **Concrete-first**: the command/event distinction is defined BY EACH TRANSPORT, not the root — `Bus.Kafka` ships `Command` / `Event` abstract records (implementing the root message contracts; `Event` also `IDomainEvent`), `CommandHandler<T>` / `EventSubscriber<T>` bases (`: IHandler<T, …Context<T>>`) and `IBus : ISenderBus<Command>, IPublisherBus<Event>`. RabbitMq will mirror the same simple names in its own namespace; migrating transports is swapping a `global using`. Cross-transport shared code types against the root contracts (`ITracedMessage`, facets, `IHandler`), which both transports implement.
+
 - **No requester** — the RabbitMQ-only request/response bus is dropped (it was the only hard-to-port piece). **No query bus** — dropped.
 - **Ordering is a non-concern by design**: Kafka partitions on its own (no message key); consumers resolve conflicts by **`ITracedMessage.AggregateOccurredAt`** (event-time last-writer-wins), so out-of-order / reprocessed messages never overwrite a newer applied one. `AggregateId` is internal domain/tracing metadata, **not** a partition key.
-- **MassTransit** stays out of the bus. A temporary `Bus.MassTransit.RabbitMq` bridge (apps' current dependency) may be kept until the own transports work — that decision is deferred to the end; if kept, it must implement the same `Bus.Command` / `Bus.Event` contracts so apps swap transport with zero code change.
+- **MassTransit** stays out of the bus. A temporary `Bus.MassTransit.RabbitMq` bridge (apps' current dependency) may be kept until the own transports work — that decision is deferred to the end.
 
 ## Dependencies
 
-- **Cross-repo, on shared-net**: `Bus.Event` → `JorgeCostaMacia.DomainEvent` (`IEvent : IDomainEvent`) — **`PackageReference`** to the published package, pinned in `Directory.Packages.props`. Never `ProjectReference` across repos.
-- **Intra-repo, between `Bus.*` packages** (`Command`/`Event` → `Bus`; `RabbitMq`/`Kafka` → `Command`+`Event`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
+- **Cross-repo, on shared-net**: the transports → `JorgeCostaMacia.DomainEvent` (their `Event` record implements `IDomainEvent`) — **`PackageReference`** to the published package, pinned in `Directory.Packages.props`. Never `ProjectReference` across repos.
+- **Intra-repo, between `Bus.*` packages** (`RabbitMq`/`Kafka` → `Bus` + `Bus.UrnFactory`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
 - **Transport clients**: `RabbitMQ.Client`, `Confluent.Kafka` — third-party `PackageReference`, versioned in `Directory.Packages.props`.
 
 ## Dependencies — Central Package Management
