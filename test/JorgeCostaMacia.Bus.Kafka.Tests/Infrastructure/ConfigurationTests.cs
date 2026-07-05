@@ -13,7 +13,7 @@ public class ConfigurationTests
         ProducerConfig config = new ProducerConfiguration { BootstrapServers = "bus:9092", SaslUsername = "user", SaslPassword = "pass" }.ProducerConfig;
 
         Assert.Equal("bus:9092", config.BootstrapServers);
-        Assert.Equal(SecurityProtocol.Ssl, config.SecurityProtocol);
+        Assert.Equal(SecurityProtocol.SaslSsl, config.SecurityProtocol);
         Assert.Equal(SaslMechanism.ScramSha512, config.SaslMechanism);
         Assert.Equal(Acks.All, config.Acks);
         Assert.True(config.EnableIdempotence);
@@ -22,6 +22,7 @@ public class ConfigurationTests
         Assert.Equal(int.MaxValue, config.MessageSendMaxRetries);
         Assert.Equal(2_097_152, config.MessageMaxBytes);
         Assert.Equal(Environment.MachineName, config.ClientId);
+        Assert.True(config.SocketKeepaliveEnable);
     }
 
     [Fact]

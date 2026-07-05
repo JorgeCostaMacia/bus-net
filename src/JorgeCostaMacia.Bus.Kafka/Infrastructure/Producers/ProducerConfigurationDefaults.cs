@@ -9,8 +9,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 /// </summary>
 public static class ProducerConfigurationDefaults
 {
-    /// <summary>Security protocol used to communicate with the brokers. Default: <c>Ssl</c>.</summary>
-    public const SecurityProtocol SECURITY_PROTOCOL = SecurityProtocol.Ssl;
+    /// <summary>Security protocol used to communicate with the brokers. Default: <c>SaslSsl</c> — SASL authentication over a TLS transport.</summary>
+    public const SecurityProtocol SECURITY_PROTOCOL = SecurityProtocol.SaslSsl;
 
     /// <summary>SASL authentication mechanism. Default: <c>ScramSha512</c>.</summary>
     public const SaslMechanism SASL_MECHANISM = SaslMechanism.ScramSha512;
@@ -27,7 +27,7 @@ public static class ProducerConfigurationDefaults
     /// <summary>Enables idempotent message delivery. Default: <c>true</c>.</summary>
     public const bool ENABLE_IDEMPOTENCE = true;
 
-    /// <summary>Compression type for producer messages. Default: <c>Lz4</c> — fast, good ratio on JSON, the de-facto modern default; applied per batch.</summary>
+    /// <summary>Compression type for producer messages. Default: <c>Lz4</c> — fast, the de-facto modern default; applied per batch over the serialized byte payloads (effective on text-like data, near-neutral on already-compressed bytes).</summary>
     public const CompressionType COMPRESSION_TYPE = CompressionType.Lz4;
 
     /// <summary>Maximum time (ms) to wait for message delivery. Default: <c>300000</c> (5 min).</summary>
@@ -66,4 +66,14 @@ public static class ProducerConfigurationDefaults
 
     /// <summary>Kafka client identifier. Default: <see cref="Environment.MachineName"/>.</summary>
     public static string CLIENT_ID => Environment.MachineName;
+
+    /// <summary>
+    /// Whether TCP keepalive is enabled on broker connections. Default: <c>true</c> — the producer is a
+    /// long-lived singleton, and keepalive stops idle connections from being silently dropped by
+    /// firewalls/NAT (which would otherwise surface as spurious reconnects).
+    /// </summary>
+    public const bool SOCKET_KEEPALIVE_ENABLE = true;
+
+    /// <summary>Delivery report fields marshalled back on each result. Default: <c>all</c> (the client rejects <see langword="null"/>, so the default is set explicitly).</summary>
+    public const string DELIVERY_REPORT_FIELDS = "all";
 }

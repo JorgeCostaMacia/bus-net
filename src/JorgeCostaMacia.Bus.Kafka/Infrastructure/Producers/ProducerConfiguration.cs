@@ -81,6 +81,9 @@ public sealed record ProducerConfiguration
     /// <summary>Whether broker disconnects are logged, or <see langword="null"/> for the client default (true) — the classic idle-connection noise.</summary>
     public bool? LogConnectionClose { get; init; }
 
+    /// <summary>Whether TCP keepalive is enabled on broker connections, or <see langword="null"/> for the default (true).</summary>
+    public bool? SocketKeepaliveEnable { get; init; }
+
     /// <summary>The Kafka producer configuration — supplied values, defaults for the rest.</summary>
     public ProducerConfig ProducerConfig => new()
     {
@@ -104,9 +107,10 @@ public sealed record ProducerConfiguration
         ClientId = ClientId ?? ProducerConfigurationDefaults.CLIENT_ID,
         QueueBufferingMaxMessages = QueueBufferingMaxMessages,
         QueueBufferingMaxKbytes = QueueBufferingMaxKbytes,
-        DeliveryReportFields = DeliveryReportFields ?? "all",
+        DeliveryReportFields = DeliveryReportFields ?? ProducerConfigurationDefaults.DELIVERY_REPORT_FIELDS,
         StatisticsIntervalMs = StatisticsIntervalMs,
         Debug = Debug,
-        LogConnectionClose = LogConnectionClose
+        LogConnectionClose = LogConnectionClose,
+        SocketKeepaliveEnable = SocketKeepaliveEnable ?? ProducerConfigurationDefaults.SOCKET_KEEPALIVE_ENABLE
     };
 }
