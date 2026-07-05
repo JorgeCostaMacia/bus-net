@@ -3,28 +3,26 @@ using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-using JorgeCostaMacia.Bus.Kafka.Domain.Events;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer.Commands;
 
 /// <summary>
-/// The default implementation of the event's error handler — manages <b>only</b> the error case of a
-/// failed event delivery over the context the worker already built (the event deserialized once,
-/// reused here): a retryable failure follows the interval ladder (a <c>00:00</c> interval requeues
-/// to the topic's tail immediately, envelope cloned, <c>RetryCount</c> incremented and the retry
-/// re-targeted to this group only — the other subscriber groups already handled the original and
-/// filter the retry out; a positive one is parked through the retry scheduler to be produced back at
-/// its time — or, with no scheduler registered, parked to <c>.error</c> as terminal, since it cannot
-/// be delayed); a terminal failure parks an <see cref="EventError{TEvent}"/> to the topic's
-/// <c>.error</c>. It reports how it left the delivery through <c>Result</c>: a produce failure or a
-/// scheduler hiccup leaves it <see cref="ErrorHandlerResult.Unhandled"/> (unacked, redelivers); only
-/// an unreadable envelope reports <see cref="ErrorHandlerResult.Faulted"/>, handing the delivery to
-/// the fault handler.
+/// The default implementation of the command's error handler — manages <b>only</b> the error case of
+/// a failed command delivery over the context the worker already built (the command deserialized
+/// once, reused here): a retryable failure follows the interval ladder (a <c>00:00</c> interval
+/// requeues to the topic's tail immediately, envelope cloned and <c>RetryCount</c> incremented; a
+/// positive one is parked through the retry scheduler to be produced back at its time — or, with no
+/// scheduler registered, parked to <c>.error</c> as terminal, since it cannot be delayed); a terminal
+/// failure parks a <see cref="CommandError{TCommand}"/> to the topic's <c>.error</c>. It reports how
+/// it left the delivery through <c>Result</c>: a produce failure or a scheduler hiccup leaves it
+/// <see cref="ErrorHandlerResult.Unhandled"/> (unacked, redelivers); only an unreadable envelope
+/// reports <see cref="ErrorHandlerResult.Faulted"/>, handing the delivery to the fault handler.
 /// </summary>
-/// <typeparam name="TEvent">The event type this handler manages the failures of.</typeparam>
-internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandler<TEvent>
-    where TEvent : Event
+/// <typeparam name="TCommand">The command type this handler manages the failures of.</typeparam>
+internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErrorHandler<TCommand>
+    where TCommand : Command
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";
 
@@ -37,15 +35,15 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
     private readonly ImmutableList<TimeSpan> _retryIntervals;
     private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
 
-    /// <summary>Creates the handler over the bus, the optional retry scheduler, the logger and the event's contract.</summary>
+    /// <summary>Creates the handler over the bus, the optional retry scheduler, the logger and the command's contract.</summary>
     /// <param name="bus">The bus — every produce (retry requeues, error parking) goes through its internal gate.</param>
     /// <param name="retryScheduler">The scheduler parking delayed retries, or <see langword="null"/> when none is registered.</param>
     /// <param name="logger">The consumer's logger.</param>
     /// <param name="topic">The Kafka topic — retries requeue to it; terminal failures park to its <c>.error</c>.</param>
-    /// <param name="groupId">The consumer group id — stamped on the retry's targeting and on parked failures as the failing group.</param>
+    /// <param name="groupId">The consumer group id, stamped on parked failures as the failing group.</param>
     /// <param name="retryIntervals">Delays before each retry — one entry per attempt, <c>00:00</c> requeues immediately (empty means no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry — they park directly.</param>
-    public EventErrorHandler(
+    public CommandErrorHandler(
         Bus bus,
         IRetryScheduler? retryScheduler,
         ILogger logger,
@@ -64,15 +62,15 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
     }
 
     /// <summary>
-    /// Manages the failed event: a retryable failure requeues or schedules following the interval
-    /// ladder; a terminal failure parks an <see cref="EventError{TEvent}"/> to the error topic.
+    /// Manages the failed command: a retryable failure requeues or schedules following the interval
+    /// ladder; a terminal failure parks a <see cref="CommandError{TCommand}"/> to the error topic.
     /// Reports how it left the delivery through <c>Result</c>. Never throws for control flow: a
     /// produce failure or a scheduler hiccup is <see cref="ErrorHandlerResult.Unhandled"/>; an
     /// unreadable envelope is <see cref="ErrorHandlerResult.Faulted"/>.
     /// </summary>
-    /// <param name="context">The delivery's error context — the typed event, its envelope and the exception.</param>
+    /// <param name="context">The delivery's error context — the typed command, its envelope and the exception.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override async Task Handle(EventErrorContext<TEvent> context, CancellationToken cancellationToken = default)
+    public override async Task Handle(CommandErrorContext<TCommand> context, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -80,7 +78,7 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
             {
                 await ParkError(context, cancellationToken);
 
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(context.Error, "Subscriber failed.");
+                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(context.Error, "Handler failed.");
 
                 Result = ErrorHandlerResult.Parked;
 
@@ -103,19 +101,19 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
         }
         catch (Exception broken)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Subscriber failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Handler failed.");
 
             Result = ErrorHandlerResult.Faulted;
         }
     }
 
-    /// <summary>Whether the failed event is retried: the envelope's <c>RetryCount</c> has ladder entries left and the exception is not excluded.</summary>
-    private bool Retryable(EventErrorContext<TEvent> context)
+    /// <summary>Whether the failed command is retried: the envelope's <c>RetryCount</c> has ladder entries left and the exception is not excluded.</summary>
+    private bool Retryable(CommandErrorContext<TCommand> context)
         => context.RetryCount < _retryIntervals.Count
             && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(context.Error));
 
-    /// <summary>Requeues the retry at the topic's tail, targeted to this group only — nothing held in memory, survives a restart.</summary>
-    private async Task<ErrorHandlerResult> Requeue(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
+    /// <summary>Requeues the retry at the topic's tail — nothing held in memory, survives a restart.</summary>
+    private async Task<ErrorHandlerResult> Requeue(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
     {
         await _bus.Produce(_topic, new Message<Null, byte[]> { Value = Body(context), Headers = RetryHeaders(context) }, cancellationToken);
 
@@ -129,13 +127,13 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
     /// scheduler registered the failure cannot be delayed, so it parks to the error topic as terminal;
     /// a scheduler that fails leaves the delivery unacked to redeliver.
     /// </summary>
-    private async Task<ErrorHandlerResult> Schedule(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
+    private async Task<ErrorHandlerResult> Schedule(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
     {
         if (_retryScheduler is null)
         {
             await ParkError(context, cancellationToken);
 
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Subscriber failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Handler failed.");
 
             return ErrorHandlerResult.Parked;
         }
@@ -162,31 +160,30 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
         }
     }
 
-    /// <summary>Parks the subscriber failure to the error topic: an <see cref="EventError{TEvent}"/> body built from the context (the typed event reused, not re-deserialized), the envelope cloned with the failure stamped on top. The caller logs the outcome.</summary>
-    private async Task ParkError(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
+    /// <summary>Parks the handler failure to the error topic: a <see cref="CommandError{TCommand}"/> body built from the context (the typed command reused, not re-deserialized), the envelope cloned with the failure stamped on top. The caller logs the outcome.</summary>
+    private async Task ParkError(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
     {
-        EventError<TEvent> error = EventError<TEvent>.Create(context, _groupId);
+        CommandError<TCommand> error = CommandError<TCommand>.Create(context, _groupId);
 
         await _bus.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error), Headers = ErrorHeaders(context) }, cancellationToken);
     }
 
-    /// <summary>The retry's body — the typed event re-serialized.</summary>
-    private static byte[] Body(EventErrorContext<TEvent> context)
+    /// <summary>The retry's body — the typed command re-serialized.</summary>
+    private static byte[] Body(CommandErrorContext<TCommand> context)
         => JsonSerializer.SerializeToUtf8Bytes(context.Message);
 
-    /// <summary>The retry's headers — the envelope cloned, <c>RetryCount</c> incremented and the retry re-targeted to this group only.</summary>
-    private Headers RetryHeaders(EventErrorContext<TEvent> context)
+    /// <summary>The retry's headers — the envelope cloned with <c>RetryCount</c> incremented.</summary>
+    private static Headers RetryHeaders(CommandErrorContext<TCommand> context)
     {
         Headers headers = context.Transport.CloneHeaders();
 
         headers.Restamp(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes((context.RetryCount + 1).ToString()));
-        headers.Restamp(TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(_groupId));
 
         return headers;
     }
 
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing group, the UTC time) — filterable and reinjectable header-side.</summary>
-    private Headers ErrorHeaders(EventErrorContext<TEvent> context)
+    private Headers ErrorHeaders(CommandErrorContext<TCommand> context)
     {
         Type type = context.Error.GetType();
 

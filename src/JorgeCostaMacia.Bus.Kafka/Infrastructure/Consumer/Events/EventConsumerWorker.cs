@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer.Events;
 
 /// <summary>
 /// The consumer hosting one event subscriber. Events are pub/sub (one group per subscriber), so it

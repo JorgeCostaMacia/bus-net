@@ -65,12 +65,12 @@ public sealed class ConsumerConfigurator
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<CommandConsumerWorker<TCommand, TCommandHandler>>>();
+            ILogger<Commands.CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<Commands.CommandConsumerWorker<TCommand, TCommandHandler>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
-            return new CommandConsumerWorker<TCommand, TCommandHandler>(
+            return new Commands.CommandConsumerWorker<TCommand, TCommandHandler>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new Commands.CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
@@ -107,12 +107,12 @@ public sealed class ConsumerConfigurator
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<EventConsumerWorker<TEvent, TEventSubscriber>>>();
+            ILogger<Events.EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<Events.EventConsumerWorker<TEvent, TEventSubscriber>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
-            return new EventConsumerWorker<TEvent, TEventSubscriber>(
+            return new Events.EventConsumerWorker<TEvent, TEventSubscriber>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new Events.EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
@@ -196,7 +196,7 @@ public sealed class ConsumerConfigurator
     }
 
     /// <summary>Composes a consumer's fault handler over the bus, the logger and its contract.</summary>
-    private static FaultHandler CreateFaultHandler(IServiceProvider provider, ILogger logger, string topic, string groupId)
+    private static Faults.FaultHandler CreateFaultHandler(IServiceProvider provider, ILogger logger, string topic, string groupId)
         => new(Bus(provider), logger, topic, groupId);
 
     /// <summary>The bus — the single outbound gate the error and fault handlers produce through.</summary>
