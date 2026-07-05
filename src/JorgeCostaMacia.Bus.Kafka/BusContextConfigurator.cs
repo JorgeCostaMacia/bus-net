@@ -58,24 +58,24 @@ public sealed class BusContextConfigurator
 
     /// <summary>
     /// Registers a command handler: the handler itself (scoped, one per delivery) and its hosted
-    /// consumer, with the framework's error and fault handlers wired in. Its Kafka settings come from
-    /// the global configuration; the service tunes only the resilience policy here.
+    /// consumer, with the framework's error and fault handlers wired in. The topic is the one the
+    /// command was mapped to with <see cref="AddCommand{TCommand}"/> (register it first). Its Kafka
+    /// settings come from the global configuration; the service tunes only the resilience policy here.
     /// </summary>
     /// <typeparam name="TCommand">The command type consumed.</typeparam>
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
-    /// <param name="topic">The Kafka topic to consume from.</param>
     /// <param name="groupId">The consumer group id (e.g. <c>{topic}.handler</c>) — a stable contract, it holds the group's offsets.</param>
     /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> requeues immediately), or <see langword="null"/> for the default (none).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddCommandHandler<TCommand, TCommandHandler>(
-        string topic,
         string groupId,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
         where TCommand : Command
         where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
     {
+        string topic = Topic(typeof(TCommand));
         ConsumerConfig configuration = ConsumerConfig(groupId);
 
         _services.AddScoped<TCommandHandler>();
@@ -100,24 +100,24 @@ public sealed class BusContextConfigurator
 
     /// <summary>
     /// Registers an event subscriber: the subscriber itself (scoped, one per delivery) and its hosted
-    /// consumer, with the framework's error and fault handlers wired in. Its Kafka settings come from
-    /// the global configuration; the service tunes only the resilience policy here.
+    /// consumer, with the framework's error and fault handlers wired in. The topic is the one the
+    /// event was mapped to with <see cref="AddEvent{TEvent}"/> (register it first). Its Kafka settings
+    /// come from the global configuration; the service tunes only the resilience policy here.
     /// </summary>
     /// <typeparam name="TEvent">The event type consumed.</typeparam>
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
-    /// <param name="topic">The Kafka topic to consume from.</param>
     /// <param name="groupId">The consumer group id (e.g. <c>{consumer}.on.{topic}.subscriber</c>) — a stable contract, unique per subscriber, it holds the group's offsets.</param>
     /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> requeues immediately), or <see langword="null"/> for the default (none).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public BusContextConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
-        string topic,
         string groupId,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
         where TEvent : Event
         where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
     {
+        string topic = Topic(typeof(TEvent));
         ConsumerConfig configuration = ConsumerConfig(groupId);
 
         _services.AddScoped<TEventSubscriber>();
@@ -139,6 +139,12 @@ public sealed class BusContextConfigurator
 
         return this;
     }
+
+    /// <summary>The topic the message was mapped to with <see cref="AddCommand{TCommand}"/> / <see cref="AddEvent{TEvent}"/>, or a throw when it was not registered first.</summary>
+    private string Topic(Type message)
+        => _messages.TryGetValue(message, out string? topic)
+            ? topic
+            : throw new InvalidOperationException($"'{message.Name}' is not mapped to a topic; register it with AddCommand/AddEvent first.");
 
     /// <summary>The consumer's Kafka settings for the group, or a throw when the consumer section is absent.</summary>
     private ConsumerConfig ConsumerConfig(string groupId)

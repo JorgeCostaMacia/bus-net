@@ -95,11 +95,22 @@ public class BusContextTests
             .AddCommand<TestCommand>("other")));
 
     [Fact]
+    public void AddCommandHandler_WithoutTheCommandMapped_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(Configuration(consumer: true), bus => bus
+                .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
+
+        Assert.Contains(nameof(TestCommand), exception.Message);
+    }
+
+    [Fact]
     public void AddCommandHandler_WithoutConsumerSection_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
             () => new ServiceCollection().AddBusContext(Configuration(), bus => bus
-                .AddCommandHandler<TestCommand, TestCommandHandler>("orders", "orders.handler")));
+                .AddCommand<TestCommand>("orders")
+                .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
 
         Assert.Contains("Bus:Consumer", exception.Message);
     }
@@ -110,7 +121,8 @@ public class BusContextTests
         ServiceCollection services = [];
 
         services.AddBusContext(Configuration(consumer: true), bus => bus
-            .AddCommandHandler<TestCommand, TestCommandHandler>("orders", "orders.handler"));
+            .AddCommand<TestCommand>("orders")
+            .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler"));
 
         ServiceDescriptor handler = Assert.Single(services, e => e.ServiceType == typeof(TestCommandHandler));
         Assert.Equal(ServiceLifetime.Scoped, handler.Lifetime);
@@ -123,7 +135,8 @@ public class BusContextTests
         ServiceCollection services = [];
 
         services.AddBusContext(Configuration(consumer: true), bus => bus
-            .AddEventSubscriber<TestEvent, TestEventSubscriber>("orders.created", "billing.on.orders.created.subscriber"));
+            .AddEvent<TestEvent>("orders.created")
+            .AddEventSubscriber<TestEvent, TestEventSubscriber>("billing.on.orders.created.subscriber"));
 
         Assert.Single(services, e => e.ServiceType == typeof(TestEventSubscriber));
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
