@@ -1,6 +1,6 @@
 using Confluent.Kafka;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producer;
 
 /// <summary>
 /// The global producer configuration, bound from the <c>Bus:Producer</c> section: the connection plus

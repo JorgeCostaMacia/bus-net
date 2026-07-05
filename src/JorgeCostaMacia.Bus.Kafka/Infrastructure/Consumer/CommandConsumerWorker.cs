@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
 
 /// <summary>
 /// The consumer hosting one command handler. Commands are point-to-point (one group), so the base

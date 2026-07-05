@@ -26,13 +26,13 @@ public class ErrorHandlerTests
 
     private KafkaBus Bus() => new(_producer, new Dictionary<Type, string>(), NullLogger<KafkaBus>.Instance);
 
-    private Infrastructure.CommandErrorHandler<TestCommand> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
+    private Infrastructure.Consumer.CommandErrorHandler<TestCommand> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
         => new(Bus(), scheduler ? _scheduler : null, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], excludes ?? []);
 
-    private Infrastructure.EventErrorHandler<TestEvent> EventError(ImmutableList<TimeSpan>? intervals = null)
+    private Infrastructure.Consumer.EventErrorHandler<TestEvent> EventError(ImmutableList<TimeSpan>? intervals = null)
         => new(Bus(), _scheduler, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], []);
 
-    private Infrastructure.FaultHandler Fault() => new(Bus(), NullLogger.Instance, TOPIC, GROUP_ID);
+    private Infrastructure.Consumer.FaultHandler Fault() => new(Bus(), NullLogger.Instance, TOPIC, GROUP_ID);
 
     private static Transport Transport(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
     {
@@ -58,7 +58,7 @@ public class ErrorHandlerTests
     {
         CommandErrorContext<TestCommand> context = new(new TestCommand("pepe"), Transport(), new InvalidOperationException("boom"));
 
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError();
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorHandlerResult.Parked, sut.Result);
@@ -95,7 +95,7 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_ZeroInterval_RequeuesToTopicTail()
     {
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero]);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -109,7 +109,7 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_PositiveInterval_ParksThroughScheduler()
     {
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)]);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -123,7 +123,7 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_LadderExhausted_Parks()
     {
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero]);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -134,7 +134,7 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_ExcludedException_Parks_InheritanceAware()
     {
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero], [typeof(BaseFailure)]);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero], [typeof(BaseFailure)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
 
@@ -145,7 +145,7 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_PositiveInterval_WithoutScheduler_ParksAsTerminal()
     {
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)], scheduler: false);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)], scheduler: false);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -158,7 +158,7 @@ public class ErrorHandlerTests
     public async Task Command_SchedulerFails_LeavesUnhandled()
     {
         _scheduler.Failure = new InvalidOperationException("scheduler down");
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)]);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -170,7 +170,7 @@ public class ErrorHandlerTests
     public async Task Command_RequeueProduceFails_LeavesUnhandled()
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero]);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -180,7 +180,7 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_SecondRetry_ContinuesTheCumulativeCount()
     {
-        Infrastructure.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
+        Infrastructure.Consumer.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(retryCount: 1), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -191,7 +191,7 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Event_ZeroInterval_RetargetsTheRetryToItsGroup()
     {
-        Infrastructure.EventErrorHandler<TestEvent> sut = EventError([TimeSpan.Zero]);
+        Infrastructure.Consumer.EventErrorHandler<TestEvent> sut = EventError([TimeSpan.Zero]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -206,7 +206,7 @@ public class ErrorHandlerTests
     {
         FaultContext context = FaultContext.Create("not json"u8.ToArray(), Transport(), new InvalidCastException("bad header"));
 
-        Infrastructure.FaultHandler sut = Fault();
+        Infrastructure.Consumer.FaultHandler sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultHandlerResult.Parked, sut.Result);
@@ -225,7 +225,7 @@ public class ErrorHandlerTests
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
 
-        Infrastructure.FaultHandler sut = Fault();
+        Infrastructure.Consumer.FaultHandler sut = Fault();
         await sut.Handle(FaultContext.Create("{}"u8.ToArray(), Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultHandlerResult.Unhandled, sut.Result);

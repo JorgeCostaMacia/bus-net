@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
 
 /// <summary>
 /// The consume side of the bus's configuration, self-contained: it binds its own
@@ -70,7 +70,7 @@ public sealed class ConsumerConfigurator
 
             return new CommandConsumerWorker<TCommand, TCommandHandler>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new Infrastructure.CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
@@ -112,7 +112,7 @@ public sealed class ConsumerConfigurator
 
             return new EventConsumerWorker<TEvent, TEventSubscriber>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new Infrastructure.EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,

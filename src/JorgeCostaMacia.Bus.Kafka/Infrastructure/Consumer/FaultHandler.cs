@@ -5,7 +5,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
 
 /// <summary>
 /// The default implementation of the fault handler — manages <b>only</b> the fault case: parks a

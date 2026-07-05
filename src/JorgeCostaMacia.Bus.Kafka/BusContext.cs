@@ -1,4 +1,6 @@
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

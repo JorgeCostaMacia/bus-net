@@ -4,7 +4,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using Microsoft.Extensions.Configuration;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producer;
 
 /// <summary>
 /// The send side of the bus's configuration, self-contained: it binds its own
