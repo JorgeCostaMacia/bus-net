@@ -61,7 +61,7 @@ public sealed class ConsumerConfigurator
     {
         string topic = _messages.TryGetValue(typeof(TCommand), out string? mapped)
             ? mapped
-            : throw new InvalidOperationException($"'{typeof(TCommand).Name}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
+            : throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
         ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
         ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
@@ -123,7 +123,7 @@ public sealed class ConsumerConfigurator
     {
         string topic = _messages.TryGetValue(typeof(TEvent), out string? mapped)
             ? mapped
-            : throw new InvalidOperationException($"'{typeof(TEvent).Name}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
+            : throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
         ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
         ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;

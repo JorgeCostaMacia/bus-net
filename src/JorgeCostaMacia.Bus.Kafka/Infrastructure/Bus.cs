@@ -96,7 +96,7 @@ internal sealed class Bus : IBus
 
         if (!_messages.TryGetValue(type, out string? topic))
         {
-            throw new InvalidOperationException($"No topic is configured for message type '{type.FullName}'.");
+            throw new InvalidOperationException($"'{type.FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         }
 
         return topic;

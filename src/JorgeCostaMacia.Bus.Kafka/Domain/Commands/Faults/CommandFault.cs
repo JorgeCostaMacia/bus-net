@@ -13,20 +13,17 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 /// </summary>
 public sealed record CommandFault : IErrorMessage
 {
-    /// <summary>Full type name of the exception that broke the delivery.</summary>
-    public string ErrorType { get; init; }
-
-    /// <summary>The exception's message.</summary>
-    public string ErrorMessage { get; init; }
-
-    /// <summary>The exception's stack trace, when available.</summary>
-    public string? ErrorStackTrace { get; init; }
+    /// <summary>The failure that broke the delivery, modeled with its whole inner-exception chain.</summary>
+    public ErrorInfo Error { get; init; }
 
     /// <summary>UTC time the failure was parked.</summary>
     public DateTime ErrorOccurredAt { get; init; }
 
     /// <summary>The consumer group whose delivery broke.</summary>
     public string GroupId { get; init; }
+
+    /// <summary>The host (machine) whose consumer broke — identifies the instance/replica for triage.</summary>
+    public string MachineName { get; init; }
 
     /// <summary>The topic the delivery broke on.</summary>
     public string Topic { get; init; }
@@ -50,24 +47,22 @@ public sealed record CommandFault : IErrorMessage
     public string Message { get; init; }
 
     /// <summary>Creates the parked body over the failure's details and the broken delivery.</summary>
-    /// <param name="errorType">Full type name of the exception.</param>
-    /// <param name="errorMessage">The exception's message.</param>
-    /// <param name="errorStackTrace">The exception's stack trace, when available.</param>
+    /// <param name="error">The failure, modeled with its whole inner-exception chain.</param>
     /// <param name="errorOccurredAt">UTC time the failure was parked.</param>
     /// <param name="groupId">The consumer group whose delivery broke.</param>
+    /// <param name="machineName">The host (machine) whose consumer broke.</param>
     /// <param name="topic">The topic the delivery broke on.</param>
     /// <param name="partition">The partition within the topic.</param>
     /// <param name="offset">The offset within the partition.</param>
     /// <param name="timestamp">UTC time Kafka assigned to the message.</param>
     /// <param name="headers">The delivery's headers as best-effort UTF-8 text.</param>
     /// <param name="message">The delivered raw body as text.</param>
-    public CommandFault(string errorType, string errorMessage, string? errorStackTrace, DateTime errorOccurredAt, string groupId, string topic, int partition, long offset, DateTime timestamp, ImmutableList<KeyValuePair<string, string>> headers, string message)
+    public CommandFault(ErrorInfo error, DateTime errorOccurredAt, string groupId, string machineName, string topic, int partition, long offset, DateTime timestamp, ImmutableList<KeyValuePair<string, string>> headers, string message)
     {
-        ErrorType = errorType;
-        ErrorMessage = errorMessage;
-        ErrorStackTrace = errorStackTrace;
+        Error = error;
         ErrorOccurredAt = errorOccurredAt;
         GroupId = groupId;
+        MachineName = machineName;
         Topic = topic;
         Partition = partition;
         Offset = offset;
@@ -86,20 +81,15 @@ public sealed record CommandFault : IErrorMessage
     /// <param name="groupId">The consumer group whose delivery broke.</param>
     /// <returns>The body parked to the fault topic.</returns>
     internal static CommandFault Create(CommandFaultContext context, string groupId)
-    {
-        Type type = context.Error.GetType();
-
-        return new(
-            type.FullName ?? type.Name,
-            context.Error.Message,
-            context.Error.StackTrace,
+        => new(
+            ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             groupId,
+            Environment.MachineName,
             context.Transport.Topic,
             context.Transport.Partition.Value,
             context.Transport.Offset.Value,
             context.Transport.Timestamp.UtcDateTime,
             context.Transport.DecodeHeaders(),
             context.Message);
-    }
 }

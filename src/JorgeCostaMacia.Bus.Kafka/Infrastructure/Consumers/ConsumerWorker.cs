@@ -86,12 +86,14 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     }
 
     /// <summary>
-    /// Cancels the consumer loop, awaits it and closes the consumer gracefully — final offsets
-    /// committed. With the default static membership (<c>GroupInstanceId</c>) closing does NOT leave
-    /// the group: the assignment is retained for a restart within the session timeout, so rolling
-    /// deploys do not rebalance. When the shutdown's grace period runs out before the loop ends, the
-    /// worker is abandoned instead of failing the host's stop: disposing under a live loop is
-    /// unsafe, so the consumer is evicted by session timeout and the process teardown reclaims it.
+    /// Cancels the consumer loop, awaits it and closes the consumer gracefully — <c>Close</c> commits
+    /// the final stored offsets and leaves the group. On the modern client (librdkafka 2.x) a clean
+    /// <c>Close</c> leaves the group even under static membership (<c>GroupInstanceId</c>), so a rolling
+    /// deploy rebalances; static membership still spares the group a rebalance when a member drops and
+    /// rejoins within the session timeout (a transient disconnect, not a graceful stop). When the
+    /// shutdown's grace period runs out before the loop ends, the worker is abandoned instead of
+    /// failing the host's stop: disposing under a live loop is unsafe, so the consumer is evicted by
+    /// session timeout and the process teardown reclaims it.
     /// </summary>
     /// <param name="cancellationToken">A token bounding how long the stop may wait.</param>
     public async Task StopAsync(CancellationToken cancellationToken)
