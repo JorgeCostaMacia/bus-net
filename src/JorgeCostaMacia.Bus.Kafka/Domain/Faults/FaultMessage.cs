@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Domain.Messages;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 
 /// <summary>
 /// The body parked to the fault topic — the broken delivery's transport details (topic, partition,

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -37,7 +38,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly ConsumerBuilder<Ignore, byte[]> _builder;
     private IConsumer<Ignore, byte[]>? _consumer;
 
-    private readonly Domain.FaultHandler _faultHandler;
+    private readonly Domain.Faults.FaultHandler _faultHandler;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
     private readonly IHostApplicationLifetime _lifetime;
@@ -57,7 +58,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
         ConsumerBuilder<Ignore, byte[]> builder,
-        Domain.FaultHandler faultHandler,
+        Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger logger,
         IHostApplicationLifetime lifetime,

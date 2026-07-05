@@ -5,7 +5,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// invokes the handler, since the handler's <c>Handle</c> returns <see cref="System.Threading.Tasks.Task"/>
 /// by contract and cannot report it. The consumer acks the delivery on every outcome except
 /// <see cref="Unhandled"/>, and hands it to the fault handler on <see cref="Faulted"/>. The fault
-/// handler reports its own <see cref="FaultHandlerResult"/>.
+/// handler reports its own <see cref="Faults.FaultHandlerResult"/>.
 /// </summary>
 internal enum ErrorHandlerResult
 {

@@ -1,6 +1,6 @@
 using JorgeCostaMacia.Bus.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 /// <summary>
 /// Ergonomic base for a Kafka event subscriber: closes the <see cref="IHandler{TMessage, TContext}"/>

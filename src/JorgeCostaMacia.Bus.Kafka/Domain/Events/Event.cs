@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Domain.Messages;
 using JorgeCostaMacia.DomainEvent.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 /// <summary>
 /// Base implementation for events on the Kafka bus: an immutable <see langword="record"/> carrying

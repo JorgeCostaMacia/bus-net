@@ -3,6 +3,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -22,7 +23,7 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     where TEvent : Event
     where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
 {
-    private readonly Domain.EventErrorHandler<TEvent> _errorHandler;
+    private readonly Domain.Events.EventErrorHandler<TEvent> _errorHandler;
 
     /// <summary>Creates the consumer over its ready-made Kafka builder, its error and fault handlers, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
@@ -35,8 +36,8 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     public EventConsumerWorker(
         ConsumerBuilder<Ignore, byte[]> builder,
-        Domain.EventErrorHandler<TEvent> errorHandler,
-        Domain.FaultHandler faultHandler,
+        Domain.Events.EventErrorHandler<TEvent> errorHandler,
+        Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger,
         IHostApplicationLifetime lifetime,

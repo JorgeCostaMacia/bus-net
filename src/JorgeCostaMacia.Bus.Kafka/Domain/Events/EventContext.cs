@@ -1,30 +1,31 @@
 using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Domain.Contexts;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 /// <summary>
-/// The Kafka command context a handler receives — composes the envelope facets over
-/// <see cref="Transport"/> (all but the filtering one: commands are point-to-point and never
-/// filtered), carrying only the command and the transport: every envelope property reads straight
-/// from the transport's headers on access, nothing duplicated in memory. Built by the consumer,
-/// which deserializes the message once per delivery; the <b>outbound</b> envelope (new flow / correlated) is computed by
-/// the bus when producing, not here.
+/// The Kafka event context a subscriber receives — composes every envelope facet over
+/// <see cref="Transport"/>, carrying only the event and the transport: every envelope property
+/// reads straight from the transport's headers on access, nothing duplicated in memory. Built by
+/// the consumer from the delivered message; the <b>outbound</b> envelope (new flow / correlated)
+/// is computed by the bus when producing, not here.
 /// </summary>
-/// <typeparam name="TCommand">The command type.</typeparam>
-public record CommandContext<TCommand> :
-    IMessageContext<TCommand>,
+/// <typeparam name="TEvent">The event type.</typeparam>
+public record EventContext<TEvent> :
+    IMessageContext<TEvent>,
     ITransportContext<Transport>,
     ITracedContext,
     IAggregateTracedContext,
+    IAggregateFilteredContext,
     IConversationContext,
     IResilientContext
-    where TCommand : Command
+    where TEvent : Event
 {
-    /// <summary>The delivered command.</summary>
-    public TCommand Message { get; init; }
+    /// <summary>The delivered event.</summary>
+    public TEvent Message { get; init; }
 
-    /// <summary>The transport this command arrived on (Kafka headers / offset / …).</summary>
+    /// <summary>The transport this event arrived on (Kafka headers / offset / …).</summary>
     public Transport Transport { get; init; }
 
     /// <summary>Unique id of this message, assigned by the messaging layer.</summary>
@@ -54,6 +55,9 @@ public record CommandContext<TCommand> :
     /// <summary>UTC time when the conversation began.</summary>
     public DateTime ConversationOccurredAt => Transport.GetDateTime(TransportHeaders.ConversationOccurredAt);
 
+    /// <summary>The consumers this event targets (e.g. consumer group ids); empty means no filtering.</summary>
+    public ImmutableList<string> AggregateConsumers => Transport.GetStringList(TransportHeaders.AggregateConsumers);
+
     /// <summary>Unique id of the inbound message (domain trace).</summary>
     public Guid AggregateId => Transport.GetGuid(TransportHeaders.AggregateId);
 
@@ -66,10 +70,10 @@ public record CommandContext<TCommand> :
     /// <summary>Number of times this message has been retried (immediate or scheduled).</summary>
     public int RetryCount => Transport.GetInt(TransportHeaders.RetryCount);
 
-    /// <summary>Builds the context over the delivered command and its transport.</summary>
-    /// <param name="message">The command payload.</param>
+    /// <summary>Builds the context over the delivered event and its transport.</summary>
+    /// <param name="message">The event payload.</param>
     /// <param name="transport">The Kafka transport for this delivery.</param>
-    public CommandContext(TCommand message, Transport transport)
+    public EventContext(TEvent message, Transport transport)
     {
         Message = message;
         Transport = transport;

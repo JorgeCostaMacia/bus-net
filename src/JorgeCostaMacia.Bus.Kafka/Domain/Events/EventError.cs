@@ -1,11 +1,11 @@
 using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Domain.Messages;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 /// <summary>
-/// The body parked to a command topic's <c>.error</c> when the command's handler fails terminally —
-/// MassTransit-style: the original command embedded <b>fully typed</b> (the handler already ran, so
+/// The body parked to an event topic's <c>.error</c> when the event's subscriber fails terminally —
+/// MassTransit-style: the original event embedded <b>fully typed</b> (the subscriber already ran, so
 /// it deserialized once — the error handler reuses that instance, never re-deserializes) together
 /// with every error detail and the transport details (topic, partition, offset, timestamp,
 /// headers), so browsing the error topic shows the whole failure in one place. A first-class traced
@@ -14,9 +14,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// cloned, byte-exact, in the parked record's headers (with the failure stamped on top), so
 /// reinjection tooling keeps working header-side.
 /// </summary>
-/// <typeparam name="TCommand">The failed command's type.</typeparam>
-public sealed record CommandError<TCommand> : ITracedMessage, IErrorMessage
-    where TCommand : Command
+/// <typeparam name="TEvent">The failed event's type.</typeparam>
+public sealed record EventError<TEvent> : ITracedMessage, IErrorMessage
+    where TEvent : Event
 {
     /// <summary>The failed message's id — shared, so a failure is found by its message's id.</summary>
     public Guid AggregateId { get; init; }
@@ -39,7 +39,7 @@ public sealed record CommandError<TCommand> : ITracedMessage, IErrorMessage
     /// <summary>The delivery's retry count when it exhausted.</summary>
     public int RetryCount { get; init; }
 
-    /// <summary>The consumer group whose handler failed.</summary>
+    /// <summary>The consumer group whose subscriber failed.</summary>
     public string GroupId { get; init; }
 
     /// <summary>The topic the delivery failed on.</summary>
@@ -60,10 +60,10 @@ public sealed record CommandError<TCommand> : ITracedMessage, IErrorMessage
     /// </summary>
     public ImmutableList<KeyValuePair<string, string>> Headers { get; init; }
 
-    /// <summary>The original command, fully typed.</summary>
-    public TCommand Message { get; init; }
+    /// <summary>The original event, fully typed.</summary>
+    public TEvent Message { get; init; }
 
-    /// <summary>Creates the parked body over the failure's details and the failed command.</summary>
+    /// <summary>Creates the parked body over the failure's details and the failed event.</summary>
     /// <param name="aggregateId">The failed message's id.</param>
     /// <param name="aggregateCorrelationId">Correlation identifier of the failed message's workflow.</param>
     /// <param name="aggregateOccurredAt">UTC time the failure was parked.</param>
@@ -71,14 +71,14 @@ public sealed record CommandError<TCommand> : ITracedMessage, IErrorMessage
     /// <param name="errorMessage">The exception's message.</param>
     /// <param name="errorStackTrace">The exception's stack trace, when available.</param>
     /// <param name="retryCount">The delivery's retry count when it exhausted.</param>
-    /// <param name="groupId">The consumer group whose handler failed.</param>
+    /// <param name="groupId">The consumer group whose subscriber failed.</param>
     /// <param name="topic">The topic the delivery failed on.</param>
     /// <param name="partition">The partition within the topic.</param>
     /// <param name="offset">The offset within the partition.</param>
     /// <param name="timestamp">UTC time Kafka assigned to the message.</param>
     /// <param name="headers">The delivery's headers as browsable text.</param>
-    /// <param name="message">The original command, fully typed.</param>
-    public CommandError(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, string errorType, string errorMessage, string? errorStackTrace, int retryCount, string groupId, string topic, int partition, long offset, DateTime timestamp, ImmutableList<KeyValuePair<string, string>> headers, TCommand message)
+    /// <param name="message">The original event, fully typed.</param>
+    public EventError(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, string errorType, string errorMessage, string? errorStackTrace, int retryCount, string groupId, string topic, int partition, long offset, DateTime timestamp, ImmutableList<KeyValuePair<string, string>> headers, TEvent message)
     {
         AggregateId = aggregateId;
         AggregateCorrelationId = aggregateCorrelationId;
@@ -97,15 +97,15 @@ public sealed record CommandError<TCommand> : ITracedMessage, IErrorMessage
     }
 
     /// <summary>
-    /// Builds the parked body from the error context the handler already built — the typed command,
+    /// Builds the parked body from the error context the subscriber already built — the typed event,
     /// its envelope and its failure, no re-deserialization — stamping the failing group. The mapping
     /// lives here, next to the record it fills; an unreadable envelope throws to the caller, which
     /// hands the delivery to the fault path.
     /// </summary>
     /// <param name="context">The failed delivery's error context.</param>
-    /// <param name="groupId">The consumer group whose handler failed.</param>
+    /// <param name="groupId">The consumer group whose subscriber failed.</param>
     /// <returns>The body parked to the error topic.</returns>
-    internal static CommandError<TCommand> Create(CommandErrorContext<TCommand> context, string groupId)
+    internal static EventError<TEvent> Create(EventErrorContext<TEvent> context, string groupId)
     {
         Type type = context.Error.GetType();
 

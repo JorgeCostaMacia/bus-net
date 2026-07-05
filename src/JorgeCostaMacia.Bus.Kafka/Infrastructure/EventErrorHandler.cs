@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -22,7 +23,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// the fault handler.
 /// </summary>
 /// <typeparam name="TEvent">The event type this handler manages the failures of.</typeparam>
-internal sealed class EventErrorHandler<TEvent> : Domain.EventErrorHandler<TEvent>
+internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandler<TEvent>
     where TEvent : Event
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";

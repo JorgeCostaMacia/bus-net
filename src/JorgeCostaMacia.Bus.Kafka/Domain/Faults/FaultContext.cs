@@ -1,7 +1,8 @@
 using System.Text;
 using JorgeCostaMacia.Bus.Domain.Contexts;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 
 /// <summary>
 /// The Kafka context a fault handler receives when a delivery breaks before its handler runs

@@ -1,4 +1,4 @@
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 
 /// <summary>
 /// How a fault handler left a broken delivery — read by the consumer (the orchestrator) after it

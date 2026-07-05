@@ -1,6 +1,7 @@
 using JorgeCostaMacia.Bus.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 /// <summary>
 /// Ergonomic base for an event's error handler — the app's own error management (log, compensate,

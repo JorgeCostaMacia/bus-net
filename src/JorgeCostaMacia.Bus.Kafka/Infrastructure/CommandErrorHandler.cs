@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -20,7 +21,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// reports <see cref="ErrorHandlerResult.Faulted"/>, handing the delivery to the fault handler.
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler manages the failures of.</typeparam>
-internal sealed class CommandErrorHandler<TCommand> : Domain.CommandErrorHandler<TCommand>
+internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErrorHandler<TCommand>
     where TCommand : Command
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";

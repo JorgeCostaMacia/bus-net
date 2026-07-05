@@ -1,6 +1,6 @@
 using JorgeCostaMacia.Bus.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 
 /// <summary>
 /// Ergonomic base for a Kafka command handler: closes the <see cref="IHandler{TMessage, TContext}"/>

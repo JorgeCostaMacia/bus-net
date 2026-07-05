@@ -2,6 +2,7 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
     where TCommand : Command
     where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
 {
-    private readonly Domain.CommandErrorHandler<TCommand> _errorHandler;
+    private readonly Domain.Commands.CommandErrorHandler<TCommand> _errorHandler;
 
     /// <summary>Creates the consumer over its ready-made Kafka builder, its error and fault handlers, the scope factory, the logger and its contract.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
@@ -34,8 +35,8 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandConsumerWorker(
         ConsumerBuilder<Ignore, byte[]> builder,
-        Domain.CommandErrorHandler<TCommand> errorHandler,
-        Domain.FaultHandler faultHandler,
+        Domain.Commands.CommandErrorHandler<TCommand> errorHandler,
+        Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger,
         IHostApplicationLifetime lifetime,

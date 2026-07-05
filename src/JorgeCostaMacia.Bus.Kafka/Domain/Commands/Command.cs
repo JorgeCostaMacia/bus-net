@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Domain.Messages;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 
 /// <summary>
 /// Base implementation for commands on the Kafka bus: an immutable <see langword="record"/> carrying

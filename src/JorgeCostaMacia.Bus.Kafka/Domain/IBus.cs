@@ -1,4 +1,6 @@
 using JorgeCostaMacia.Bus.Domain.Buses;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain;
 

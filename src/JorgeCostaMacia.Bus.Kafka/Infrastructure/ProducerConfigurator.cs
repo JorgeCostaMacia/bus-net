@@ -1,5 +1,7 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using Microsoft.Extensions.Configuration;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;

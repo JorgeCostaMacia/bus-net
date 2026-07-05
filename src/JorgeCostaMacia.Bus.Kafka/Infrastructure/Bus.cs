@@ -4,6 +4,8 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Domain.Messages;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using Microsoft.Extensions.Logging;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 

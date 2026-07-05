@@ -1,6 +1,7 @@
 using JorgeCostaMacia.Bus.Domain.Contexts;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 /// <summary>
 /// The Kafka event context an error handler receives when a delivery fails terminally — the

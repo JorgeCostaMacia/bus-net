@@ -1,6 +1,6 @@
 using JorgeCostaMacia.Bus.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 
 /// <summary>
 /// Ergonomic base for a fault handler — manages a broken delivery (undeserializable body, unreadable

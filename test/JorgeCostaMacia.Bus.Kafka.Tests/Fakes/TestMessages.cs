@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 

@@ -1,6 +1,7 @@
 using JorgeCostaMacia.Bus.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 
 /// <summary>
 /// Ergonomic base for a command's error handler — the app's own error management (log, compensate,

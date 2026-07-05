@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -15,7 +16,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// it left the delivery through <c>Result</c>: <see cref="FaultHandlerResult.Parked"/> acks,
 /// <see cref="FaultHandlerResult.Unhandled"/> leaves it unacked. Never throws for control flow.
 /// </summary>
-internal sealed class FaultHandler : Domain.FaultHandler
+internal sealed class FaultHandler : Domain.Faults.FaultHandler
 {
     private const string FAULT_TOPIC_SUFFIX = ".fault";
 

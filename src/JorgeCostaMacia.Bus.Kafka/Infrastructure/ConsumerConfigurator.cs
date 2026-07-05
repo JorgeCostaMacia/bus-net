@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -68,7 +70,7 @@ public sealed class ConsumerConfigurator
 
             return new CommandConsumerWorker<TCommand, TCommandHandler>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new Infrastructure.CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
@@ -110,7 +112,7 @@ public sealed class ConsumerConfigurator
 
             return new EventConsumerWorker<TEvent, TEventSubscriber>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new Infrastructure.EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
