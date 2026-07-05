@@ -48,6 +48,9 @@ public sealed record ProducerConfiguration
     /// <summary>Batch size (bytes), or <see langword="null"/> for the default.</summary>
     public int? BatchSize { get; init; }
 
+    /// <summary>Maximum size (bytes) of a single message, or <see langword="null"/> for the default.</summary>
+    public int? MessageMaxBytes { get; init; }
+
     /// <summary>Max send retries, or <see langword="null"/> for the default.</summary>
     public int? MessageSendMaxRetries { get; init; }
 
@@ -94,6 +97,7 @@ public sealed record ProducerConfiguration
         LingerMs = LingerMs ?? ProducerConfigurationDefaults.LINGER_MS,
         BatchNumMessages = BatchNumMessages ?? ProducerConfigurationDefaults.BATCH_NUM_MESSAGES,
         BatchSize = BatchSize ?? ProducerConfigurationDefaults.BATCH_SIZE,
+        MessageMaxBytes = MessageMaxBytes ?? ProducerConfigurationDefaults.MESSAGE_MAX_BYTES,
         MessageSendMaxRetries = MessageSendMaxRetries ?? ProducerConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
         RetryBackoffMs = RetryBackoffMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MS,
         RetryBackoffMaxMs = RetryBackoffMaxMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,

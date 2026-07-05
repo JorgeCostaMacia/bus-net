@@ -36,11 +36,19 @@ public static class ProducerConfigurationDefaults
     /// <summary>Producer linger time (ms) before sending a batch. Default: <c>50</c>.</summary>
     public const double LINGER_MS = 50;
 
-    /// <summary>Maximum number of messages per batch. Default: <c>100</c>.</summary>
-    public const int BATCH_NUM_MESSAGES = 100;
+    /// <summary>Maximum number of messages per batch. Default: <c>10000</c>.</summary>
+    public const int BATCH_NUM_MESSAGES = 10_000;
 
-    /// <summary>Batch size in bytes. Default: <c>2097152</c> (2 MB).</summary>
-    public const int BATCH_SIZE = 2_097_152;
+    /// <summary>Batch size in bytes. Default: <c>1000000</c> (1 MB).</summary>
+    public const int BATCH_SIZE = 1_000_000;
+
+    /// <summary>
+    /// Maximum size (bytes) of a single message/request. Default: <c>2097152</c> (2 MB) — headroom
+    /// above the per-batch size for the occasional message carrying a small file (e.g. a 1–2 page PDF
+    /// in Base64). The broker's <c>message.max.bytes</c> and the topic's <c>max.message.bytes</c> must
+    /// allow at least this, and consumers must fetch at least this (<c>max.partition.fetch.bytes</c>).
+    /// </summary>
+    public const int MESSAGE_MAX_BYTES = 2_097_152;
 
     /// <summary>Maximum number of retries on send failure. Default: <c>10</c>.</summary>
     public const int MESSAGE_SEND_MAX_RETRIES = 10;
