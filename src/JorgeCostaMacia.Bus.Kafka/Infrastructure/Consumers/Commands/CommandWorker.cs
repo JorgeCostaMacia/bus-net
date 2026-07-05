@@ -25,7 +25,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     private readonly Domain.Commands.CommandErrorHandler<TCommand> _errorHandler;
 
     /// <summary>Creates the consumer over its ready-made Kafka builder, its error and fault handlers, the scope factory, the logger and its contract.</summary>
-    /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
+    /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
     /// <param name="errorHandler">The command's error handler — the framework mechanics deciding a failed delivery's outcome.</param>
     /// <param name="faultHandler">The fault handler parking broken deliveries — and the relay when the error handler cannot cope.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
@@ -34,7 +34,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandWorker(
-        ConsumerBuilder<Ignore, byte[]> builder,
+        IConsumer consumer,
         Domain.Commands.CommandErrorHandler<TCommand> errorHandler,
         Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
@@ -42,7 +42,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
         IHostApplicationLifetime lifetime,
         string topic,
         string groupId)
-        : base(builder, faultHandler, scopeFactory, logger, lifetime, topic, groupId)
+        : base(consumer, faultHandler, scopeFactory, logger, lifetime, topic, groupId)
         => _errorHandler = errorHandler;
 
     /// <inheritdoc />

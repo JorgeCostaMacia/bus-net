@@ -15,7 +15,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 /// sequential: a handler outrunning <c>MaxPollIntervalMs</c> (5 minutes by default) evicts the
 /// consumer from the group until the next consume rejoins — raise that knob for slower handlers. Its
 /// Kafka configuration arrives as a ready-made builder (settings and logging handlers wired where it
-/// is composed); its contract — topic, group id, error and fault handlers — through the constructor.
+/// is composed) as a ready-made <see cref="Domain.IConsumer"/> gate; its contract — topic, group id,
+/// error and fault handlers — through the constructor.
 /// The whole delivery flow lives here once: consume → filter → rebuild transport/context → handle in
 /// its own service scope (the whole delivery in the logging scope) → store the offset (the store is
 /// the ack; the background thread commits it without blocking). A handler failure is handed to the
@@ -35,8 +36,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>The consumer group id — the consumer's identity for offsets and consumer-side filtering.</summary>
     protected string GroupId { get; }
 
-    private readonly ConsumerBuilder<Ignore, byte[]> _builder;
-    private IConsumer<Ignore, byte[]>? _consumer;
+    private readonly IConsumer _consumer;
 
     private readonly Domain.Faults.FaultHandler _faultHandler;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -48,8 +48,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the consumer over its ready-made Kafka builder, its fault handler, the scope factory, the logger and its contract.</summary>
-    /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
+    /// <summary>Creates the consumer over its inbound gate, its fault handler, the scope factory, the logger and its contract.</summary>
+    /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
     /// <param name="faultHandler">The fault handler parking broken deliveries — and the relay when the error handler cannot cope.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
@@ -57,7 +57,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
-        ConsumerBuilder<Ignore, byte[]> builder,
+        IConsumer consumer,
         Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger logger,
@@ -65,7 +65,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         string topic,
         string groupId)
     {
-        _builder = builder;
+        _consumer = consumer;
         _faultHandler = faultHandler;
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -78,7 +78,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="cancellationToken">A token to cancel startup.</param>
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _consumer = _builder.Build();
         _consumer.Subscribe(_topic);
 
         _cancellation = new CancellationTokenSource();
@@ -100,7 +99,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="cancellationToken">A token bounding how long the stop may wait.</param>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_cancellation is null || _loop is null || _consumer is null) return;
+        if (_cancellation is null || _loop is null) return;
 
         _cancellation.Cancel();
 
@@ -117,7 +116,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         _consumer.Close();
         _consumer.Dispose();
-        _consumer = null;
 
         _cancellation.Dispose();
         _cancellation = null;
@@ -174,7 +172,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
             try
             {
-                result = _consumer!.Consume(cancellationToken);
+                result = _consumer.Consume(cancellationToken);
 
                 logContext = BusLogger.ConsumerContext(_logger, result);
 
@@ -278,7 +276,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     {
         try
         {
-            _consumer!.StoreOffset(result);
+            _consumer.StoreOffset(result);
         }
         catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
         {

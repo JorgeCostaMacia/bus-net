@@ -70,7 +70,7 @@ public sealed class ConsumerConfigurator
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
             return new Commands.CommandWorker<TCommand, TCommandHandler>(
-                CreateBuilder(provider, configuration, logger, lifetime),
+                new Consumer(CreateBuilder(provider, configuration, logger, lifetime)),
                 new Commands.CommandErrorHandler<TCommand>(Producer(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
@@ -112,7 +112,7 @@ public sealed class ConsumerConfigurator
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
             return new Events.EventWorker<TEvent, TEventSubscriber>(
-                CreateBuilder(provider, configuration, logger, lifetime),
+                new Consumer(CreateBuilder(provider, configuration, logger, lifetime)),
                 new Events.EventErrorHandler<TEvent>(Producer(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
