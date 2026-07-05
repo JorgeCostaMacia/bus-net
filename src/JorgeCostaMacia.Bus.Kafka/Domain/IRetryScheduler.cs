@@ -7,7 +7,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// given time — the envelope already carries the incremented retry count and the consumer targeting,
 /// so the normal consumers receive and route it with no extra machinery. Implementations own the
 /// parking mechanism (e.g. a Quartz one-shot job); registering one enables the positive intervals of
-/// the retry ladder — without it they are logged and skipped.
+/// the retry ladder — without it a positive interval cannot be delayed, so it is parked to the topic's
+/// <c>.error</c> as terminal.
 /// </summary>
 public interface IRetryScheduler
 {

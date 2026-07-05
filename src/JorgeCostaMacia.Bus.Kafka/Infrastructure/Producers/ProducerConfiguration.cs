@@ -69,7 +69,7 @@ public sealed record ProducerConfiguration
     /// <summary>Maximum kbytes in the producer's local queue (takes priority over the message count), or <see langword="null"/> for the client default (1048576).</summary>
     public int? QueueBufferingMaxKbytes { get; init; }
 
-    /// <summary>Delivery report fields to marshal back (e.g. <c>none</c> when only the error is checked), or <see langword="null"/> for the client default (<c>all</c> — the setter rejects null, so the default is composed explicitly).</summary>
+    /// <summary>Delivery report fields to marshal back (e.g. <c>none</c> when only the error is checked), or <see langword="null"/> for the default (<see cref="ProducerConfigurationDefaults.DELIVERY_REPORT_FIELDS"/> — <c>all</c>; the client rejects null, so the default is set explicitly).</summary>
     public string? DeliveryReportFields { get; init; }
 
     /// <summary>Interval (ms) between statistics emissions (logged at Debug under the Kafka category), or <see langword="null"/> for none.</summary>
