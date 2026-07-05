@@ -26,6 +26,12 @@ internal static class TransportHeaders
     public const string ErrorMessage = Prefix + "error_message";
     public const string ErrorGroupId = Prefix + "error_group_id";
     public const string ErrorOccurredAt = Prefix + "error_occurred_at";
+    public const string HostMachineName = Prefix + "host_machine_name";
+    public const string HostAssembly = Prefix + "host_assembly";
+    public const string HostAssemblyVersion = Prefix + "host_assembly_version";
+    public const string HostFrameworkVersion = Prefix + "host_framework_version";
+    public const string HostBusVersion = Prefix + "host_bus_version";
+    public const string HostOperatingSystemVersion = Prefix + "host_operating_system_version";
 
     /// <summary>The keys whose values travel as 16 raw <see cref="Guid"/> bytes.</summary>
     public static readonly ImmutableList<string> GuidHeaders =

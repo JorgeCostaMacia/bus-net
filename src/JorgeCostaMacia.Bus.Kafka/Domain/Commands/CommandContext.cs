@@ -18,7 +18,8 @@ public record CommandContext<TCommand> :
     ITracedContext,
     IAggregateTracedContext,
     IConversationContext,
-    IResilientContext
+    IResilientContext,
+    IHostContext
     where TCommand : Command
 {
     /// <summary>The delivered command.</summary>
@@ -65,6 +66,24 @@ public record CommandContext<TCommand> :
 
     /// <summary>Number of times this message has been retried (immediate or scheduled).</summary>
     public int RetryCount => Transport.GetInt(TransportHeaders.RetryCount);
+
+    /// <summary>The machine (host) name that produced the message.</summary>
+    public string HostMachineName => Transport.GetString(TransportHeaders.HostMachineName);
+
+    /// <summary>The entry assembly's simple name of the producing host.</summary>
+    public string HostAssembly => Transport.GetString(TransportHeaders.HostAssembly);
+
+    /// <summary>The entry assembly's version of the producing host.</summary>
+    public string HostAssemblyVersion => Transport.GetString(TransportHeaders.HostAssemblyVersion);
+
+    /// <summary>The .NET runtime version of the producing host.</summary>
+    public string HostFrameworkVersion => Transport.GetString(TransportHeaders.HostFrameworkVersion);
+
+    /// <summary>The bus library version of the producing host.</summary>
+    public string HostBusVersion => Transport.GetString(TransportHeaders.HostBusVersion);
+
+    /// <summary>The operating system version of the producing host.</summary>
+    public string HostOperatingSystemVersion => Transport.GetString(TransportHeaders.HostOperatingSystemVersion);
 
     /// <summary>Builds the context over the delivered command and its transport.</summary>
     /// <param name="message">The command payload.</param>
