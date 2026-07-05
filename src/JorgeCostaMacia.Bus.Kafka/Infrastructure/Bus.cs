@@ -17,8 +17,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// internal produce). Sends commands and publishes events with <c>ProduceAsync</c> (a completed task
 /// means the broker acked; a failure throws). Send/Publish orchestrate: they resolve the topic,
 /// prepare the envelope (fresh, or continued from an inbound transport) and produce. The consume
-/// side lives in the per-handler consumers (<c>CommandConsumerWorker</c> /
-/// <c>EventConsumerWorker</c>); the <see cref="BusWorker"/> flushes it on shutdown.
+/// side lives in the per-handler consumers (<c>CommandWorker</c> /
+/// <c>EventWorker</c>); the <see cref="BusWorker"/> flushes it on shutdown.
 /// </summary>
 public sealed class Bus : IBus, IDisposable
 {

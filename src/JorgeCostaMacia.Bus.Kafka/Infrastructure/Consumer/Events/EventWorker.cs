@@ -19,7 +19,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer.Events;
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
-internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
+internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
     where TEvent : Event
     where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
 {
@@ -34,12 +34,12 @@ internal sealed class EventConsumerWorker<TEvent, TEventSubscriber> : ConsumerWo
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
-    public EventConsumerWorker(
+    public EventWorker(
         ConsumerBuilder<Ignore, byte[]> builder,
         Domain.Events.EventErrorHandler<TEvent> errorHandler,
         Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
-        ILogger<EventConsumerWorker<TEvent, TEventSubscriber>> logger,
+        ILogger<EventWorker<TEvent, TEventSubscriber>> logger,
         IHostApplicationLifetime lifetime,
         string topic,
         string groupId)

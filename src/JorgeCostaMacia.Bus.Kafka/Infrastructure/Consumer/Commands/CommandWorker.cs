@@ -18,7 +18,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer.Commands;
 /// </summary>
 /// <typeparam name="TCommand">The command type consumed.</typeparam>
 /// <typeparam name="TCommandHandler">The handler type resolved per delivery.</typeparam>
-internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : ConsumerWorker<CommandContext<TCommand>, TCommandHandler>
+internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<CommandContext<TCommand>, TCommandHandler>
     where TCommand : Command
     where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
 {
@@ -33,12 +33,12 @@ internal sealed class CommandConsumerWorker<TCommand, TCommandHandler> : Consume
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
-    public CommandConsumerWorker(
+    public CommandWorker(
         ConsumerBuilder<Ignore, byte[]> builder,
         Domain.Commands.CommandErrorHandler<TCommand> errorHandler,
         Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
-        ILogger<CommandConsumerWorker<TCommand, TCommandHandler>> logger,
+        ILogger<CommandWorker<TCommand, TCommandHandler>> logger,
         IHostApplicationLifetime lifetime,
         string topic,
         string groupId)

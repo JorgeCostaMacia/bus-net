@@ -65,10 +65,10 @@ public sealed class ConsumerConfigurator
         _services.AddScoped<TCommandHandler>();
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<Commands.CommandConsumerWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<Commands.CommandConsumerWorker<TCommand, TCommandHandler>>>();
+            ILogger<Commands.CommandWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<Commands.CommandWorker<TCommand, TCommandHandler>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
-            return new Commands.CommandConsumerWorker<TCommand, TCommandHandler>(
+            return new Commands.CommandWorker<TCommand, TCommandHandler>(
                 CreateBuilder(provider, configuration, logger, lifetime),
                 new Commands.CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
@@ -107,10 +107,10 @@ public sealed class ConsumerConfigurator
         _services.AddScoped<TEventSubscriber>();
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<Events.EventConsumerWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<Events.EventConsumerWorker<TEvent, TEventSubscriber>>>();
+            ILogger<Events.EventWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<Events.EventWorker<TEvent, TEventSubscriber>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
-            return new Events.EventConsumerWorker<TEvent, TEventSubscriber>(
+            return new Events.EventWorker<TEvent, TEventSubscriber>(
                 CreateBuilder(provider, configuration, logger, lifetime),
                 new Events.EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
