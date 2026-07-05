@@ -110,9 +110,10 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
         }
     }
 
-    /// <summary>Whether the failed event is retried: the envelope's <c>RetryCount</c> has ladder entries left and the exception is not excluded.</summary>
+    /// <summary>Whether the failed event is retried: the envelope's <c>RetryCount</c> is a valid ladder position with entries left and the exception is not excluded (a corrupt/negative count parks as terminal, not retries).</summary>
     private bool Retryable(EventErrorContext<TEvent> context)
-        => context.RetryCount < _retryIntervals.Count
+        => context.RetryCount >= 0
+            && context.RetryCount < _retryIntervals.Count
             && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(context.Error));
 
     /// <summary>Requeues the retry at the topic's tail, targeted to this group only — nothing held in memory, survives a restart.</summary>

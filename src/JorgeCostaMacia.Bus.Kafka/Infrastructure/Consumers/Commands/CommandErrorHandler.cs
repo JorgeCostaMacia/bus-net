@@ -108,9 +108,10 @@ internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErr
         }
     }
 
-    /// <summary>Whether the failed command is retried: the envelope's <c>RetryCount</c> has ladder entries left and the exception is not excluded.</summary>
+    /// <summary>Whether the failed command is retried: the envelope's <c>RetryCount</c> is a valid ladder position with entries left and the exception is not excluded (a corrupt/negative count parks as terminal, not retries).</summary>
     private bool Retryable(CommandErrorContext<TCommand> context)
-        => context.RetryCount < _retryIntervals.Count
+        => context.RetryCount >= 0
+            && context.RetryCount < _retryIntervals.Count
             && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(context.Error));
 
     /// <summary>Requeues the retry at the topic's tail — nothing held in memory, survives a restart.</summary>

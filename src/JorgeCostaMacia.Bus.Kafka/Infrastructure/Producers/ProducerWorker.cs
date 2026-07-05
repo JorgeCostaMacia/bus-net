@@ -44,6 +44,10 @@ internal sealed class ProducerWorker : IHostedService
         {
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.QueuedMessagesMayBeLost)) _logger.LogWarning("Flush canceled.");
         }
+        catch (Exception exception)
+        {
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.QueuedMessagesMayBeLost)) _logger.LogWarning(exception, "Flush failed.");
+        }
 
         return Task.CompletedTask;
     }

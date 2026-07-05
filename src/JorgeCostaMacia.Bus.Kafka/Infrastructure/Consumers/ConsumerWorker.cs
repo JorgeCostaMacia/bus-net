@@ -229,6 +229,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             catch (Exception exception)
             {
                 using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
+
+                await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
             finally
             {
@@ -245,9 +247,20 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     private async Task Failed(ConsumeResult<Ignore, byte[]> result, TContext? context, Exception exception, CancellationToken cancellationToken)
     {
-        ErrorHandlerResult outcome = context is not null
-            ? await HandleError(context, exception, cancellationToken)
-            : ErrorHandlerResult.Faulted;
+        ErrorHandlerResult outcome;
+
+        try
+        {
+            outcome = context is not null
+                ? await HandleError(context, exception, cancellationToken)
+                : ErrorHandlerResult.Faulted;
+        }
+        catch (Exception failure)
+        {
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Error handler failed.");
+
+            return;
+        }
 
         switch (outcome)
         {
@@ -263,13 +276,21 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// A broken (or relayed) delivery: hands it to the fault handler and acks it when the handler
-    /// parks it; an unparked delivery is left unacked to redeliver.
+    /// parks it; an unparked delivery is left unacked to redeliver. Never throws — a fault handler that
+    /// itself fails leaves the delivery unacked rather than tearing down the loop.
     /// </summary>
     private async Task Fault(ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
-        await _faultHandler.Handle(FaultContext.Create(result.Message.Value, Transport.Create(result), exception), cancellationToken);
+        try
+        {
+            await _faultHandler.Handle(FaultContext.Create(result.Message.Value, Transport.Create(result), exception), cancellationToken);
 
-        if (_faultHandler.Result is FaultHandlerResult.Parked) Store(result);
+            if (_faultHandler.Result is FaultHandlerResult.Parked) Store(result);
+        }
+        catch (Exception failure)
+        {
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Fault handler failed.");
+        }
     }
 
     private void Store(ConsumeResult<Ignore, byte[]> result)
@@ -282,7 +303,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         {
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RedeliveredToNewOwner)) _logger.LogWarning("Partition lost.");
         }
-        catch (KafkaException exception)
+        catch (Exception exception)
         {
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogWarning(exception, "Store failed.");
         }

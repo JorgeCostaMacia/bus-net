@@ -62,6 +62,13 @@ public class ConsumerWorkerTests
             Message = new Message<Ignore, byte[]> { Value = "}{ not json"u8.ToArray(), Headers = [] }
         };
 
+    private static ConsumeResult<Ignore, byte[]> NullBodyDelivery(long offset = 10)
+        => new()
+        {
+            TopicPartitionOffset = new TopicPartitionOffset(TOPIC, new Partition(0), new Offset(offset)),
+            Message = new Message<Ignore, byte[]> { Value = "null"u8.ToArray(), Headers = [] }
+        };
+
     private async Task Drive(CommandWorker<TestCommand, RecordingCommandHandler> worker, ConsumerFake consumer)
     {
         await worker.StartAsync(TestContext.Current.CancellationToken);
@@ -114,6 +121,19 @@ public class ConsumerWorkerTests
     public async Task MalformedBody_ParksToFaultTopic_AndStores()
     {
         ConsumerFake consumer = new(GarbageDelivery());
+
+        await Drive(Worker(consumer), consumer);
+
+        Assert.Null(_handler.Received);
+        (string topic, _) = Assert.Single(_producer.Produced);
+        Assert.Equal($"{TOPIC}.fault", topic);
+        Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+    }
+
+    [Fact]
+    public async Task NullBody_ParksToFaultTopic_AndStores()
+    {
+        ConsumerFake consumer = new(NullBodyDelivery());
 
         await Drive(Worker(consumer), consumer);
 

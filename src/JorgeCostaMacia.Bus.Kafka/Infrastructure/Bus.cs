@@ -73,22 +73,22 @@ internal sealed class Bus : IBus
     /// <inheritdoc />
     public Task Send<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
         where T : Command
-        => _producer.Produce(messages.Select(message => Pair(message)), cancellationToken);
+        => _producer.Produce(messages.Select(message => Pair(message)).ToList(), cancellationToken);
 
     /// <inheritdoc />
     public Task Send<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
         where T : Command
-        => _producer.Produce(messages.Select(message => Pair(message, transport)), cancellationToken);
+        => _producer.Produce(messages.Select(message => Pair(message, transport)).ToList(), cancellationToken);
 
     /// <inheritdoc />
     public Task Publish<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
         where T : Event
-        => _producer.Produce(messages.Select(message => Pair(message)), cancellationToken);
+        => _producer.Produce(messages.Select(message => Pair(message)).ToList(), cancellationToken);
 
     /// <inheritdoc />
     public Task Publish<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
         where T : Event
-        => _producer.Produce(messages.Select(message => Pair(message, transport)), cancellationToken);
+        => _producer.Produce(messages.Select(message => Pair(message, transport)).ToList(), cancellationToken);
 
     private string Topic<TMessage>(TMessage message)
     {

@@ -93,11 +93,15 @@ public class BusContextTests
 
     [Fact]
     public void AddCommand_DuplicateType_Throws()
-        => Assert.Throws<ArgumentException>(() => new ServiceCollection().AddBusContext(Configuration(),
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddBusContext(Configuration(),
             producer => producer
                 .AddCommand<TestCommand>("orders")
                 .AddCommand<TestCommand>("other"),
             _ => { }));
+
+        Assert.Contains(nameof(TestCommand), exception.Message);
+    }
 
     [Fact]
     public void AddCommandHandler_WithoutTheCommandMapped_Throws()

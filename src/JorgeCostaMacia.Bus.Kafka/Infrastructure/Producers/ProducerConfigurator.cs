@@ -40,7 +40,7 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddCommand<TCommand>(string topic)
         where TCommand : Command
     {
-        _messages.Add(typeof(TCommand), topic);
+        Map(typeof(TCommand), topic);
 
         return this;
     }
@@ -52,9 +52,21 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddEvent<TEvent>(string topic)
         where TEvent : Event
     {
-        _messages.Add(typeof(TEvent), topic);
+        Map(typeof(TEvent), topic);
 
         return this;
+    }
+
+    /// <summary>Maps a message type to its topic, or throws when the type is already mapped.</summary>
+    /// <param name="message">The message type.</param>
+    /// <param name="topic">The topic to map it to.</param>
+    /// <exception cref="InvalidOperationException">The message type is already mapped to a topic.</exception>
+    private void Map(Type message, string topic)
+    {
+        if (!_messages.TryAdd(message, topic))
+        {
+            throw new InvalidOperationException($"'{message.FullName}' is already mapped to a topic.");
+        }
     }
 
     /// <summary>
