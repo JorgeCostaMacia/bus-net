@@ -186,11 +186,13 @@ internal static class BusLogger
         }
     }
 
-    /// <summary>Decodes every envelope header into the scope — Guids and counters typed, the rest as text.</summary>
+    /// <summary>Decodes every envelope header into the scope — Guids and counters typed, the rest as text. A message with no headers (never set) contributes nothing rather than throwing — logging must never fault, least of all in a catch about to rethrow.</summary>
     /// <param name="context">The scope dictionary to fill.</param>
-    /// <param name="headers">The delivery's headers.</param>
-    private static void Decode(Dictionary<string, object?> context, Headers headers)
+    /// <param name="headers">The delivery's headers, or <see langword="null"/> when the message carries none.</param>
+    private static void Decode(Dictionary<string, object?> context, Headers? headers)
     {
+        if (headers is null) return;
+
         foreach (IHeader header in headers)
         {
             byte[] value = header.GetValueBytes();
