@@ -32,28 +32,28 @@ public class TransportTests
     {
         Guid value = Guid.NewGuid();
 
-        Assert.Equal(value, CreateSut([new Header("id", value.ToByteArray())]).GetGuid("id"));
+        Assert.Equal(value, CreateSut([new Header("id", value.ToByteArray())]).GetHeaderGuid("id"));
     }
 
     [Fact]
     public void GetGuid_WrongLength_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("id", [1, 2, 3])]).GetGuid("id"));
+        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("id", [1, 2, 3])]).GetHeaderGuid("id"));
 
     [Fact]
     public void GetHeader_Missing_Throws()
-        => Assert.Throws<KeyNotFoundException>(() => CreateSut([]).GetString("missing"));
+        => Assert.Throws<KeyNotFoundException>(() => CreateSut([]).GetHeaderString("missing"));
 
     [Fact]
     public void GetHeader_DuplicateKey_LastWins()
-        => Assert.Equal("second", CreateSut([new Header("key", "first"u8.ToArray()), new Header("key", "second"u8.ToArray())]).GetString("key"));
+        => Assert.Equal("second", CreateSut([new Header("key", "first"u8.ToArray()), new Header("key", "second"u8.ToArray())]).GetHeaderString("key"));
 
     [Fact]
     public void GetStringOrDefault_Absent_ReturnsNull()
     {
         Transport transport = CreateSut([new Header("present", "value"u8.ToArray())]);
 
-        Assert.Equal("value", transport.GetStringOrDefault("present"));
-        Assert.Null(transport.GetStringOrDefault("absent"));
+        Assert.Equal("value", transport.GetHeaderStringOrDefault("present"));
+        Assert.Null(transport.GetHeaderStringOrDefault("absent"));
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class TransportTests
     {
         DateTime value = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
-        DateTime parsed = CreateSut([new Header("at", Encoding.UTF8.GetBytes(value.ToString("O")))]).GetDateTime("at");
+        DateTime parsed = CreateSut([new Header("at", Encoding.UTF8.GetBytes(value.ToString("O")))]).GetHeaderDateTime("at");
 
         Assert.Equal(value, parsed);
         Assert.Equal(DateTimeKind.Utc, parsed.Kind);
@@ -69,19 +69,38 @@ public class TransportTests
 
     [Fact]
     public void GetDateTime_Invalid_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("at", "nope"u8.ToArray())]).GetDateTime("at"));
+        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("at", "nope"u8.ToArray())]).GetHeaderDateTime("at"));
 
     [Fact]
     public void GetStringList_TrimsAndSkipsEmptyEntries()
-        => Assert.Equal(["a", "b", "c"], CreateSut([new Header("list", " a, b ,,c "u8.ToArray())]).GetStringList("list"));
+        => Assert.Equal(["a", "b", "c"], CreateSut([new Header("list", " a, b ,,c "u8.ToArray())]).GetHeaderStringList("list"));
 
     [Fact]
     public void GetInt_Digits_Parses()
-        => Assert.Equal(7, CreateSut([new Header("count", "7"u8.ToArray())]).GetInt("count"));
+        => Assert.Equal(7, CreateSut([new Header("count", "7"u8.ToArray())]).GetHeaderInt("count"));
 
     [Fact]
     public void GetInt_Invalid_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("count", "nope"u8.ToArray())]).GetInt("count"));
+        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("count", "nope"u8.ToArray())]).GetHeaderInt("count"));
+
+    [Fact]
+    public void DecodeHeaders_RendersGuidsAsGuid_TextOtherwise_PreservingOrderAndDuplicates()
+    {
+        Guid id = Guid.NewGuid();
+        Transport transport = CreateSut(
+        [
+            new Header(TransportHeaders.AggregateId, id.ToByteArray()),
+            new Header("custom", "value"u8.ToArray()),
+            new Header("custom", "again"u8.ToArray())
+        ]);
+
+        ImmutableList<KeyValuePair<string, string>> decoded = transport.DecodeHeaders();
+
+        Assert.Equal(3, decoded.Count);
+        Assert.Equal(new KeyValuePair<string, string>(TransportHeaders.AggregateId, id.ToString()), decoded[0]);
+        Assert.Equal(new KeyValuePair<string, string>("custom", "value"), decoded[1]);
+        Assert.Equal(new KeyValuePair<string, string>("custom", "again"), decoded[2]);
+    }
 
     [Fact]
     public void CloneHeaders_DeepCopiesTheValues()
@@ -94,6 +113,6 @@ public class TransportTests
         copy[0] = 0;
 
         Assert.Equal("value"u8.ToArray(), original);
-        Assert.Equal("value", transport.GetString("key"));
+        Assert.Equal("value", transport.GetHeaderString("key"));
     }
 }

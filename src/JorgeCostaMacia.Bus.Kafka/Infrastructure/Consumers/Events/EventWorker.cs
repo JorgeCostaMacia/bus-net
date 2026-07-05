@@ -1,9 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -21,14 +22,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
 internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<EventContext<TEvent>, TEventSubscriber>
     where TEvent : Event
-    where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
+    where TEventSubscriber : EventSubscriber<TEvent>
 {
-    private readonly Domain.Events.EventErrorHandler<TEvent> _errorHandler;
-
-    /// <summary>Creates the consumer over its inbound gate, its error and fault handlers, the scope factory, the logger and its contract.</summary>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger and its contract — the subscriber and its error and fault handlers are resolved per delivery from the scope.</summary>
     /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
-    /// <param name="errorHandler">The event's error handler — the framework mechanics deciding a failed delivery's outcome.</param>
-    /// <param name="faultHandler">The fault handler parking broken deliveries — and the relay when the error handler cannot cope.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
@@ -36,15 +33,14 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     public EventWorker(
         IConsumer consumer,
-        Domain.Events.EventErrorHandler<TEvent> errorHandler,
-        Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<EventWorker<TEvent, TEventSubscriber>> logger,
         IHostApplicationLifetime lifetime,
         string topic,
         string groupId)
-        : base(consumer, faultHandler, scopeFactory, logger, lifetime, topic, groupId)
-        => _errorHandler = errorHandler;
+        : base(consumer, scopeFactory, logger, lifetime, topic, groupId)
+    {
+    }
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
@@ -55,11 +51,23 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
         => handler.Handle(context, cancellationToken);
 
     /// <inheritdoc />
-    protected override async Task<ErrorHandlerResult> HandleError(EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
+    protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
     {
-        await _errorHandler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
+        Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber> errorHandler = services.GetRequiredService<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>();
 
-        return _errorHandler.Result;
+        await errorHandler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
+
+        return errorHandler.Result;
+    }
+
+    /// <inheritdoc />
+    protected override async Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken)
+    {
+        Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber> faultHandler = services.GetRequiredService<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>();
+
+        await faultHandler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
+
+        return faultHandler.Result;
     }
 
     /// <summary>

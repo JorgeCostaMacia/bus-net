@@ -7,12 +7,9 @@ namespace JorgeCostaMacia.Bus.Domain.Messages;
 /// </summary>
 public interface IErrorMessage : IMessage
 {
-    /// <summary>Full type name of the failure.</summary>
-    string ErrorType { get; }
+    /// <summary>The failure, modeled with its whole inner-exception chain — type, message, source, stack trace and inner error.</summary>
+    ErrorInfo Error { get; }
 
-    /// <summary>The failure's message.</summary>
-    string ErrorMessage { get; }
-
-    /// <summary>The failure's stack trace, when available.</summary>
-    string? ErrorStackTrace { get; }
+    /// <summary>UTC time the failure was parked.</summary>
+    DateTime ErrorOccurredAt { get; }
 }

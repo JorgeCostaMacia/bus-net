@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
@@ -6,7 +5,6 @@ using JorgeCostaMacia.Bus.Domain.Messages;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
@@ -96,7 +94,7 @@ internal sealed class Bus : IBus
 
         if (!_messages.TryGetValue(type, out string? topic))
         {
-            throw new InvalidOperationException($"No topic is configured for message type '{type.FullName}'.");
+            throw new InvalidOperationException($"'{type.FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         }
 
         return topic;
@@ -116,19 +114,19 @@ internal sealed class Bus : IBus
 
         Headers headers = new()
         {
-            { TransportHeaders.MessageId, Bytes(messageId) },
-            { TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name) },
-            { TransportHeaders.MessageTypeUrn, Bytes(UrnFactory.Domain.UrnFactory.Create(type)) },
-            { TransportHeaders.MessageDestinationAddress, Bytes(topic) },
-            { TransportHeaders.MessageOccurredAt, Bytes(occurredAt) },
-            { TransportHeaders.ConversationId, Bytes(messageId) },
-            { TransportHeaders.ConversationAddress, Bytes(topic) },
-            { TransportHeaders.ConversationOccurredAt, Bytes(occurredAt) },
-            { TransportHeaders.AggregateId, Bytes(message.AggregateId) },
-            { TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId) },
-            { TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")) },
-            { TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers) },
-            { TransportHeaders.RetryCount, Bytes("0") }
+            { TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId) },
+            { TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name) },
+            { TransportHeaders.MessageTypeUrn, TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)) },
+            { TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(topic) },
+            { TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(occurredAt) },
+            { TransportHeaders.ConversationId, TransportHeaders.ToHeader(messageId) },
+            { TransportHeaders.ConversationAddress, TransportHeaders.ToHeader(topic) },
+            { TransportHeaders.ConversationOccurredAt, TransportHeaders.ToHeader(occurredAt) },
+            { TransportHeaders.AggregateId, TransportHeaders.ToHeader(message.AggregateId) },
+            { TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(message.AggregateCorrelationId) },
+            { TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")) },
+            { TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers) },
+            { TransportHeaders.RetryCount, TransportHeaders.ToHeader("0") }
         };
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
@@ -149,16 +147,16 @@ internal sealed class Bus : IBus
 
         Headers headers = inbound.CloneHeaders();
 
-        headers.Restamp(TransportHeaders.MessageId, Bytes(messageId));
-        headers.Restamp(TransportHeaders.MessageType, Bytes(type.FullName ?? type.Name));
-        headers.Restamp(TransportHeaders.MessageTypeUrn, Bytes(UrnFactory.Domain.UrnFactory.Create(type)));
-        headers.Restamp(TransportHeaders.MessageOriginAddress, Bytes(inbound.GetString(TransportHeaders.MessageDestinationAddress)));
-        headers.Restamp(TransportHeaders.MessageDestinationAddress, Bytes(topic));
-        headers.Restamp(TransportHeaders.MessageOccurredAt, Bytes(DateTime.UtcNow.ToString("O")));
-        headers.Restamp(TransportHeaders.AggregateId, Bytes(message.AggregateId));
-        headers.Restamp(TransportHeaders.AggregateCorrelationId, Bytes(message.AggregateCorrelationId));
-        headers.Restamp(TransportHeaders.AggregateOccurredAt, Bytes(message.AggregateOccurredAt.ToString("O")));
-        headers.Restamp(TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers));
+        TransportHeaders.Restamp(headers, TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId));
+        TransportHeaders.Restamp(headers, TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
+        TransportHeaders.Restamp(headers, TransportHeaders.MessageTypeUrn, TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)));
+        TransportHeaders.Restamp(headers, TransportHeaders.MessageOriginAddress, TransportHeaders.ToHeader(inbound.GetHeaderString(TransportHeaders.MessageDestinationAddress)));
+        TransportHeaders.Restamp(headers, TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(topic));
+        TransportHeaders.Restamp(headers, TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.Restamp(headers, TransportHeaders.AggregateId, TransportHeaders.ToHeader(message.AggregateId));
+        TransportHeaders.Restamp(headers, TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(message.AggregateCorrelationId));
+        TransportHeaders.Restamp(headers, TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")));
+        TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers));
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
     }
@@ -180,10 +178,4 @@ internal sealed class Bus : IBus
 
         return new(topic, Prepare(topic, message, transport));
     }
-
-    private static byte[] Bytes(string value) => Encoding.UTF8.GetBytes(value);
-
-    private static byte[] Bytes(Guid value) => value.ToByteArray();
-
-    private static byte[] Bytes(IEnumerable<string> values) => Encoding.UTF8.GetBytes(string.Join(',', values));
 }

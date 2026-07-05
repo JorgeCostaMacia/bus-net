@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
@@ -27,13 +26,13 @@ public sealed class ConsumerConfigurator
 
     private readonly IServiceCollection _services;
     private readonly IReadOnlyDictionary<Type, string> _messages;
-    private readonly ConsumerConfiguration? _configuration;
+    private readonly ConsumerConfiguration _configuration;
 
     /// <summary>Binds the consumer configuration from the <c>Bus:Consumer</c> section and takes the routing map to resolve topics.</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
     /// <param name="messages">The type → topic routing map the producer side owns.</param>
-    /// <exception cref="InvalidOperationException">The <c>Bus:Consumer</c> section is present but one of its required values is missing.</exception>
+    /// <exception cref="InvalidOperationException">The <c>Bus:Consumer</c> section or one of its required values is missing.</exception>
     internal ConsumerConfigurator(IServiceCollection services, IConfiguration configuration, IReadOnlyDictionary<Type, string> messages)
     {
         _services = services;
@@ -58,12 +57,34 @@ public sealed class ConsumerConfigurator
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
         where TCommand : Command
-        where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
+        where TCommandHandler : CommandHandler<TCommand>
     {
-        string topic = Topic(typeof(TCommand));
-        ConsumerConfig configuration = ConsumerConfig(groupId);
+        string topic = _messages.TryGetValue(typeof(TCommand), out string? mapped)
+            ? mapped
+            : throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
+        ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
+        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
+        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
 
         _services.AddScoped<TCommandHandler>();
+
+        _services.AddScoped<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>(provider =>
+            new Commands.CommandErrorHandler<TCommand, TCommandHandler>(
+                provider.GetRequiredService<IProducer>(),
+                provider.GetService<IRetryScheduler>(),
+                provider.GetRequiredService<ILogger<Commands.CommandErrorHandler<TCommand, TCommandHandler>>>(),
+                topic,
+                groupId,
+                intervals,
+                excludes));
+
+        _services.AddScoped<Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>>(provider =>
+            new Commands.CommandFaultHandler<TCommand, TCommandHandler>(
+                provider.GetRequiredService<IProducer>(),
+                provider.GetRequiredService<ILogger<Commands.CommandFaultHandler<TCommand, TCommandHandler>>>(),
+                topic,
+                groupId));
+
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<Commands.CommandWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<Commands.CommandWorker<TCommand, TCommandHandler>>>();
@@ -71,8 +92,6 @@ public sealed class ConsumerConfigurator
 
             return new Commands.CommandWorker<TCommand, TCommandHandler>(
                 new Consumer(CreateBuilder(provider, configuration, logger, lifetime)),
-                new Commands.CommandErrorHandler<TCommand>(Producer(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
-                CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
@@ -100,12 +119,34 @@ public sealed class ConsumerConfigurator
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null)
         where TEvent : Event
-        where TEventSubscriber : class, IHandler<TEvent, EventContext<TEvent>>
+        where TEventSubscriber : EventSubscriber<TEvent>
     {
-        string topic = Topic(typeof(TEvent));
-        ConsumerConfig configuration = ConsumerConfig(groupId);
+        string topic = _messages.TryGetValue(typeof(TEvent), out string? mapped)
+            ? mapped
+            : throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
+        ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
+        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
+        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
 
         _services.AddScoped<TEventSubscriber>();
+
+        _services.AddScoped<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>(provider =>
+            new Events.EventErrorHandler<TEvent, TEventSubscriber>(
+                provider.GetRequiredService<IProducer>(),
+                provider.GetService<IRetryScheduler>(),
+                provider.GetRequiredService<ILogger<Events.EventErrorHandler<TEvent, TEventSubscriber>>>(),
+                topic,
+                groupId,
+                intervals,
+                excludes));
+
+        _services.AddScoped<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>(provider =>
+            new Events.EventFaultHandler<TEvent, TEventSubscriber>(
+                provider.GetRequiredService<IProducer>(),
+                provider.GetRequiredService<ILogger<Events.EventFaultHandler<TEvent, TEventSubscriber>>>(),
+                topic,
+                groupId));
+
         _services.AddSingleton<IHostedService>(provider =>
         {
             ILogger<Events.EventWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<Events.EventWorker<TEvent, TEventSubscriber>>>();
@@ -113,8 +154,6 @@ public sealed class ConsumerConfigurator
 
             return new Events.EventWorker<TEvent, TEventSubscriber>(
                 new Consumer(CreateBuilder(provider, configuration, logger, lifetime)),
-                new Events.EventErrorHandler<TEvent>(Producer(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
-                CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
@@ -125,51 +164,24 @@ public sealed class ConsumerConfigurator
         return this;
     }
 
-    /// <summary>The topic the message was mapped to on the producer side, or a throw when it was not mapped first.</summary>
-    private string Topic(Type message)
-        => _messages.TryGetValue(message, out string? topic)
-            ? topic
-            : throw new InvalidOperationException($"'{message.Name}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
-
-    /// <summary>The consumer's Kafka settings for the group, or a throw when the consumer section is absent.</summary>
-    private ConsumerConfig ConsumerConfig(string groupId)
-        => _configuration?.ConsumerConfig(groupId)
-            ?? throw new InvalidOperationException($"'{CONSUMER_SECTION}' is null.");
-
     /// <summary>
-    /// Binds the <c>Bus:Consumer</c> section onto a <see cref="ConsumerConfiguration"/>, or
-    /// <see langword="null"/> when the section is absent — a producer-only service maps no handlers and
-    /// needs no section; a mapped handler then throws.
+    /// Binds the <c>Bus:Consumer</c> section onto a <see cref="ConsumerConfiguration"/> — mandatory,
+    /// since the configurator is only built when the app opts into consuming (a send-only service
+    /// omits the consumer lambda and never reaches here).
     /// </summary>
     /// <param name="configuration">The application configuration.</param>
-    /// <returns>The global consumer configuration, or <see langword="null"/> when the section is absent.</returns>
-    /// <exception cref="InvalidOperationException">The section is present but one of its required values is missing.</exception>
-    private static ConsumerConfiguration? CreateConsumerConfiguration(IConfiguration configuration)
+    /// <returns>The global consumer configuration.</returns>
+    /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
+    private static ConsumerConfiguration CreateConsumerConfiguration(IConfiguration configuration)
     {
-        ConsumerConfiguration? consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>();
+        ConsumerConfiguration consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>()
+            ?? throw new InvalidOperationException($"'{CONSUMER_SECTION}' is null.");
 
-        if (consumerConfiguration is null)
-        {
-            return null;
-        }
-
-        Validate(nameof(consumerConfiguration.BootstrapServers), consumerConfiguration.BootstrapServers);
-        Validate(nameof(consumerConfiguration.SaslUsername), consumerConfiguration.SaslUsername);
-        Validate(nameof(consumerConfiguration.SaslPassword), consumerConfiguration.SaslPassword);
+        if (string.IsNullOrWhiteSpace(consumerConfiguration.BootstrapServers)) throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
+        if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslUsername)) throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslUsername)}' is null.");
+        if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslPassword)) throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslPassword)}' is null.");
 
         return consumerConfiguration;
-    }
-
-    /// <summary>Throws when a required configuration value is missing — the binder does not enforce <see langword="required"/> members.</summary>
-    /// <param name="name">The value's name within the section.</param>
-    /// <param name="value">The bound value.</param>
-    /// <exception cref="InvalidOperationException">The value is missing.</exception>
-    private static void Validate(string name, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{name}' is null.");
-        }
     }
 
     /// <summary>
@@ -195,20 +207,4 @@ public sealed class ConsumerConfigurator
             .SetPartitionsRevokedHandler((_, partitions) => BusLogger.LogPartitionsRevoked(logger, partitions))
             .SetPartitionsLostHandler((_, partitions) => BusLogger.LogPartitionsLost(logger, partitions));
     }
-
-    /// <summary>Composes a consumer's fault handler over the outbound producer, the logger and its contract.</summary>
-    private static Faults.FaultHandler CreateFaultHandler(IServiceProvider provider, ILogger logger, string topic, string groupId)
-        => new(Producer(provider), logger, topic, groupId);
-
-    /// <summary>The outbound gate the error and fault handlers produce through.</summary>
-    private static IProducer Producer(IServiceProvider provider)
-        => provider.GetRequiredService<IProducer>();
-
-    /// <summary>The retry ladder, or the default when none is supplied.</summary>
-    private static ImmutableList<TimeSpan> Intervals(ImmutableList<TimeSpan>? retryIntervals)
-        => retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
-
-    /// <summary>The retry-excluded exception types, or the default when none is supplied.</summary>
-    private static ImmutableList<Type> Excludes(ImmutableList<Type>? retryExcludeExceptionTypes)
-        => retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
 }

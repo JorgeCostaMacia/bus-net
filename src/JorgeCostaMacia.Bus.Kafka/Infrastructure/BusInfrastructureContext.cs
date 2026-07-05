@@ -25,15 +25,16 @@ internal static class BusInfrastructureContext
 {
     /// <summary>
     /// Registers the bus over the application configuration: the producer lambda maps the messages to
-    /// topics (its routing map feeds both the bus and the consumers), the consumer lambda registers
-    /// the handlers.
+    /// topics (its routing map feeds both the bus and the consumers); the optional consumer lambda
+    /// registers the handlers — omit it for a send-only service, which then needs no <c>Bus:Consumer</c>
+    /// section.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The application configuration carrying the <c>Bus:Producer</c> / <c>Bus:Consumer</c> sections.</param>
+    /// <param name="configuration">The application configuration carrying the <c>Bus:Producer</c> section (and <c>Bus:Consumer</c> when a consumer lambda is supplied).</param>
     /// <param name="producer">Maps the messages this service sends/publishes to their topics.</param>
-    /// <param name="consumer">Registers this service's handlers and subscribers.</param>
+    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a send-only service.</param>
     /// <returns>The same service collection, to allow method chaining.</returns>
-    internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator> consumer)
+    internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null)
     {
         ProducerConfigurator producerConfigurator = new(configuration);
 
@@ -43,9 +44,12 @@ internal static class BusInfrastructureContext
         services.AddSingleton<IProducer>(provider => new Producer(provider.GetRequiredService<IProducer<Null, byte[]>>(), provider.GetRequiredService<ILogger<Producer>>()));
         services.AddHostedService<ProducerWorker>();
 
-        ConsumerConfigurator consumerConfigurator = new(services, configuration, producerConfigurator.Messages);
+        if (consumer is not null)
+        {
+            ConsumerConfigurator consumerConfigurator = new(services, configuration, producerConfigurator.Messages);
 
-        consumer(consumerConfigurator);
+            consumer(consumerConfigurator);
+        }
 
         services.AddSingleton<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 

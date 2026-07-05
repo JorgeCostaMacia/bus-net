@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 /// </summary>
 internal sealed class Consumer : IConsumer
 {
-    private readonly Confluent.Kafka.IConsumer<Ignore, byte[]> _consumer;
+    private readonly IConsumer<Ignore, byte[]> _consumer;
 
     /// <summary>Builds the consumer from its ready-made Kafka builder.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>

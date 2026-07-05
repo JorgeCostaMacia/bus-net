@@ -1,10 +1,9 @@
 using System.Collections.Immutable;
-using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
@@ -19,13 +18,15 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 /// its time — or, with no scheduler registered, parked to <c>.error</c> as terminal, since it cannot
 /// be delayed); a terminal failure parks an <see cref="EventError{TEvent}"/> to the topic's
 /// <c>.error</c>. It reports how it left the delivery through <c>Result</c>: a produce failure or a
-/// scheduler hiccup leaves it <see cref="ErrorHandlerResult.Unhandled"/> (unacked, redelivers); only
-/// an unreadable envelope reports <see cref="ErrorHandlerResult.Faulted"/>, handing the delivery to
+/// scheduler hiccup leaves it <see cref="ErrorResult.Unhandled"/> (unacked, redelivers); only
+/// an unreadable envelope reports <see cref="ErrorResult.Faulted"/>, handing the delivery to
 /// the fault handler.
 /// </summary>
 /// <typeparam name="TEvent">The event type this handler manages the failures of.</typeparam>
-internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandler<TEvent>
+/// <typeparam name="TEventSubscriber">The event subscriber it is paired with — ties this error handler to its event and subscriber.</typeparam>
+internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>
     where TEvent : Event
+    where TEventSubscriber : EventSubscriber<TEvent>
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";
 
@@ -68,8 +69,8 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
     /// Manages the failed event: a retryable failure requeues or schedules following the interval
     /// ladder; a terminal failure parks an <see cref="EventError{TEvent}"/> to the error topic.
     /// Reports how it left the delivery through <c>Result</c>. Never throws for control flow: a
-    /// produce failure or a scheduler hiccup is <see cref="ErrorHandlerResult.Unhandled"/>; an
-    /// unreadable envelope is <see cref="ErrorHandlerResult.Faulted"/>.
+    /// produce failure or a scheduler hiccup is <see cref="ErrorResult.Unhandled"/>; an
+    /// unreadable envelope is <see cref="ErrorResult.Faulted"/>.
     /// </summary>
     /// <param name="context">The delivery's error context — the typed event, its envelope and the exception.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
@@ -83,7 +84,7 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
 
                 using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(context.Error, "Subscriber failed.");
 
-                Result = ErrorHandlerResult.Parked;
+                Result = ErrorResult.Parked;
 
                 return;
             }
@@ -94,19 +95,19 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
         }
         catch (OperationCanceledException)
         {
-            Result = ErrorHandlerResult.Unhandled;
+            Result = ErrorResult.Unhandled;
         }
         catch (ProduceException<Null, byte[]> produce)
         {
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
-            Result = ErrorHandlerResult.Unhandled;
+            Result = ErrorResult.Unhandled;
         }
         catch (Exception broken)
         {
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Subscriber failed.");
 
-            Result = ErrorHandlerResult.Faulted;
+            Result = ErrorResult.Faulted;
         }
     }
 
@@ -117,13 +118,13 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
             && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(context.Error));
 
     /// <summary>Requeues the retry at the topic's tail, targeted to this group only — nothing held in memory, survives a restart.</summary>
-    private async Task<ErrorHandlerResult> Requeue(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
+    private async Task<ErrorResult> Requeue(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
     {
         await _producer.Produce(_topic, new Message<Null, byte[]> { Value = Body(context), Headers = RetryHeaders(context) }, cancellationToken);
 
         BusLogger.LogRetry(_logger, context.Error, context.RetryCount + 1);
 
-        return ErrorHandlerResult.Retried;
+        return ErrorResult.Retried;
     }
 
     /// <summary>
@@ -131,7 +132,7 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
     /// scheduler registered the failure cannot be delayed, so it parks to the error topic as terminal;
     /// a scheduler that fails leaves the delivery unacked to redeliver.
     /// </summary>
-    private async Task<ErrorHandlerResult> Schedule(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
+    private async Task<ErrorResult> Schedule(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
     {
         if (_retryScheduler is null)
         {
@@ -139,7 +140,7 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
 
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Subscriber failed.");
 
-            return ErrorHandlerResult.Parked;
+            return ErrorResult.Parked;
         }
 
         DateTime scheduledAt = DateTime.UtcNow.Add(_retryIntervals[context.RetryCount]);
@@ -150,17 +151,17 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
 
             BusLogger.LogRetry(_logger, context.Error, context.RetryCount + 1, scheduledAt);
 
-            return ErrorHandlerResult.Scheduled;
+            return ErrorResult.Scheduled;
         }
         catch (OperationCanceledException)
         {
-            return ErrorHandlerResult.Unhandled;
+            return ErrorResult.Unhandled;
         }
         catch (Exception schedule)
         {
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ScheduleFailed)) _logger.LogError(schedule, "Retry failed.");
 
-            return ErrorHandlerResult.Unhandled;
+            return ErrorResult.Unhandled;
         }
     }
 
@@ -181,8 +182,8 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
     {
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Restamp(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes((context.RetryCount + 1).ToString()));
-        headers.Restamp(TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(_groupId));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader((context.RetryCount + 1).ToString()));
+        TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(_groupId));
 
         return headers;
     }
@@ -194,10 +195,10 @@ internal sealed class EventErrorHandler<TEvent> : Domain.Events.EventErrorHandle
 
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Add(TransportHeaders.ErrorType, Encoding.UTF8.GetBytes(type.FullName ?? type.Name));
-        headers.Add(TransportHeaders.ErrorMessage, Encoding.UTF8.GetBytes(context.Error.Message));
-        headers.Add(TransportHeaders.ErrorGroupId, Encoding.UTF8.GetBytes(_groupId));
-        headers.Add(TransportHeaders.ErrorOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")));
+        headers.Add(TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
+        headers.Add(TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
+        headers.Add(TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_groupId));
+        headers.Add(TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
 
         return headers;
     }

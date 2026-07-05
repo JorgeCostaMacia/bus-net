@@ -3,7 +3,7 @@ using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
-public class MessageRecordTests
+public class CommandTests
 {
     [Fact]
     public void Command_RoundTrips_ThroughTheSerializer()
@@ -18,7 +18,6 @@ public class MessageRecordTests
         Assert.Equal(command.AggregateOccurredAt, roundTripped.AggregateOccurredAt);
         Assert.Equal(command.AggregateConsumers, roundTripped.AggregateConsumers);
     }
-
 
     [Fact]
     public void Command_Defaults_GenerateTheTrace()
@@ -46,26 +45,5 @@ public class MessageRecordTests
         Assert.Equal(correlation, command.AggregateCorrelationId);
         Assert.Equal(occurredAt, command.AggregateOccurredAt);
         Assert.Equal(["g1"], command.AggregateConsumers);
-    }
-
-    [Fact]
-    public void Event_Defaults_GenerateTheTrace()
-    {
-        TestEvent @event = new("pepe");
-
-        Assert.NotEqual(Guid.Empty, @event.AggregateId);
-        Assert.Equal(@event.AggregateId, @event.AggregateCorrelationId);
-        Assert.Empty(@event.AggregateConsumers);
-    }
-
-    [Fact]
-    public void Event_SuppliedCorrelation_IsKept()
-    {
-        Guid correlation = Guid.NewGuid();
-
-        TestEvent @event = new("pepe", aggregateCorrelationId: correlation);
-
-        Assert.Equal(correlation, @event.AggregateCorrelationId);
-        Assert.NotEqual(@event.AggregateId, @event.AggregateCorrelationId);
     }
 }
