@@ -34,8 +34,8 @@ public class EventErrorHandlerTests
         Assert.Equal($"{Deliveries.TOPIC}.error", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
-        Assert.Equal(typeof(InvalidOperationException).FullName, body.GetProperty("ErrorType").GetString());
-        Assert.Equal("boom", body.GetProperty("ErrorMessage").GetString());
+        Assert.Equal(typeof(InvalidOperationException).FullName, body.GetProperty("Error").GetProperty("Type").GetString());
+        Assert.Equal("boom", body.GetProperty("Error").GetProperty("Message").GetString());
         Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("GroupId").GetString());
         Assert.Equal(Deliveries.TOPIC, body.GetProperty("Topic").GetString());
         Assert.Equal(0, body.GetProperty("Partition").GetInt32());
@@ -58,6 +58,23 @@ public class EventErrorHandlerTests
         Message<Null, byte[]> message = Assert.Single(_producer.Produced).Message;
         Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateId, out byte[] id) && new Guid(id) == aggregateId);
         Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateCorrelationId, out byte[] correlation) && new Guid(correlation) == aggregateCorrelationId);
+    }
+
+    [Fact]
+    public async Task ParkedBody_CarriesTheFullExceptionChain_AndTheHost()
+    {
+        Exception failure = new InvalidOperationException("outer", new FormatException("the real cause"));
+        failure.Data["field"] = "required";
+        EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.Transport(), failure);
+
+        await EventError().Handle(context, TestContext.Current.CancellationToken);
+
+        JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Message.Value);
+        JsonElement error = body.GetProperty("Error");
+        Assert.Equal("the real cause", error.GetProperty("InnerError").GetProperty("Message").GetString());
+        Assert.Contains(nameof(FormatException), error.GetProperty("InnerError").GetProperty("Type").GetString());
+        Assert.Equal("required", error.GetProperty("Data").GetProperty("field").GetString());
+        Assert.Equal(Environment.MachineName, body.GetProperty("MachineName").GetString());
     }
 
     [Fact]

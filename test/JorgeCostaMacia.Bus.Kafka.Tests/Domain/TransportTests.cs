@@ -84,6 +84,25 @@ public class TransportTests
         => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("count", "nope"u8.ToArray())]).GetInt("count"));
 
     [Fact]
+    public void DecodeHeaders_RendersGuidsAsGuid_TextOtherwise_PreservingOrderAndDuplicates()
+    {
+        Guid id = Guid.NewGuid();
+        Transport transport = CreateSut(
+        [
+            new Header(TransportHeaders.AggregateId, id.ToByteArray()),
+            new Header("custom", "value"u8.ToArray()),
+            new Header("custom", "again"u8.ToArray())
+        ]);
+
+        ImmutableList<KeyValuePair<string, string>> decoded = transport.DecodeHeaders();
+
+        Assert.Equal(3, decoded.Count);
+        Assert.Equal(new KeyValuePair<string, string>(TransportHeaders.AggregateId, id.ToString()), decoded[0]);
+        Assert.Equal(new KeyValuePair<string, string>("custom", "value"), decoded[1]);
+        Assert.Equal(new KeyValuePair<string, string>("custom", "again"), decoded[2]);
+    }
+
+    [Fact]
     public void CloneHeaders_DeepCopiesTheValues()
     {
         byte[] original = "value"u8.ToArray();
