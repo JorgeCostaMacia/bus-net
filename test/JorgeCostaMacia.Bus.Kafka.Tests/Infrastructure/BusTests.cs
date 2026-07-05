@@ -4,7 +4,6 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
-using Microsoft.Extensions.Logging.Abstractions;
 using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
@@ -14,7 +13,7 @@ public class BusTests
     private readonly ProducerFake _producer = new();
 
     private KafkaBus CreateSut(params (Type Type, string Topic)[] messages)
-        => new(_producer, messages.ToDictionary(e => e.Type, e => e.Topic), NullLogger<KafkaBus>.Instance);
+        => new(_producer, messages.ToDictionary(e => e.Type, e => e.Topic));
 
     private static string? Header(Message<Null, byte[]> message, string key)
         => message.Headers.TryGetLastBytes(key, out byte[] value) ? Encoding.UTF8.GetString(value) : null;

@@ -20,20 +20,20 @@ internal sealed class FaultHandler : Domain.Faults.FaultHandler
 {
     private const string FAULT_TOPIC_SUFFIX = ".fault";
 
-    private readonly Bus _bus;
+    private readonly IProducer _producer;
     private readonly ILogger _logger;
 
     private readonly string _topic;
     private readonly string _groupId;
 
-    /// <summary>Creates the handler over the bus, the logger and the consumer's contract.</summary>
-    /// <param name="bus">The bus — the fault parking goes through its internal gate.</param>
+    /// <summary>Creates the handler over the outbound producer, the logger and the consumer's contract.</summary>
+    /// <param name="producer">The outbound gate — the fault parking goes through it.</param>
     /// <param name="logger">The consumer's logger.</param>
     /// <param name="topic">The Kafka topic — faults park to its <c>.fault</c>.</param>
     /// <param name="groupId">The consumer group id, stamped on the parked fault as the failing group.</param>
-    public FaultHandler(Bus bus, ILogger logger, string topic, string groupId)
+    public FaultHandler(IProducer producer, ILogger logger, string topic, string groupId)
     {
-        _bus = bus;
+        _producer = producer;
         _logger = logger;
         _topic = topic;
         _groupId = groupId;
@@ -59,7 +59,7 @@ internal sealed class FaultHandler : Domain.Faults.FaultHandler
                 Headers = FaultHeaders(context)
             };
 
-            await _bus.Produce(_topic + FAULT_TOPIC_SUFFIX, message, cancellationToken);
+            await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, message, cancellationToken);
 
             using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToFaultTopic)) _logger.LogError(context.Error, "Delivery faulted.");
 

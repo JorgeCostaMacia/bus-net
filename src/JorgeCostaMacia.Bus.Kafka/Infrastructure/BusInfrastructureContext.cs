@@ -14,11 +14,12 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// The package's wiring: it lets the send side map its messages through the
 /// <see cref="ProducerConfigurator"/> (which binds <c>Bus:Producer</c> and owns the routing map) and
 /// the consume side register its handlers through the <see cref="ConsumerConfigurator"/> (which binds
-/// <c>Bus:Consumer</c> and reads that map). The shared producer (error/log callbacks wired to its
-/// logger) is a singleton the container owns; the <see cref="Bus"/> — registered behind
-/// <see cref="IBus"/> — only uses it, and the <c>ProducerWorker</c> owns its lifecycle. The worker is
-/// registered before the consumers so it stops last: the consumers stop before its final flush. The
-/// bus itself is a lazy singleton, built last.
+/// <c>Bus:Consumer</c> and reads that map). The shared Kafka producer (error/log callbacks wired to
+/// its logger) is a container-owned singleton, wrapped by the <see cref="IProducer"/> gate every
+/// outbound byte goes through; the <see cref="Bus"/> — registered only behind <see cref="IBus"/> —
+/// and the consumers' handlers both produce through that gate, while the <c>ProducerWorker</c> owns
+/// the raw producer's lifecycle. The worker is registered before the consumers so it stops last: the
+/// consumers stop before its final flush. The bus itself is a lazy singleton, built last.
 /// </summary>
 internal static class BusInfrastructureContext
 {
@@ -39,14 +40,14 @@ internal static class BusInfrastructureContext
         producer(producerConfigurator);
 
         services.AddSingleton(provider => CreateProducer(provider, producerConfigurator.ProducerConfig));
+        services.AddSingleton<IProducer>(provider => new Producer(provider.GetRequiredService<IProducer<Null, byte[]>>(), provider.GetRequiredService<ILogger<Producer>>()));
         services.AddHostedService<ProducerWorker>();
 
         ConsumerConfigurator consumerConfigurator = new(services, configuration, producerConfigurator.Messages);
 
         consumer(consumerConfigurator);
 
-        services.AddSingleton(provider => new Bus(provider.GetRequiredService<IProducer<Null, byte[]>>(), producerConfigurator.Messages, provider.GetRequiredService<ILogger<Bus>>()));
-        services.AddSingleton<IBus>(static provider => provider.GetRequiredService<Bus>());
+        services.AddSingleton<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 
         return services;
     }

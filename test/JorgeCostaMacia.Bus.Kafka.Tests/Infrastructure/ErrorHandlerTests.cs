@@ -8,7 +8,6 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
-using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
@@ -24,15 +23,13 @@ public class ErrorHandlerTests
     private readonly ProducerFake _producer = new();
     private readonly RetrySchedulerFake _scheduler = new();
 
-    private KafkaBus Bus() => new(_producer, new Dictionary<Type, string>(), NullLogger<KafkaBus>.Instance);
-
     private Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
-        => new(Bus(), scheduler ? _scheduler : null, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], excludes ?? []);
+        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], excludes ?? []);
 
     private Infrastructure.Consumers.Events.EventErrorHandler<TestEvent> EventError(ImmutableList<TimeSpan>? intervals = null)
-        => new(Bus(), _scheduler, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], []);
+        => new(_producer, _scheduler, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], []);
 
-    private Infrastructure.Consumers.Faults.FaultHandler Fault() => new(Bus(), NullLogger.Instance, TOPIC, GROUP_ID);
+    private Infrastructure.Consumers.Faults.FaultHandler Fault() => new(_producer, NullLogger.Instance, TOPIC, GROUP_ID);
 
     private static Transport Transport(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
     {

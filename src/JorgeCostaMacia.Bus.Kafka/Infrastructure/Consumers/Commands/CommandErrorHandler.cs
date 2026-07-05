@@ -27,7 +27,7 @@ internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErr
 {
     private const string ERROR_TOPIC_SUFFIX = ".error";
 
-    private readonly Bus _bus;
+    private readonly IProducer _producer;
     private readonly IRetryScheduler? _retryScheduler;
     private readonly ILogger _logger;
 
@@ -36,8 +36,8 @@ internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErr
     private readonly ImmutableList<TimeSpan> _retryIntervals;
     private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
 
-    /// <summary>Creates the handler over the bus, the optional retry scheduler, the logger and the command's contract.</summary>
-    /// <param name="bus">The bus — every produce (retry requeues, error parking) goes through its internal gate.</param>
+    /// <summary>Creates the handler over the outbound producer, the optional retry scheduler, the logger and the command's contract.</summary>
+    /// <param name="producer">The outbound gate — every produce (retry requeues, error parking) goes through it.</param>
     /// <param name="retryScheduler">The scheduler parking delayed retries, or <see langword="null"/> when none is registered.</param>
     /// <param name="logger">The consumer's logger.</param>
     /// <param name="topic">The Kafka topic — retries requeue to it; terminal failures park to its <c>.error</c>.</param>
@@ -45,7 +45,7 @@ internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErr
     /// <param name="retryIntervals">Delays before each retry — one entry per attempt, <c>00:00</c> requeues immediately (empty means no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry — they park directly.</param>
     public CommandErrorHandler(
-        Bus bus,
+        IProducer producer,
         IRetryScheduler? retryScheduler,
         ILogger logger,
         string topic,
@@ -53,7 +53,7 @@ internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErr
         ImmutableList<TimeSpan> retryIntervals,
         ImmutableList<Type> retryExcludeExceptionTypes)
     {
-        _bus = bus;
+        _producer = producer;
         _retryScheduler = retryScheduler;
         _logger = logger;
         _topic = topic;
@@ -116,7 +116,7 @@ internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErr
     /// <summary>Requeues the retry at the topic's tail — nothing held in memory, survives a restart.</summary>
     private async Task<ErrorHandlerResult> Requeue(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
     {
-        await _bus.Produce(_topic, new Message<Null, byte[]> { Value = Body(context), Headers = RetryHeaders(context) }, cancellationToken);
+        await _producer.Produce(_topic, new Message<Null, byte[]> { Value = Body(context), Headers = RetryHeaders(context) }, cancellationToken);
 
         BusLogger.LogRetry(_logger, context.Error, context.RetryCount + 1);
 
@@ -166,7 +166,7 @@ internal sealed class CommandErrorHandler<TCommand> : Domain.Commands.CommandErr
     {
         CommandError<TCommand> error = CommandError<TCommand>.Create(context, _groupId);
 
-        await _bus.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error), Headers = ErrorHeaders(context) }, cancellationToken);
+        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error), Headers = ErrorHeaders(context) }, cancellationToken);
     }
 
     /// <summary>The retry's body — the typed command re-serialized.</summary>

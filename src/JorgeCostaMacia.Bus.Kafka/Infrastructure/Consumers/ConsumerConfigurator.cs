@@ -71,7 +71,7 @@ public sealed class ConsumerConfigurator
 
             return new Commands.CommandWorker<TCommand, TCommandHandler>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new Commands.CommandErrorHandler<TCommand>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new Commands.CommandErrorHandler<TCommand>(Producer(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
@@ -113,7 +113,7 @@ public sealed class ConsumerConfigurator
 
             return new Events.EventWorker<TEvent, TEventSubscriber>(
                 CreateBuilder(provider, configuration, logger, lifetime),
-                new Events.EventErrorHandler<TEvent>(Bus(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
+                new Events.EventErrorHandler<TEvent>(Producer(provider), provider.GetService<IRetryScheduler>(), logger, topic, groupId, Intervals(retryIntervals), Excludes(retryExcludeExceptionTypes)),
                 CreateFaultHandler(provider, logger, topic, groupId),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
@@ -196,13 +196,13 @@ public sealed class ConsumerConfigurator
             .SetPartitionsLostHandler((_, partitions) => BusLogger.LogPartitionsLost(logger, partitions));
     }
 
-    /// <summary>Composes a consumer's fault handler over the bus, the logger and its contract.</summary>
+    /// <summary>Composes a consumer's fault handler over the outbound producer, the logger and its contract.</summary>
     private static Faults.FaultHandler CreateFaultHandler(IServiceProvider provider, ILogger logger, string topic, string groupId)
-        => new(Bus(provider), logger, topic, groupId);
+        => new(Producer(provider), logger, topic, groupId);
 
-    /// <summary>The bus — the single outbound gate the error and fault handlers produce through.</summary>
-    private static Bus Bus(IServiceProvider provider)
-        => provider.GetRequiredService<Bus>();
+    /// <summary>The outbound gate the error and fault handlers produce through.</summary>
+    private static IProducer Producer(IServiceProvider provider)
+        => provider.GetRequiredService<IProducer>();
 
     /// <summary>The retry ladder, or the default when none is supplied.</summary>
     private static ImmutableList<TimeSpan> Intervals(ImmutableList<TimeSpan>? retryIntervals)

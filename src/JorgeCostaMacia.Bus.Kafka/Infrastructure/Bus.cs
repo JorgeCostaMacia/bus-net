@@ -7,36 +7,31 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
-using Microsoft.Extensions.Logging;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The Kafka bus — the owner of the routing map and the single outbound gate: every send in the
-/// application goes through it, the consumers' machinery included (retries and error parking use its
-/// internal produce). Sends commands and publishes events with <c>ProduceAsync</c> (a completed task
-/// means the broker acked; a failure throws). Send/Publish orchestrate: they resolve the topic,
-/// prepare the envelope (fresh, or continued from an inbound transport) and produce. It only uses the
-/// shared producer — the lifecycle (flush on shutdown, disposal) is the <c>ProducerWorker</c>'s and
-/// the container's. The consume side lives in the per-handler consumers (<c>CommandWorker</c> /
-/// <c>EventWorker</c>).
+/// The Kafka bus — the domain-facing facade over the outbound gate: it owns the routing map and, for
+/// every <c>Send</c>/<c>Publish</c>, resolves the topic, prepares the envelope (fresh, or continued
+/// from an inbound transport) and produces through the <see cref="IProducer"/> gate (a completed task
+/// means the broker acked; a failure throws). It does not touch the Kafka client directly — the gate
+/// does, and it is the single point every outbound byte goes through, the consumers' retries and
+/// error/fault parking included. The consume side lives in the per-handler consumers
+/// (<c>CommandWorker</c> / <c>EventWorker</c>).
 /// </summary>
-public sealed class Bus : IBus
+internal sealed class Bus : IBus
 {
-    private readonly IProducer<Null, byte[]> _producer;
+    private readonly IProducer _producer;
     private readonly IReadOnlyDictionary<Type, string> _messages;
-    private readonly ILogger<Bus> _logger;
 
-    /// <summary>Creates the bus over a shared producer, the type → topic routing map and the logger.</summary>
-    /// <param name="producer">The shared Kafka producer.</param>
+    /// <summary>Creates the bus over the outbound gate and the type → topic routing map.</summary>
+    /// <param name="producer">The outbound gate every send produces through.</param>
     /// <param name="messages">The type → topic routing map (commands and events).</param>
-    /// <param name="logger">The logger for produce failures.</param>
-    public Bus(IProducer<Null, byte[]> producer, IReadOnlyDictionary<Type, string> messages, ILogger<Bus> logger)
+    public Bus(IProducer producer, IReadOnlyDictionary<Type, string> messages)
     {
         _producer = producer;
         _messages = messages;
-        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -45,7 +40,7 @@ public sealed class Bus : IBus
     {
         string topic = Topic(message);
 
-        await Produce(topic, Prepare(topic, message), cancellationToken);
+        await _producer.Produce(topic, Prepare(topic, message), cancellationToken);
     }
 
     /// <inheritdoc />
@@ -54,7 +49,7 @@ public sealed class Bus : IBus
     {
         string topic = Topic(message);
 
-        await Produce(topic, Prepare(topic, message, transport), cancellationToken);
+        await _producer.Produce(topic, Prepare(topic, message, transport), cancellationToken);
     }
 
     /// <inheritdoc />
@@ -63,7 +58,7 @@ public sealed class Bus : IBus
     {
         string topic = Topic(message);
 
-        await Produce(topic, Prepare(topic, message), cancellationToken);
+        await _producer.Produce(topic, Prepare(topic, message), cancellationToken);
     }
 
     /// <inheritdoc />
@@ -72,7 +67,7 @@ public sealed class Bus : IBus
     {
         string topic = Topic(message);
 
-        await Produce(topic, Prepare(topic, message, transport), cancellationToken);
+        await _producer.Produce(topic, Prepare(topic, message, transport), cancellationToken);
     }
 
     private string Topic<TMessage>(TMessage message)
@@ -146,40 +141,6 @@ public sealed class Bus : IBus
         headers.Restamp(TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers));
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
-    }
-
-    /// <summary>
-    /// Produces a message — the single gate every outbound byte goes through (Send/Publish envelopes
-    /// and the consumers' retries and error parking alike). A failure is logged with the outbound
-    /// delivery attached (topic, body and envelope — inspectable and reinjectable from the log
-    /// platform) and rethrown: the caller's task still faults, awaiting still means broker-acked.
-    /// </summary>
-    internal async Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await _producer.ProduceAsync(topic, message, cancellationToken);
-        }
-        catch (ProduceException<Null, byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
-        {
-            using (BusLogger.ProducerContext(_logger, topic, message))
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ProducerQueueFull))
-            {
-                _logger.LogError(exception, "Producer failed.");
-            }
-
-            throw;
-        }
-        catch (ProduceException<Null, byte[]> exception)
-        {
-            using (BusLogger.ProducerContext(_logger, topic, message))
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.SendFaulted))
-            {
-                _logger.LogError(exception, "Producer failed.");
-            }
-
-            throw;
-        }
     }
 
     private static byte[] Bytes(string value) => Encoding.UTF8.GetBytes(value);
