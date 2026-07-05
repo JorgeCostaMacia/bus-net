@@ -35,7 +35,7 @@ public class BusContextTests
     public void AddBusContext_MissingProducerSection_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => new ServiceCollection().AddBusContext(Configuration(producer: false), _ => { }));
+            () => new ServiceCollection().AddBusContext(Configuration(producer: false), _ => { }, _ => { }));
 
         Assert.Contains("Bus:Producer", exception.Message);
     }
@@ -44,7 +44,7 @@ public class BusContextTests
     public void AddBusContext_MissingBootstrapServers_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => new ServiceCollection().AddBusContext(Configuration(producerBootstrap: null), _ => { }));
+            () => new ServiceCollection().AddBusContext(Configuration(producerBootstrap: null), _ => { }, _ => { }));
 
         Assert.Contains("BootstrapServers", exception.Message);
     }
@@ -53,7 +53,7 @@ public class BusContextTests
     public void AddBusContext_MissingSaslUsername_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => new ServiceCollection().AddBusContext(Configuration(producerUser: null), _ => { }));
+            () => new ServiceCollection().AddBusContext(Configuration(producerUser: null), _ => { }, _ => { }));
 
         Assert.Contains("SaslUsername", exception.Message);
     }
@@ -63,7 +63,7 @@ public class BusContextTests
     {
         ServiceCollection services = [];
 
-        services.AddBusContext(Configuration(), _ => { });
+        services.AddBusContext(Configuration(), _ => { }, _ => { });
 
         Assert.Contains(services, e => e.ServiceType == typeof(KafkaBus));
         Assert.Contains(services, e => e.ServiceType == typeof(IHostedService) && e.ImplementationType == typeof(BusWorker));
@@ -83,23 +83,26 @@ public class BusContextTests
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => new ServiceCollection().AddBusContext(configuration, _ => { }));
+            () => new ServiceCollection().AddBusContext(configuration, _ => { }, _ => { }));
 
         Assert.Contains("Bus:Consumer", exception.Message);
     }
 
     [Fact]
     public void AddCommand_DuplicateType_Throws()
-        => Assert.Throws<ArgumentException>(() => new ServiceCollection().AddBusContext(Configuration(), bus => bus
-            .AddCommand<TestCommand>("orders")
-            .AddCommand<TestCommand>("other")));
+        => Assert.Throws<ArgumentException>(() => new ServiceCollection().AddBusContext(Configuration(),
+            producer => producer
+                .AddCommand<TestCommand>("orders")
+                .AddCommand<TestCommand>("other"),
+            _ => { }));
 
     [Fact]
     public void AddCommandHandler_WithoutTheCommandMapped_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => new ServiceCollection().AddBusContext(Configuration(consumer: true), bus => bus
-                .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
+            () => new ServiceCollection().AddBusContext(Configuration(consumer: true),
+                _ => { },
+                consumer => consumer.AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
 
         Assert.Contains(nameof(TestCommand), exception.Message);
     }
@@ -108,9 +111,9 @@ public class BusContextTests
     public void AddCommandHandler_WithoutConsumerSection_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
-            () => new ServiceCollection().AddBusContext(Configuration(), bus => bus
-                .AddCommand<TestCommand>("orders")
-                .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
+            () => new ServiceCollection().AddBusContext(Configuration(),
+                producer => producer.AddCommand<TestCommand>("orders"),
+                consumer => consumer.AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
 
         Assert.Contains("Bus:Consumer", exception.Message);
     }
@@ -120,9 +123,9 @@ public class BusContextTests
     {
         ServiceCollection services = [];
 
-        services.AddBusContext(Configuration(consumer: true), bus => bus
-            .AddCommand<TestCommand>("orders")
-            .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler"));
+        services.AddBusContext(Configuration(consumer: true),
+            producer => producer.AddCommand<TestCommand>("orders"),
+            consumer => consumer.AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler"));
 
         ServiceDescriptor handler = Assert.Single(services, e => e.ServiceType == typeof(TestCommandHandler));
         Assert.Equal(ServiceLifetime.Scoped, handler.Lifetime);
@@ -134,9 +137,9 @@ public class BusContextTests
     {
         ServiceCollection services = [];
 
-        services.AddBusContext(Configuration(consumer: true), bus => bus
-            .AddEvent<TestEvent>("orders.created")
-            .AddEventSubscriber<TestEvent, TestEventSubscriber>("billing.on.orders.created.subscriber"));
+        services.AddBusContext(Configuration(consumer: true),
+            producer => producer.AddEvent<TestEvent>("orders.created"),
+            consumer => consumer.AddEventSubscriber<TestEvent, TestEventSubscriber>("billing.on.orders.created.subscriber"));
 
         Assert.Single(services, e => e.ServiceType == typeof(TestEventSubscriber));
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
