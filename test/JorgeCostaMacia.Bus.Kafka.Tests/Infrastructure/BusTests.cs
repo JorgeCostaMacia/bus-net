@@ -115,4 +115,35 @@ public class BusTests
 
         Assert.Equal("pepe", body.GetProperty("Name").GetString());
     }
+
+    [Fact]
+    public async Task Publish_Batch_ProducesEveryEventInOrder()
+    {
+        TestEvent[] events = [new("a"), new("b"), new("c")];
+
+        await CreateSut((typeof(TestEvent), "orders.created")).Publish(events, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, _producer.Produced.Count);
+        Assert.All(_producer.Produced, produced => Assert.Equal("orders.created", produced.Topic));
+        Assert.Equal(["a", "b", "c"], _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Message.Value).GetProperty("Name").GetString()));
+    }
+
+    [Fact]
+    public async Task Send_Batch_ProducesEveryCommand()
+    {
+        TestCommand[] commands = [new("x"), new("y")];
+
+        await CreateSut((typeof(TestCommand), "orders")).Send(commands, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _producer.Produced.Count);
+        Assert.All(_producer.Produced, produced => Assert.Equal("orders", produced.Topic));
+    }
+
+    [Fact]
+    public async Task Publish_EmptyBatch_ProducesNothing()
+    {
+        await CreateSut((typeof(TestEvent), "orders.created")).Publish(Array.Empty<TestEvent>(), TestContext.Current.CancellationToken);
+
+        Assert.Empty(_producer.Produced);
+    }
 }

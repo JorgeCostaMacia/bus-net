@@ -27,11 +27,11 @@ internal sealed class Producer : IProducer
     }
 
     /// <inheritdoc />
-    public async Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
+    public async Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
     {
         try
         {
-            return await _producer.ProduceAsync(topic, message, cancellationToken);
+            await _producer.ProduceAsync(topic, message, cancellationToken);
         }
         catch (ProduceException<Null, byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
         {
@@ -54,4 +54,8 @@ internal sealed class Producer : IProducer
             throw;
         }
     }
+
+    /// <inheritdoc />
+    public Task Produce(IEnumerable<KeyValuePair<string, Message<Null, byte[]>>> messages, CancellationToken cancellationToken = default)
+        => Task.WhenAll(messages.Select(message => Produce(message.Key, message.Value, cancellationToken)));
 }

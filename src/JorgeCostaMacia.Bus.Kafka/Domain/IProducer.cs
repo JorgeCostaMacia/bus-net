@@ -14,6 +14,14 @@ internal interface IProducer
     /// <param name="topic">The topic to produce to.</param>
     /// <param name="message">The message — body and envelope headers already prepared.</param>
     /// <param name="cancellationToken">A token to cancel the produce.</param>
-    /// <returns>The broker's delivery result — the topic, partition and offset the message landed at.</returns>
-    Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default);
+    Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Produces a batch of already-built (topic, message) pairs. They are enqueued in order — one pair
+    /// per entry, so the same topic may repeat — and awaited together. A completed task means the
+    /// broker acked every message; the first failure throws.
+    /// </summary>
+    /// <param name="messages">The (topic, message) pairs to produce, in order.</param>
+    /// <param name="cancellationToken">A token to cancel the produce.</param>
+    Task Produce(IEnumerable<KeyValuePair<string, Message<Null, byte[]>>> messages, CancellationToken cancellationToken = default);
 }

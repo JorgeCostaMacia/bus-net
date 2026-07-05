@@ -70,6 +70,26 @@ internal sealed class Bus : IBus
         await _producer.Produce(topic, Prepare(topic, message, transport), cancellationToken);
     }
 
+    /// <inheritdoc />
+    public Task Send<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
+        where T : Command
+        => _producer.Produce(messages.Select(message => Pair(message)), cancellationToken);
+
+    /// <inheritdoc />
+    public Task Send<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
+        where T : Command
+        => _producer.Produce(messages.Select(message => Pair(message, transport)), cancellationToken);
+
+    /// <inheritdoc />
+    public Task Publish<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
+        where T : Event
+        => _producer.Produce(messages.Select(message => Pair(message)), cancellationToken);
+
+    /// <inheritdoc />
+    public Task Publish<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
+        where T : Event
+        => _producer.Produce(messages.Select(message => Pair(message, transport)), cancellationToken);
+
     private string Topic<TMessage>(TMessage message)
     {
         Type type = message!.GetType();
@@ -141,6 +161,24 @@ internal sealed class Bus : IBus
         headers.Restamp(TransportHeaders.AggregateConsumers, Bytes(message.AggregateConsumers));
 
         return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
+    }
+
+    /// <summary>The (topic, message) pair for a message with a fresh envelope — the batch counterpart of a single Send/Publish.</summary>
+    private KeyValuePair<string, Message<Null, byte[]>> Pair<TMessage>(TMessage message)
+        where TMessage : ITracedMessage, IFilteredMessage
+    {
+        string topic = Topic(message);
+
+        return new(topic, Prepare(topic, message));
+    }
+
+    /// <summary>The (topic, message) pair for a message continuing an inbound flow — the batch counterpart of a single Send/Publish with a transport.</summary>
+    private KeyValuePair<string, Message<Null, byte[]>> Pair<TMessage>(TMessage message, ITransport transport)
+        where TMessage : ITracedMessage, IFilteredMessage
+    {
+        string topic = Topic(message);
+
+        return new(topic, Prepare(topic, message, transport));
     }
 
     private static byte[] Bytes(string value) => Encoding.UTF8.GetBytes(value);

@@ -13,12 +13,15 @@ internal sealed class ProducerFake : IProducer
 
     public Exception? Failure { get; set; }
 
-    public Task<DeliveryResult<Null, byte[]>> Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
+    public Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
     {
         if (Failure is not null) throw Failure;
 
         Produced.Add((topic, message));
 
-        return Task.FromResult(new DeliveryResult<Null, byte[]> { Topic = topic, Message = message });
+        return Task.CompletedTask;
     }
+
+    public Task Produce(IEnumerable<KeyValuePair<string, Message<Null, byte[]>>> messages, CancellationToken cancellationToken = default)
+        => Task.WhenAll(messages.Select(message => Produce(message.Key, message.Value, cancellationToken)));
 }
