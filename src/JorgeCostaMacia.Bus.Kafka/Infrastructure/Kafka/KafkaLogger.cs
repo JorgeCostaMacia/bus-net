@@ -1,7 +1,7 @@
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 
 /// <summary>
 /// The Kafka client's logging — the librdkafka callbacks (connection-level and fatal errors, the

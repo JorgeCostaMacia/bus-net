@@ -1,6 +1,7 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

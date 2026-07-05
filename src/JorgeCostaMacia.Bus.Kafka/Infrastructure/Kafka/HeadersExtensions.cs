@@ -1,6 +1,6 @@
 using Confluent.Kafka;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 
 /// <summary>Header helpers shared by everything that re-stamps an outbound envelope.</summary>
 internal static class HeadersExtensions
