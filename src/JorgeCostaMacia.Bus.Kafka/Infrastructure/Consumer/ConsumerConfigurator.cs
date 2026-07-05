@@ -18,7 +18,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
 /// service's handlers (<see cref="AddCommandHandler{TCommand, TCommandHandler}"/> /
 /// <see cref="AddEventSubscriber{TEvent, TEventSubscriber}"/>) — each with its hosted consumer and
 /// the framework's error and fault handlers wired in. It reads (never writes) the routing map the
-/// <see cref="ProducerConfigurator"/> owns to resolve each handler's topic by type. The error
+/// <see cref="Producer.ProducerConfigurator"/> owns to resolve each handler's topic by type. The error
 /// handling is the framework's; the service tunes only the resilience policy here.
 /// </summary>
 public sealed class ConsumerConfigurator
