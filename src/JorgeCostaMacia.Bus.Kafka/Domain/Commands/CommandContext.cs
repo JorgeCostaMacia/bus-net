@@ -93,5 +93,4 @@ public record CommandContext<TCommand> :
         Message = message;
         Transport = transport;
     }
-
 }

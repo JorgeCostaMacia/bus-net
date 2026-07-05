@@ -24,5 +24,4 @@ public sealed record EventErrorContext<TEvent> :
     public EventErrorContext(TEvent message, Transport transport, Exception error)
         : base(message, transport)
         => Error = error;
-
 }

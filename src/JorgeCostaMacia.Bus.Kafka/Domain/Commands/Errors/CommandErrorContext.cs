@@ -24,5 +24,4 @@ public sealed record CommandErrorContext<TCommand> :
     public CommandErrorContext(TCommand message, Transport transport, Exception error)
         : base(message, transport)
         => Error = error;
-
 }

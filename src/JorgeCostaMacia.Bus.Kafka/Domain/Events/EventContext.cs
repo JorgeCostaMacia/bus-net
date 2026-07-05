@@ -96,5 +96,4 @@ public record EventContext<TEvent> :
         Message = message;
         Transport = transport;
     }
-
 }
