@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
@@ -80,10 +79,10 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
 
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Add(TransportHeaders.ErrorType, Encoding.UTF8.GetBytes(type.FullName ?? type.Name));
-        headers.Add(TransportHeaders.ErrorMessage, Encoding.UTF8.GetBytes(context.Error.Message));
-        headers.Add(TransportHeaders.ErrorGroupId, Encoding.UTF8.GetBytes(_groupId));
-        headers.Add(TransportHeaders.ErrorOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")));
+        headers.Add(TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
+        headers.Add(TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
+        headers.Add(TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_groupId));
+        headers.Add(TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
 
         return headers;
     }

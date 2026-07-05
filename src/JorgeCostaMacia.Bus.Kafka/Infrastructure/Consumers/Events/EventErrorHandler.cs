@@ -1,11 +1,9 @@
 using System.Collections.Immutable;
-using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
@@ -184,8 +182,8 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     {
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Restamp(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes((context.RetryCount + 1).ToString()));
-        headers.Restamp(TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(_groupId));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader((context.RetryCount + 1).ToString()));
+        TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(_groupId));
 
         return headers;
     }
@@ -197,10 +195,10 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
 
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Add(TransportHeaders.ErrorType, Encoding.UTF8.GetBytes(type.FullName ?? type.Name));
-        headers.Add(TransportHeaders.ErrorMessage, Encoding.UTF8.GetBytes(context.Error.Message));
-        headers.Add(TransportHeaders.ErrorGroupId, Encoding.UTF8.GetBytes(_groupId));
-        headers.Add(TransportHeaders.ErrorOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")));
+        headers.Add(TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
+        headers.Add(TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
+        headers.Add(TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_groupId));
+        headers.Add(TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
 
         return headers;
     }

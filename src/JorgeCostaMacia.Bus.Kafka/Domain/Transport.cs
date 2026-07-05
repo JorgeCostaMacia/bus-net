@@ -116,7 +116,7 @@ public sealed record Transport : ITransport
     /// <param name="key">The header key.</param>
     /// <returns>The header value parsed as a <see cref="Guid"/>.</returns>
     /// <exception cref="InvalidCastException">The header value is not a 16-byte GUID.</exception>
-    public Guid GetGuid(string key)
+    public Guid GetHeaderGuid(string key)
     {
         byte[] header = GetHeader(key);
 
@@ -128,7 +128,7 @@ public sealed record Transport : ITransport
     /// <summary>Reads the header with the given <paramref name="key"/> as a UTF-8 string.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value decoded as UTF-8.</returns>
-    public string GetString(string key)
+    public string GetHeaderString(string key)
     {
         byte[] header = GetHeader(key);
 
@@ -142,7 +142,7 @@ public sealed record Transport : ITransport
     /// </summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value decoded as UTF-8, or <see langword="null"/> when absent.</returns>
-    public string? GetStringOrDefault(string key)
+    public string? GetHeaderStringOrDefault(string key)
     {
         byte[]? header = Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes();
 
@@ -153,9 +153,9 @@ public sealed record Transport : ITransport
     /// <param name="key">The header key.</param>
     /// <returns>The header value parsed as a UTC <see cref="DateTime"/>.</returns>
     /// <exception cref="InvalidCastException">The header value is not a valid date/time.</exception>
-    public DateTime GetDateTime(string key)
+    public DateTime GetHeaderDateTime(string key)
     {
-        string header = GetString(key);
+        string header = GetHeaderString(key);
 
         if (DateTime.TryParse(header, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime value))
         {
@@ -168,9 +168,9 @@ public sealed record Transport : ITransport
     /// <summary>Reads the header with the given <paramref name="key"/> as a comma-separated string list.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The trimmed, non-empty comma-separated values.</returns>
-    public ImmutableList<string> GetStringList(string key)
+    public ImmutableList<string> GetHeaderStringList(string key)
     {
-        string header = GetString(key);
+        string header = GetHeaderString(key);
 
         return header
             .Split(',')
@@ -183,9 +183,9 @@ public sealed record Transport : ITransport
     /// <param name="key">The header key.</param>
     /// <returns>The header value parsed as an <see cref="int"/>.</returns>
     /// <exception cref="InvalidCastException">The header value is not a valid integer.</exception>
-    public int GetInt(string key)
+    public int GetHeaderInt(string key)
     {
-        string header = GetString(key);
+        string header = GetHeaderString(key);
 
         if (int.TryParse(header, out int value)) return value;
 

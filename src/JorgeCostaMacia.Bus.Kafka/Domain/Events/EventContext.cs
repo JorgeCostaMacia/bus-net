@@ -29,64 +29,64 @@ public record EventContext<TEvent> :
     public Transport Transport { get; init; }
 
     /// <summary>Unique id of this message, assigned by the messaging layer.</summary>
-    public Guid MessageId => Transport.GetGuid(TransportHeaders.MessageId);
+    public Guid MessageId => Transport.GetHeaderGuid(TransportHeaders.MessageId);
 
     /// <summary>Logical type name of the message.</summary>
-    public string MessageType => Transport.GetString(TransportHeaders.MessageType);
+    public string MessageType => Transport.GetHeaderString(TransportHeaders.MessageType);
 
     /// <summary>Ordered URNs of the message type and its base types/interfaces (polymorphic routing / versioning).</summary>
-    public ImmutableList<string> MessageTypeUrn => Transport.GetStringList(TransportHeaders.MessageTypeUrn);
+    public ImmutableList<string> MessageTypeUrn => Transport.GetHeaderStringList(TransportHeaders.MessageTypeUrn);
 
     /// <summary>Primary destination address (topic).</summary>
-    public string MessageDestinationAddress => Transport.GetString(TransportHeaders.MessageDestinationAddress);
+    public string MessageDestinationAddress => Transport.GetHeaderString(TransportHeaders.MessageDestinationAddress);
 
     /// <summary>Primary origin address (topic) the message came from, when known.</summary>
-    public string? MessageOriginAddress => Transport.GetStringOrDefault(TransportHeaders.MessageOriginAddress);
+    public string? MessageOriginAddress => Transport.GetHeaderStringOrDefault(TransportHeaders.MessageOriginAddress);
 
     /// <summary>UTC time when the message was created/sent.</summary>
-    public DateTime MessageOccurredAt => Transport.GetDateTime(TransportHeaders.MessageOccurredAt);
+    public DateTime MessageOccurredAt => Transport.GetHeaderDateTime(TransportHeaders.MessageOccurredAt);
 
     /// <summary>Conversation trace id, shared by the whole chain; equals the first message's id.</summary>
-    public Guid ConversationId => Transport.GetGuid(TransportHeaders.ConversationId);
+    public Guid ConversationId => Transport.GetHeaderGuid(TransportHeaders.ConversationId);
 
     /// <summary>Address where the conversation originated — the first message's destination.</summary>
-    public string ConversationAddress => Transport.GetString(TransportHeaders.ConversationAddress);
+    public string ConversationAddress => Transport.GetHeaderString(TransportHeaders.ConversationAddress);
 
     /// <summary>UTC time when the conversation began.</summary>
-    public DateTime ConversationOccurredAt => Transport.GetDateTime(TransportHeaders.ConversationOccurredAt);
+    public DateTime ConversationOccurredAt => Transport.GetHeaderDateTime(TransportHeaders.ConversationOccurredAt);
 
     /// <summary>The consumers this event targets (e.g. consumer group ids); empty means no filtering.</summary>
-    public ImmutableList<string> AggregateConsumers => Transport.GetStringList(TransportHeaders.AggregateConsumers);
+    public ImmutableList<string> AggregateConsumers => Transport.GetHeaderStringList(TransportHeaders.AggregateConsumers);
 
     /// <summary>Unique id of the inbound message (domain trace).</summary>
-    public Guid AggregateId => Transport.GetGuid(TransportHeaders.AggregateId);
+    public Guid AggregateId => Transport.GetHeaderGuid(TransportHeaders.AggregateId);
 
     /// <summary>Domain correlation id, propagated to messages sent from this handler.</summary>
-    public Guid AggregateCorrelationId => Transport.GetGuid(TransportHeaders.AggregateCorrelationId);
+    public Guid AggregateCorrelationId => Transport.GetHeaderGuid(TransportHeaders.AggregateCorrelationId);
 
     /// <summary>UTC event-time of the inbound message.</summary>
-    public DateTime AggregateOccurredAt => Transport.GetDateTime(TransportHeaders.AggregateOccurredAt);
+    public DateTime AggregateOccurredAt => Transport.GetHeaderDateTime(TransportHeaders.AggregateOccurredAt);
 
     /// <summary>Number of times this message has been retried (immediate or scheduled).</summary>
-    public int RetryCount => Transport.GetInt(TransportHeaders.RetryCount);
+    public int RetryCount => Transport.GetHeaderInt(TransportHeaders.RetryCount);
 
     /// <summary>The machine (host) name that produced the message.</summary>
-    public string HostMachineName => Transport.GetString(TransportHeaders.HostMachineName);
+    public string HostMachineName => Transport.GetHeaderString(TransportHeaders.HostMachineName);
 
     /// <summary>The entry assembly's simple name of the producing host.</summary>
-    public string HostAssembly => Transport.GetString(TransportHeaders.HostAssembly);
+    public string HostAssembly => Transport.GetHeaderString(TransportHeaders.HostAssembly);
 
     /// <summary>The entry assembly's version of the producing host.</summary>
-    public string HostAssemblyVersion => Transport.GetString(TransportHeaders.HostAssemblyVersion);
+    public string HostAssemblyVersion => Transport.GetHeaderString(TransportHeaders.HostAssemblyVersion);
 
     /// <summary>The .NET runtime version of the producing host.</summary>
-    public string HostFrameworkVersion => Transport.GetString(TransportHeaders.HostFrameworkVersion);
+    public string HostFrameworkVersion => Transport.GetHeaderString(TransportHeaders.HostFrameworkVersion);
 
     /// <summary>The bus library version of the producing host.</summary>
-    public string HostBusVersion => Transport.GetString(TransportHeaders.HostBusVersion);
+    public string HostBusVersion => Transport.GetHeaderString(TransportHeaders.HostBusVersion);
 
     /// <summary>The operating system version of the producing host.</summary>
-    public string HostOperatingSystemVersion => Transport.GetString(TransportHeaders.HostOperatingSystemVersion);
+    public string HostOperatingSystemVersion => Transport.GetHeaderString(TransportHeaders.HostOperatingSystemVersion);
 
     /// <summary>Builds the context over the delivered event and its transport.</summary>
     /// <param name="message">The event payload.</param>

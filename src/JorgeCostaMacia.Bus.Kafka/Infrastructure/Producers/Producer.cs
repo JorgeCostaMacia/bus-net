@@ -1,8 +1,6 @@
 using System.Reflection;
-using System.Text;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
@@ -86,11 +84,11 @@ internal sealed class Producer : IProducer
     {
         message.Headers ??= new Headers();
 
-        message.Headers.Restamp(TransportHeaders.HostMachineName, Encoding.UTF8.GetBytes(_hostMachineName));
-        message.Headers.Restamp(TransportHeaders.HostAssembly, Encoding.UTF8.GetBytes(_hostAssembly));
-        message.Headers.Restamp(TransportHeaders.HostAssemblyVersion, Encoding.UTF8.GetBytes(_hostAssemblyVersion));
-        message.Headers.Restamp(TransportHeaders.HostFrameworkVersion, Encoding.UTF8.GetBytes(_hostFrameworkVersion));
-        message.Headers.Restamp(TransportHeaders.HostBusVersion, Encoding.UTF8.GetBytes(_hostBusVersion));
-        message.Headers.Restamp(TransportHeaders.HostOperatingSystemVersion, Encoding.UTF8.GetBytes(_hostOperatingSystemVersion));
+        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostMachineName, TransportHeaders.ToHeader(_hostMachineName));
+        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostAssembly, TransportHeaders.ToHeader(_hostAssembly));
+        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostAssemblyVersion, TransportHeaders.ToHeader(_hostAssemblyVersion));
+        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostFrameworkVersion, TransportHeaders.ToHeader(_hostFrameworkVersion));
+        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostBusVersion, TransportHeaders.ToHeader(_hostBusVersion));
+        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader(_hostOperatingSystemVersion));
     }
 }
