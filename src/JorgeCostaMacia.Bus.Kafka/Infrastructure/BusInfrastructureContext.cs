@@ -14,10 +14,11 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// The package's wiring: it lets the send side map its messages through the
 /// <see cref="ProducerConfigurator"/> (which binds <c>Bus:Producer</c> and owns the routing map) and
 /// the consume side register its handlers through the <see cref="ConsumerConfigurator"/> (which binds
-/// <c>Bus:Consumer</c> and reads that map), then registers the <see cref="Bus"/> behind
-/// <see cref="IBus"/> — the single owner of the producer (error/log callbacks wired to its logger) and
-/// of the routing map. The lifecycle worker is registered before the consumers so it stops last: the
-/// consumers stop before the final flush. The bus itself is a lazy singleton, built last.
+/// <c>Bus:Consumer</c> and reads that map). The shared producer (error/log callbacks wired to its
+/// logger) is a singleton the container owns; the <see cref="Bus"/> — registered behind
+/// <see cref="IBus"/> — only uses it, and the <c>ProducerWorker</c> owns its lifecycle. The worker is
+/// registered before the consumers so it stops last: the consumers stop before its final flush. The
+/// bus itself is a lazy singleton, built last.
 /// </summary>
 internal static class BusInfrastructureContext
 {
@@ -37,28 +38,30 @@ internal static class BusInfrastructureContext
 
         producer(producerConfigurator);
 
-        services.AddHostedService<BusWorker>();
+        services.AddSingleton(provider => CreateProducer(provider, producerConfigurator.ProducerConfig));
+        services.AddHostedService<ProducerWorker>();
 
         ConsumerConfigurator consumerConfigurator = new(services, configuration, producerConfigurator.Messages);
 
         consumer(consumerConfigurator);
 
-        services.AddSingleton(provider => CreateBus(provider, producerConfigurator.ProducerConfig, producerConfigurator.Messages));
+        services.AddSingleton(provider => new Bus(provider.GetRequiredService<IProducer<Null, byte[]>>(), producerConfigurator.Messages, provider.GetRequiredService<ILogger<Bus>>()));
         services.AddSingleton<IBus>(static provider => provider.GetRequiredService<Bus>());
 
         return services;
     }
 
     /// <summary>
-    /// Creates the bus over the producer it owns — built here with the error/log callbacks wired to
-    /// the bus's logger — and the routing map the producer configurator owns.
+    /// Creates the shared producer — the container-owned singleton the bus produces through and the
+    /// <c>ProducerWorker</c> flushes — with the error/log callbacks wired to the Kafka client logger.
+    /// A fatal error stops the application; every other error the client recovers from on its own.
     /// </summary>
-    private static Bus CreateBus(IServiceProvider provider, ProducerConfig configuration, IReadOnlyDictionary<Type, string> messages)
+    private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
     {
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
         IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
 
-        IProducer<Null, byte[]> producer = new ProducerBuilder<Null, byte[]>(configuration)
+        return new ProducerBuilder<Null, byte[]>(configuration)
             .SetErrorHandler((_, error) =>
             {
                 KafkaLogger.LogError(kafkaLogger, error);
@@ -68,7 +71,5 @@ internal static class BusInfrastructureContext
             .SetLogHandler((_, log) => KafkaLogger.Log(kafkaLogger, log))
             .SetStatisticsHandler((_, statistics) => KafkaLogger.LogStatistics(kafkaLogger, statistics))
             .Build();
-
-        return new Bus(producer, messages, provider.GetRequiredService<ILogger<Bus>>());
     }
 }

@@ -13,15 +13,16 @@ using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
 /// <summary>
-/// The Kafka bus — the single owner of the producer and the routing map: every send in the
+/// The Kafka bus — the owner of the routing map and the single outbound gate: every send in the
 /// application goes through it, the consumers' machinery included (retries and error parking use its
 /// internal produce). Sends commands and publishes events with <c>ProduceAsync</c> (a completed task
 /// means the broker acked; a failure throws). Send/Publish orchestrate: they resolve the topic,
-/// prepare the envelope (fresh, or continued from an inbound transport) and produce. The consume
-/// side lives in the per-handler consumers (<c>CommandWorker</c> /
-/// <c>EventWorker</c>); the <see cref="BusWorker"/> flushes it on shutdown.
+/// prepare the envelope (fresh, or continued from an inbound transport) and produce. It only uses the
+/// shared producer — the lifecycle (flush on shutdown, disposal) is the <c>ProducerWorker</c>'s and
+/// the container's. The consume side lives in the per-handler consumers (<c>CommandWorker</c> /
+/// <c>EventWorker</c>).
 /// </summary>
-public sealed class Bus : IBus, IDisposable
+public sealed class Bus : IBus
 {
     private readonly IProducer<Null, byte[]> _producer;
     private readonly IReadOnlyDictionary<Type, string> _messages;
@@ -180,13 +181,6 @@ public sealed class Bus : IBus, IDisposable
             throw;
         }
     }
-
-    /// <summary>Waits until the producer's outbound queue is fully delivered — the shutdown flush.</summary>
-    /// <param name="cancellationToken">A token bounding how long the flush may wait.</param>
-    internal void Flush(CancellationToken cancellationToken) => _producer.Flush(cancellationToken);
-
-    /// <summary>Disposes the producer the bus owns.</summary>
-    public void Dispose() => _producer.Dispose();
 
     private static byte[] Bytes(string value) => Encoding.UTF8.GetBytes(value);
 
