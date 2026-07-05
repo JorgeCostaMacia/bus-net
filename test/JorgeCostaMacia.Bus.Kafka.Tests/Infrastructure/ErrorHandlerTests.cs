@@ -3,9 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
-using JorgeCostaMacia.Bus.Kafka.Domain.Events;
-using JorgeCostaMacia.Bus.Kafka.Domain.Faults;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -23,13 +23,13 @@ public class ErrorHandlerTests
     private readonly ProducerFake _producer = new();
     private readonly RetrySchedulerFake _scheduler = new();
 
-    private Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
+    private Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
         => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], excludes ?? []);
 
-    private Infrastructure.Consumers.Events.EventErrorHandler<TestEvent> EventError(ImmutableList<TimeSpan>? intervals = null)
+    private Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null)
         => new(_producer, _scheduler, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], []);
 
-    private Infrastructure.Consumers.Faults.FaultHandler Fault() => new(_producer, NullLogger.Instance, TOPIC, GROUP_ID);
+    private Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault() => new(_producer, NullLogger.Instance, TOPIC, GROUP_ID);
 
     private static Transport Transport(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
     {
@@ -55,10 +55,10 @@ public class ErrorHandlerTests
     {
         CommandErrorContext<TestCommand> context = new(new TestCommand("pepe"), Transport(), new InvalidOperationException("boom"));
 
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError();
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Parked, sut.Result);
+        Assert.Equal(ErrorResult.Parked, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
         Assert.Equal($"{TOPIC}.error", topic);
 
@@ -76,7 +76,7 @@ public class ErrorHandlerTests
     }
 
     [Fact]
-    public async Task Command_ParkedBody_CarriesTheFailedMessageTrace()
+    public async Task Command_ParkedHeaders_CarryTheFailedMessageTrace()
     {
         Guid aggregateId = Guid.NewGuid();
         Guid aggregateCorrelationId = Guid.NewGuid();
@@ -84,19 +84,19 @@ public class ErrorHandlerTests
 
         await CommandError().Handle(context, TestContext.Current.CancellationToken);
 
-        JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Message.Value);
-        Assert.Equal(aggregateId, body.GetProperty("AggregateId").GetGuid());
-        Assert.Equal(aggregateCorrelationId, body.GetProperty("AggregateCorrelationId").GetGuid());
+        Message<Null, byte[]> message = Assert.Single(_producer.Produced).Message;
+        Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateId, out byte[] id) && new Guid(id) == aggregateId);
+        Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateCorrelationId, out byte[] correlation) && new Guid(correlation) == aggregateCorrelationId);
     }
 
     [Fact]
     public async Task Command_ZeroInterval_RequeuesToTopicTail()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero]);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Retried, sut.Result);
+        Assert.Equal(ErrorResult.Retried, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
         Assert.Equal(TOPIC, topic);
         Assert.Equal("1", Header(message, TransportHeaders.RetryCount));
@@ -106,11 +106,11 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_PositiveInterval_ParksThroughScheduler()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)]);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.FromMinutes(5)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Scheduled, sut.Result);
+        Assert.Equal(ErrorResult.Scheduled, sut.Result);
         Assert.Empty(_producer.Produced);
         (string topic, _, Headers headers, _) = Assert.Single(_scheduler.Scheduled);
         Assert.Equal(TOPIC, topic);
@@ -120,33 +120,33 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Command_LadderExhausted_Parks()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero]);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Parked, sut.Result);
+        Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{TOPIC}.error", Assert.Single(_producer.Produced).Topic);
     }
 
     [Fact]
     public async Task Command_ExcludedException_Parks_InheritanceAware()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero], [typeof(BaseFailure)]);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero], [typeof(BaseFailure)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Parked, sut.Result);
+        Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{TOPIC}.error", Assert.Single(_producer.Produced).Topic);
     }
 
     [Fact]
     public async Task Command_PositiveInterval_WithoutScheduler_ParksAsTerminal()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)], scheduler: false);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.FromMinutes(5)], scheduler: false);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Parked, sut.Result);
+        Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{TOPIC}.error", Assert.Single(_producer.Produced).Topic);
         Assert.Empty(_scheduler.Scheduled);
     }
@@ -155,11 +155,11 @@ public class ErrorHandlerTests
     public async Task Command_SchedulerFails_LeavesUnhandled()
     {
         _scheduler.Failure = new InvalidOperationException("scheduler down");
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.FromMinutes(5)]);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.FromMinutes(5)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Unhandled, sut.Result);
+        Assert.Equal(ErrorResult.Unhandled, sut.Result);
         Assert.Empty(_producer.Produced);
     }
 
@@ -167,32 +167,32 @@ public class ErrorHandlerTests
     public async Task Command_RequeueProduceFails_LeavesUnhandled()
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero]);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Unhandled, sut.Result);
+        Assert.Equal(ErrorResult.Unhandled, sut.Result);
     }
 
     [Fact]
     public async Task Command_SecondRetry_ContinuesTheCumulativeCount()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
+        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Transport(retryCount: 1), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Retried, sut.Result);
+        Assert.Equal(ErrorResult.Retried, sut.Result);
         Assert.Equal("2", Header(Assert.Single(_producer.Produced).Message, TransportHeaders.RetryCount));
     }
 
     [Fact]
     public async Task Event_ZeroInterval_RetargetsTheRetryToItsGroup()
     {
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent> sut = EventError([TimeSpan.Zero]);
+        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(ErrorHandlerResult.Retried, sut.Result);
+        Assert.Equal(ErrorResult.Retried, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
         Assert.Equal(TOPIC, topic);
         Assert.Equal(GROUP_ID, Header(message, TransportHeaders.AggregateConsumers));
@@ -201,12 +201,12 @@ public class ErrorHandlerTests
     [Fact]
     public async Task Fault_ParksToFaultTopic_WithTheBodyAsText()
     {
-        FaultContext context = FaultContext.Create("not json"u8.ToArray(), Transport(), new InvalidCastException("bad header"));
+        CommandFaultContext context = CommandFaultContext.Create("not json"u8.ToArray(), Transport(), new InvalidCastException("bad header"));
 
-        Infrastructure.Consumers.Faults.FaultHandler sut = Fault();
+        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
-        Assert.Equal(FaultHandlerResult.Parked, sut.Result);
+        Assert.Equal(FaultResult.Parked, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
         Assert.Equal($"{TOPIC}.fault", topic);
 
@@ -222,9 +222,9 @@ public class ErrorHandlerTests
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
 
-        Infrastructure.Consumers.Faults.FaultHandler sut = Fault();
-        await sut.Handle(FaultContext.Create("{}"u8.ToArray(), Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
+        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
+        await sut.Handle(CommandFaultContext.Create("{}"u8.ToArray(), Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
-        Assert.Equal(FaultHandlerResult.Unhandled, sut.Result);
+        Assert.Equal(FaultResult.Unhandled, sut.Result);
     }
 }

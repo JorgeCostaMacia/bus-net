@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Domain.Contexts;
-using JorgeCostaMacia.Bus.Kafka.Domain;
 
 namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 

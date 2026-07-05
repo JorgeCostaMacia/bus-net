@@ -1,5 +1,4 @@
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using Microsoft.Extensions.Configuration;
@@ -40,7 +39,7 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddCommand<TCommand>(string topic)
         where TCommand : Command
     {
-        Map(typeof(TCommand), topic);
+        if (!_messages.TryAdd(typeof(TCommand), topic)) throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is already mapped to a topic.");
 
         return this;
     }
@@ -52,21 +51,9 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddEvent<TEvent>(string topic)
         where TEvent : Event
     {
-        Map(typeof(TEvent), topic);
+        if (!_messages.TryAdd(typeof(TEvent), topic)) throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is already mapped to a topic.");
 
         return this;
-    }
-
-    /// <summary>Maps a message type to its topic, or throws when the type is already mapped.</summary>
-    /// <param name="message">The message type.</param>
-    /// <param name="topic">The topic to map it to.</param>
-    /// <exception cref="InvalidOperationException">The message type is already mapped to a topic.</exception>
-    private void Map(Type message, string topic)
-    {
-        if (!_messages.TryAdd(message, topic))
-        {
-            throw new InvalidOperationException($"'{message.FullName}' is already mapped to a topic.");
-        }
     }
 
     /// <summary>
@@ -81,22 +68,10 @@ public sealed class ProducerConfigurator
         ProducerConfiguration producerConfiguration = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>()
             ?? throw new InvalidOperationException($"'{PRODUCER_SECTION}' is null.");
 
-        Validate(nameof(producerConfiguration.BootstrapServers), producerConfiguration.BootstrapServers);
-        Validate(nameof(producerConfiguration.SaslUsername), producerConfiguration.SaslUsername);
-        Validate(nameof(producerConfiguration.SaslPassword), producerConfiguration.SaslPassword);
+        if (string.IsNullOrWhiteSpace(producerConfiguration.BootstrapServers)) throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
+        if (string.IsNullOrWhiteSpace(producerConfiguration.SaslUsername)) throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslUsername)}' is null.");
+        if (string.IsNullOrWhiteSpace(producerConfiguration.SaslPassword)) throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslPassword)}' is null.");
 
         return producerConfiguration;
-    }
-
-    /// <summary>Throws when a required configuration value is missing — the binder does not enforce <see langword="required"/> members.</summary>
-    /// <param name="name">The value's name within the section.</param>
-    /// <param name="value">The bound value.</param>
-    /// <exception cref="InvalidOperationException">The value is missing.</exception>
-    private static void Validate(string name, string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{name}' is null.");
-        }
     }
 }

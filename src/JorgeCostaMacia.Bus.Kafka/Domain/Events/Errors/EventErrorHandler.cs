@@ -1,7 +1,6 @@
 using JorgeCostaMacia.Bus.Domain;
-using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
 
 /// <summary>
 /// Ergonomic base for an event's error handler — the app's own error management (log, compensate,
@@ -11,15 +10,17 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 /// type and gets fully-typed access to the failed event, its envelope and the exception.
 /// </summary>
 /// <typeparam name="TEvent">The event type whose terminal failures this handler manages.</typeparam>
-internal abstract class EventErrorHandler<TEvent> : IHandler<TEvent, EventErrorContext<TEvent>>
+/// <typeparam name="TEventSubscriber">The event subscriber this error handler is paired with — ties the error handler to its event and subscriber, so each pairing is a distinct type resolvable on its own.</typeparam>
+internal abstract class EventErrorHandler<TEvent, TEventSubscriber> : IHandler<TEvent, EventErrorContext<TEvent>>
     where TEvent : Event
+    where TEventSubscriber : EventSubscriber<TEvent>
 {
     /// <summary>
     /// How the handler left the delivery — set as it runs, read by the consumer afterwards (since
     /// <see cref="Handle"/> returns <see cref="Task"/> by contract and cannot report it). Defaults to
-    /// <see cref="ErrorHandlerResult.Unhandled"/> until the handler decides.
+    /// <see cref="ErrorResult.Unhandled"/> until the handler decides.
     /// </summary>
-    public ErrorHandlerResult Result { get; protected set; }
+    public ErrorResult Result { get; protected set; }
 
     /// <summary>Handles the terminal failure of an event delivery.</summary>
     /// <param name="context">The delivery's error context — the failed event, its envelope and the exception.</param>

@@ -1,7 +1,6 @@
 using JorgeCostaMacia.Bus.Domain;
-using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
 
 /// <summary>
 /// Ergonomic base for a command's error handler — the app's own error management (log, compensate,
@@ -11,15 +10,17 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 /// command type and gets fully-typed access to the failed command, its envelope and the exception.
 /// </summary>
 /// <typeparam name="TCommand">The command type whose terminal failures this handler manages.</typeparam>
-internal abstract class CommandErrorHandler<TCommand> : IHandler<TCommand, CommandErrorContext<TCommand>>
+/// <typeparam name="TCommandHandler">The command handler this error handler is paired with — ties the error handler to its command and handler, so each pairing is a distinct type resolvable on its own.</typeparam>
+internal abstract class CommandErrorHandler<TCommand, TCommandHandler> : IHandler<TCommand, CommandErrorContext<TCommand>>
     where TCommand : Command
+    where TCommandHandler : CommandHandler<TCommand>
 {
     /// <summary>
     /// How the handler left the delivery — set as it runs, read by the consumer afterwards (since
     /// <see cref="Handle"/> returns <see cref="Task"/> by contract and cannot report it). Defaults to
-    /// <see cref="ErrorHandlerResult.Unhandled"/> until the handler decides.
+    /// <see cref="ErrorResult.Unhandled"/> until the handler decides.
     /// </summary>
-    public ErrorHandlerResult Result { get; protected set; }
+    public ErrorResult Result { get; protected set; }
 
     /// <summary>Handles the terminal failure of a command delivery.</summary>
     /// <param name="context">The delivery's error context — the failed command, its envelope and the exception.</param>

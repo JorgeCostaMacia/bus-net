@@ -4,7 +4,6 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Faults;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,15 +22,16 @@ public class ConsumerWorkerTests
 
     private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null)
     {
-        IServiceProvider provider = new ServiceCollection().AddSingleton(_handler).BuildServiceProvider();
-
-        CommandErrorHandler<TestCommand> errorHandler = new(_producer, _scheduler, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], []);
-        FaultHandler faultHandler = new(_producer, NullLogger.Instance, TOPIC, GROUP_ID);
+        IServiceProvider provider = new ServiceCollection()
+            .AddSingleton(_handler)
+            .AddScoped<Domain.Commands.Errors.CommandErrorHandler<TestCommand, RecordingCommandHandler>>(_ =>
+                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, TOPIC, GROUP_ID, intervals ?? [], []))
+            .AddScoped<Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>>(_ =>
+                new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, TOPIC, GROUP_ID))
+            .BuildServiceProvider();
 
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
             consumer,
-            errorHandler,
-            faultHandler,
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
             _lifetime,

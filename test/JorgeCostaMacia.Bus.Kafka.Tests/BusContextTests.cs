@@ -61,16 +61,17 @@ public class BusContextTests
     }
 
     [Fact]
-    public void AddBusContext_ProducerOnly_RegistersTheSendSide()
+    public void AddBusContext_ProducerOnly_RegistersTheSendSide_AndNeedsNoConsumerSection()
     {
         ServiceCollection services = [];
 
-        services.AddBusContext(Configuration(), _ => { }, _ => { });
+        services.AddBusContext(Configuration(), _ => { });
 
         Assert.Contains(services, e => e.ServiceType == typeof(IProducer<Null, byte[]>));
         Assert.Contains(services, e => e.ServiceType == typeof(IProducer));
         Assert.Contains(services, e => e.ServiceType == typeof(IHostedService) && e.ImplementationType == typeof(ProducerWorker));
         Assert.Contains(services, e => e.ServiceType == typeof(IBus));
+        Assert.DoesNotContain(services, e => e.ServiceType == typeof(TestCommandHandler));
     }
 
     [Fact]

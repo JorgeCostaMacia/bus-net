@@ -15,4 +15,7 @@ public interface IErrorMessage : IMessage
 
     /// <summary>The failure's stack trace, when available.</summary>
     string? ErrorStackTrace { get; }
+
+    /// <summary>UTC time the failure was parked.</summary>
+    DateTime ErrorOccurredAt { get; }
 }

@@ -1,4 +1,4 @@
-namespace JorgeCostaMacia.Bus.Kafka.Domain.Faults;
+namespace JorgeCostaMacia.Bus.Kafka.Domain;
 
 /// <summary>
 /// How a fault handler left a broken delivery — read by the consumer (the orchestrator) after it
@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Faults;
 /// by contract and cannot report it. The consumer acks the delivery on <see cref="Parked"/> and
 /// leaves it unacked on <see cref="Unhandled"/>.
 /// </summary>
-internal enum FaultHandlerResult
+internal enum FaultResult
 {
     /// <summary>The handler could not park the delivery (a failed produce) — it stays unacked and redelivers.</summary>
     Unhandled,

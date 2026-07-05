@@ -1,19 +1,18 @@
 using System.Text;
 using JorgeCostaMacia.Bus.Domain.Contexts;
-using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Domain.Faults;
+namespace JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 
 /// <summary>
-/// The Kafka context a fault handler receives when a delivery breaks before its handler runs
-/// (undeserializable body, unreadable envelope) — no typed context can exist, so it composes only
-/// the facets whose data is guaranteed however broken the message is:
+/// The Kafka context an event's fault handler receives when a delivery breaks before its handler
+/// runs (undeserializable body, unreadable envelope) — no typed context can exist, so it composes
+/// only the facets whose data is guaranteed however broken the message is:
 /// <see cref="IMessageContext{TMessage}"/> over <see cref="string"/> on purpose (the raw body as
 /// text, never deserialized), the <see cref="Transport"/> (topic / partition / offset / raw headers
 /// — the typed getters may throw; the broken envelope can be exactly the fault), and the
 /// <see cref="IErrorContext{TError}"/> facet carrying the failure. In-process only, never serialized.
 /// </summary>
-public sealed record FaultContext :
+public sealed record EventFaultContext :
     IMessageContext<string>,
     ITransportContext<Transport>,
     IErrorContext<Exception>
@@ -31,7 +30,7 @@ public sealed record FaultContext :
     /// <param name="message">The delivered raw body as text.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
-    public FaultContext(string message, Transport transport, Exception exception)
+    public EventFaultContext(string message, Transport transport, Exception exception)
     {
         Message = message;
         Transport = transport;
@@ -43,6 +42,6 @@ public sealed record FaultContext :
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <returns>The context handed to the fault handler.</returns>
-    internal static FaultContext Create(byte[] body, Transport transport, Exception exception)
+    internal static EventFaultContext Create(byte[] body, Transport transport, Exception exception)
         => new(Encoding.UTF8.GetString(body), transport, exception);
 }

@@ -1,8 +1,9 @@
 using System.Text.Json;
 using Confluent.Kafka;
-using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -20,14 +21,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 /// <typeparam name="TCommandHandler">The handler type resolved per delivery.</typeparam>
 internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<CommandContext<TCommand>, TCommandHandler>
     where TCommand : Command
-    where TCommandHandler : class, IHandler<TCommand, CommandContext<TCommand>>
+    where TCommandHandler : CommandHandler<TCommand>
 {
-    private readonly Domain.Commands.CommandErrorHandler<TCommand> _errorHandler;
-
-    /// <summary>Creates the consumer over its ready-made Kafka builder, its error and fault handlers, the scope factory, the logger and its contract.</summary>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger and its contract — the handler and its error and fault handlers are resolved per delivery from the scope.</summary>
     /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
-    /// <param name="errorHandler">The command's error handler — the framework mechanics deciding a failed delivery's outcome.</param>
-    /// <param name="faultHandler">The fault handler parking broken deliveries — and the relay when the error handler cannot cope.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
@@ -35,15 +32,14 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandWorker(
         IConsumer consumer,
-        Domain.Commands.CommandErrorHandler<TCommand> errorHandler,
-        Domain.Faults.FaultHandler faultHandler,
         IServiceScopeFactory scopeFactory,
         ILogger<CommandWorker<TCommand, TCommandHandler>> logger,
         IHostApplicationLifetime lifetime,
         string topic,
         string groupId)
-        : base(consumer, faultHandler, scopeFactory, logger, lifetime, topic, groupId)
-        => _errorHandler = errorHandler;
+        : base(consumer, scopeFactory, logger, lifetime, topic, groupId)
+    {
+    }
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
@@ -54,10 +50,22 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
         => handler.Handle(context, cancellationToken);
 
     /// <inheritdoc />
-    protected override async Task<ErrorHandlerResult> HandleError(CommandContext<TCommand> context, Exception exception, CancellationToken cancellationToken)
+    protected override async Task<ErrorResult> HandleError(IServiceProvider services, CommandContext<TCommand> context, Exception exception, CancellationToken cancellationToken)
     {
-        await _errorHandler.Handle(new CommandErrorContext<TCommand>(context.Message, context.Transport, exception), cancellationToken);
+        Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler> errorHandler = services.GetRequiredService<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>();
 
-        return _errorHandler.Result;
+        await errorHandler.Handle(new CommandErrorContext<TCommand>(context.Message, context.Transport, exception), cancellationToken);
+
+        return errorHandler.Result;
+    }
+
+    /// <inheritdoc />
+    protected override async Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken)
+    {
+        Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler> faultHandler = services.GetRequiredService<Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>>();
+
+        await faultHandler.Handle(CommandFaultContext.Create(body, transport, exception), cancellationToken);
+
+        return faultHandler.Result;
     }
 }

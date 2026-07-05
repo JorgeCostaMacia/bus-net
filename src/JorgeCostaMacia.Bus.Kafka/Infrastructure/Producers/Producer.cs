@@ -14,13 +14,13 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 /// </summary>
 internal sealed class Producer : IProducer
 {
-    private readonly Confluent.Kafka.IProducer<Null, byte[]> _producer;
+    private readonly IProducer<Null, byte[]> _producer;
     private readonly ILogger<Producer> _logger;
 
     /// <summary>Creates the gate over the shared Kafka producer and the logger for produce failures.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
     /// <param name="logger">The logger for produce failures.</param>
-    public Producer(Confluent.Kafka.IProducer<Null, byte[]> producer, ILogger<Producer> logger)
+    public Producer(IProducer<Null, byte[]> producer, ILogger<Producer> logger)
     {
         _producer = producer;
         _logger = logger;
