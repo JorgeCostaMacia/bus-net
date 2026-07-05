@@ -1,5 +1,6 @@
 using System.Text;
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 using KafkaProducer = JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers.Producer;
@@ -37,6 +38,30 @@ public class ProducerTests
         _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
 
         await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Produce_StampsTheHostHeaders()
+    {
+        await Sut().Produce("orders", Message(), TestContext.Current.CancellationToken);
+
+        Message<Null, byte[]> produced = Assert.Single(_kafka.Produced).Message;
+        Assert.Equal(Environment.MachineName, Deliveries.Header(produced, TransportHeaders.HostMachineName));
+        Assert.False(string.IsNullOrWhiteSpace(Deliveries.Header(produced, TransportHeaders.HostAssembly)));
+        Assert.False(string.IsNullOrWhiteSpace(Deliveries.Header(produced, TransportHeaders.HostBusVersion)));
+    }
+
+    [Fact]
+    public async Task Produce_ReStampsTheHost_OverAClonedEnvelope()
+    {
+        Message<Null, byte[]> message = Message();
+        message.Headers = [new Header(TransportHeaders.HostMachineName, "another-host"u8.ToArray())];
+
+        await Sut().Produce("orders", message, TestContext.Current.CancellationToken);
+
+        Message<Null, byte[]> produced = Assert.Single(_kafka.Produced).Message;
+        Assert.Equal(Environment.MachineName, Deliveries.Header(produced, TransportHeaders.HostMachineName));
+        Assert.Single(produced.Headers, header => header.Key == TransportHeaders.HostMachineName);
     }
 
     [Fact]
