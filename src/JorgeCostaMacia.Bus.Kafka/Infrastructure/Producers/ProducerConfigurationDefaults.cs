@@ -27,8 +27,8 @@ public static class ProducerConfigurationDefaults
     /// <summary>Enables idempotent message delivery. Default: <c>true</c>.</summary>
     public const bool ENABLE_IDEMPOTENCE = true;
 
-    /// <summary>Compression type for producer messages. Default: <c>Snappy</c>.</summary>
-    public const CompressionType COMPRESSION_TYPE = CompressionType.Snappy;
+    /// <summary>Compression type for producer messages. Default: <c>Lz4</c> — fast, good ratio on JSON, the de-facto modern default; applied per batch.</summary>
+    public const CompressionType COMPRESSION_TYPE = CompressionType.Lz4;
 
     /// <summary>Maximum time (ms) to wait for message delivery. Default: <c>300000</c> (5 min).</summary>
     public const int MESSAGE_TIMEOUT_MS = 300_000;
@@ -50,8 +50,13 @@ public static class ProducerConfigurationDefaults
     /// </summary>
     public const int MESSAGE_MAX_BYTES = 2_097_152;
 
-    /// <summary>Maximum number of retries on send failure. Default: <c>10</c>.</summary>
-    public const int MESSAGE_SEND_MAX_RETRIES = 10;
+    /// <summary>
+    /// Maximum number of retries on send failure. Default: <see cref="int.MaxValue"/> — retries are
+    /// bounded by time (<see cref="MESSAGE_TIMEOUT_MS"/>, 5 min), not by a count, which is the
+    /// idiomatic choice with <see cref="ENABLE_IDEMPOTENCE"/> on (order and no-duplicates preserved
+    /// across retries). The back-off below is what keeps a struggling broker from being hammered.
+    /// </summary>
+    public const int MESSAGE_SEND_MAX_RETRIES = int.MaxValue;
 
     /// <summary>Base backoff (ms) between retries. Default: <c>500</c>.</summary>
     public const int RETRY_BACKOFF_MS = 500;

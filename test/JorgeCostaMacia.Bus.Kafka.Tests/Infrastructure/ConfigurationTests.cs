@@ -17,9 +17,10 @@ public class ConfigurationTests
         Assert.Equal(SaslMechanism.ScramSha512, config.SaslMechanism);
         Assert.Equal(Acks.All, config.Acks);
         Assert.True(config.EnableIdempotence);
-        Assert.Equal(CompressionType.Snappy, config.CompressionType);
+        Assert.Equal(CompressionType.Lz4, config.CompressionType);
         Assert.Equal(50, config.LingerMs);
-        Assert.Equal(10, config.MessageSendMaxRetries);
+        Assert.Equal(int.MaxValue, config.MessageSendMaxRetries);
+        Assert.Equal(2_097_152, config.MessageMaxBytes);
         Assert.Equal(Environment.MachineName, config.ClientId);
     }
 
