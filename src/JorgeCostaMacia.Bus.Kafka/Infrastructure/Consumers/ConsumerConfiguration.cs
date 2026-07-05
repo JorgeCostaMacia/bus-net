@@ -1,6 +1,6 @@
 using Confluent.Kafka;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 
 /// <summary>
 /// The global consumer configuration, bound from the <c>Bus:Consumer</c> section: the connection plus

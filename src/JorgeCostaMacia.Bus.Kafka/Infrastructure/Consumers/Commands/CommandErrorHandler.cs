@@ -7,7 +7,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer.Commands;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 
 /// <summary>
 /// The default implementation of the command's error handler — manages <b>only</b> the error case of

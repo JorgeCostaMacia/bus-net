@@ -1,6 +1,6 @@
 using Confluent.Kafka;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 
 /// <summary>
 /// Default Kafka consumer settings a <see cref="ConsumerConfiguration"/> falls back to for

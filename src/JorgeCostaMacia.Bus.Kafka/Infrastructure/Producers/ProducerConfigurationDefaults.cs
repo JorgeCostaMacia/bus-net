@@ -1,6 +1,6 @@
 using Confluent.Kafka;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producer;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 
 /// <summary>
 /// Default producer settings a <see cref="ProducerConfiguration"/> falls back to for values the

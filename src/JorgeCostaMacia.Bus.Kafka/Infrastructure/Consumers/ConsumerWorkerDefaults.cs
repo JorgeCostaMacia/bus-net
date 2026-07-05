@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 
 /// <summary>
 /// Default custom-policy settings (the retry ladder and its exclusions) a consumer falls back to

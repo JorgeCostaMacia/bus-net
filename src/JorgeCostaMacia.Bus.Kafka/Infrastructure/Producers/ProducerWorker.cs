@@ -2,7 +2,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producer;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 
 /// <summary>
 /// Owns the shared producer's lifecycle in the application: on shutdown it flushes it, waiting until

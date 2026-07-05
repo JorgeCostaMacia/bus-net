@@ -7,7 +7,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer.Events;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 
 /// <summary>
 /// The default implementation of the event's error handler — manages <b>only</b> the error case of a

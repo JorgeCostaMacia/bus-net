@@ -1,7 +1,7 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumer;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producer;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
