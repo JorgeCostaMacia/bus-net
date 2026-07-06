@@ -16,9 +16,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Infrastructure;
 /// shared with the executing fleet, because scheduling commits to the store and the delivery is then
 /// acked, so an in-memory store would drop the retry on a restart of the scheduling process. Each
 /// parked retry is a one-shot job grouped under its topic and named <c>messageId:retryCount</c> — so a
-/// job maps back to the message being retried and the same delivery scheduled twice deduplicates;
-/// recovery is requested so a node that dies mid-fire re-runs it (at-least-once, a rare duplicate is
-/// preferred over a loss).
+/// job maps back to the message being retried, and scheduling is idempotent: an at-least-once duplicate
+/// of the same failure collides on that key and is ignored rather than parking a second job. Recovery is
+/// requested so a node that dies mid-fire re-runs it (at-least-once, a rare duplicate is preferred over
+/// a loss).
 /// </summary>
 internal sealed class RetryScheduler : IRetryScheduler
 {
@@ -50,7 +51,15 @@ internal sealed class RetryScheduler : IRetryScheduler
             .StartAt(new DateTimeOffset(DateTime.SpecifyKind(scheduledAt, DateTimeKind.Utc)))
             .Build();
 
-        await scheduler.ScheduleJob(job, trigger, cancellationToken);
+        try
+        {
+            await scheduler.ScheduleJob(job, trigger, cancellationToken);
+        }
+        catch (ObjectAlreadyExistsException)
+        {
+            // Idempotent: this message at this retry count is already parked (an at-least-once duplicate
+            // delivery of the same failure) — the retry is scheduled, so there is nothing more to do.
+        }
     }
 
     /// <summary>The retried message's id — the store job maps back to the very message (traceable), and the same delivery scheduled twice collides instead of parking two jobs (deduplicated). Falls back to a fresh id if the envelope carries none.</summary>

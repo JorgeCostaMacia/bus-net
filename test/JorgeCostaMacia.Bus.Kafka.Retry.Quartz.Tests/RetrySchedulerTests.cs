@@ -121,6 +121,21 @@ public class RetrySchedulerTests
     }
 
     [Fact]
+    public async Task Schedule_SameDeliveryTwice_IsIdempotent_ParksOneJob()
+    {
+        Guid messageId = Guid.NewGuid();
+        ISchedulerFactory factory = Factory();
+        RetryScheduler sut = new(factory);
+
+        await sut.Schedule(TOPIC, GROUP_ID, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await sut.Schedule(TOPIC, GROUP_ID, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);   // duplicate — must not throw
+
+        IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
+        JobKey key = Assert.Single(await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(TOPIC), TestContext.Current.CancellationToken));
+        Assert.Equal($"{messageId:N}:1", key.Name);
+    }
+
+    [Fact]
     public async Task Schedule_NoMessageIdHeader_FallsBackToAFreshId()
     {
         ISchedulerFactory factory = Factory();
