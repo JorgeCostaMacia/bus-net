@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\JorgeCostaMacia.Bus.Kafka.Retry.Quartz\JorgeCostaMacia.Bus.Kafka.Retry.Quartz.csproj" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+	</ItemGroup>
+
+</Project>

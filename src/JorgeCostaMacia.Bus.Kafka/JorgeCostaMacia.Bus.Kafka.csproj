@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Kafka transport for JorgeCostaMacia.Bus — the concrete command/event bus over Confluent.Kafka: message base records, contexts, handler/subscriber bases and the producer/consumer. Reference this one package to use the bus on Kafka.</Description>
+		<PackageTags>bus,kafka,confluent,messaging,cqrs,ddd</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.Kafka.Retry.Quartz" />
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests" />
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.Kafka.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../JorgeCostaMacia.Bus/JorgeCostaMacia.Bus.csproj" />
+		<ProjectReference Include="../JorgeCostaMacia.Bus.UrnFactory/JorgeCostaMacia.Bus.UrnFactory.csproj" />
+		<PackageReference Include="JorgeCostaMacia.DomainEvent" />
+		<PackageReference Include="JorgeCostaMacia.GuidFactory" />
+		<PackageReference Include="Confluent.Kafka" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+	</ItemGroup>
+
+</Project>
