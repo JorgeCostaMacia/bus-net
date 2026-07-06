@@ -147,7 +147,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
 
         try
         {
-            await _retryScheduler.Schedule(_topic, Body(context), RetryHeaders(context), scheduledAt, cancellationToken);
+            await _retryScheduler.Schedule(_topic, _groupId, Body(context), RetryHeaders(context), scheduledAt, cancellationToken);
 
             BusLogger.LogRetry(_logger, context.Error, context.RetryCount + 1, scheduledAt);
 

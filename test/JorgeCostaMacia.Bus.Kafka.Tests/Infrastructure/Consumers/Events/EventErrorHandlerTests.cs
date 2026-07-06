@@ -101,8 +101,9 @@ public class EventErrorHandlerTests
 
         Assert.Equal(ErrorResult.Scheduled, sut.Result);
         Assert.Empty(_producer.Produced);
-        (string topic, _, Headers headers, _) = Assert.Single(_scheduler.Scheduled);
+        (string topic, string groupId, _, Headers headers, _) = Assert.Single(_scheduler.Scheduled);
         Assert.Equal(Deliveries.TOPIC, topic);
+        Assert.Equal(Deliveries.GROUP_ID, groupId);
         Assert.True(headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry) && Encoding.UTF8.GetString(retry) == "1");
         Assert.True(headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] consumers) && Encoding.UTF8.GetString(consumers) == Deliveries.GROUP_ID);
     }
