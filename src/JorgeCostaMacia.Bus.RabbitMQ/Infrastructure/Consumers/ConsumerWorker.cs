@@ -209,14 +209,18 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private async Task Nack(BasicDeliverEventArgs args)
         => await _channel!.NackAsync(args.DeliveryTag, requeue: true, _stopping.Token);
 
-    /// <summary>Stops consuming and closes the channel.</summary>
+    /// <summary>
+    /// Stops consuming and closes the channel. The stop is signalled and the channel disposed, but the
+    /// token source is deliberately not disposed: a delivery still in flight reads it (its cancellation
+    /// is what makes it leave the delivery unacked to redeliver), and disposing it under that read is a
+    /// shutdown-time race for no gain — a worker is an app-lifetime singleton, so the token source holds
+    /// nothing worth eagerly reclaiming.
+    /// </summary>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         await _stopping.CancelAsync();
 
         if (_channel is not null) await _channel.DisposeAsync();
-
-        _stopping.Dispose();
 
         using (BusLogger.WorkerContext(_logger, _exchange, _queue))
         using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Worker stopped.");

@@ -3,6 +3,7 @@ using JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 using JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using IBus = JorgeCostaMacia.Bus.RabbitMQ.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
@@ -33,7 +34,7 @@ internal static class BusInfrastructureContext
 
         producer(producerConfigurator);
 
-        services.AddSingleton<IConnection>(_ => new Connection(connectionConfiguration.ConnectionFactory));
+        services.AddSingleton<IConnection>(provider => new Connection(connectionConfiguration.ConnectionFactory, provider.GetRequiredService<ILoggerFactory>().CreateLogger(RabbitLogger.Category)));
         services.AddSingleton<IConsumerChannelFactory>(provider => new Consumers.ConsumerChannelFactory(provider.GetRequiredService<IConnection>()));
         services.AddScoped<IProducer, Producer>();
         services.AddScoped<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
