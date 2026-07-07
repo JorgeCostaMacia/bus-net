@@ -3,7 +3,9 @@
   <Project Path="src/JorgeCostaMacia.Bus.UrnFactory/JorgeCostaMacia.Bus.UrnFactory.csproj" />
   <Project Path="src/JorgeCostaMacia.Bus.Kafka/JorgeCostaMacia.Bus.Kafka.csproj" />
   <Project Path="src/JorgeCostaMacia.Bus.Kafka.Retry.Quartz/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.csproj" />
+  <Project Path="src/JorgeCostaMacia.Bus.RabbitMQ/JorgeCostaMacia.Bus.RabbitMQ.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.Kafka.Tests/JorgeCostaMacia.Bus.Kafka.Tests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.Tests/JorgeCostaMacia.Bus.RabbitMQ.Tests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.UrnFactory.Tests/JorgeCostaMacia.Bus.UrnFactory.Tests.csproj" />
 </Solution>

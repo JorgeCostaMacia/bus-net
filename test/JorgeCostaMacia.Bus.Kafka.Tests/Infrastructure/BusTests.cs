@@ -140,6 +140,43 @@ public class BusTests
     }
 
     [Fact]
+    public async Task Send_BatchWithTransport_ContinuesTheConversationForEach()
+    {
+        Guid conversationId = Guid.NewGuid();
+
+        Headers inbound = new()
+        {
+            { TransportHeaders.MessageId, Guid.NewGuid().ToByteArray() },
+            { TransportHeaders.MessageDestinationAddress, "orders"u8.ToArray() },
+            { TransportHeaders.ConversationId, conversationId.ToByteArray() },
+            { TransportHeaders.ConversationAddress, "orders"u8.ToArray() },
+            { TransportHeaders.ConversationOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")) },
+            { TransportHeaders.AggregateId, Guid.NewGuid().ToByteArray() },
+            { TransportHeaders.AggregateCorrelationId, Guid.NewGuid().ToByteArray() },
+            { TransportHeaders.AggregateOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")) },
+            { TransportHeaders.AggregateConsumers, "old"u8.ToArray() },
+            { TransportHeaders.RetryCount, "3"u8.ToArray() }
+        };
+
+        Transport transport = new(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
+        TestCommand[] commands = [new("x"), new("y")];
+
+        await CreateSut((typeof(TestCommand), "payments")).Send(commands, transport, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _producer.Produced.Count);
+        Assert.All(_producer.Produced, produced =>
+        {
+            Assert.Equal("payments", produced.Topic);
+            Assert.Equal(conversationId, GuidHeader(produced.Message, TransportHeaders.ConversationId));
+            Assert.Equal("orders", Header(produced.Message, TransportHeaders.MessageOriginAddress));
+            Assert.Equal("payments", Header(produced.Message, TransportHeaders.MessageDestinationAddress));
+            Assert.Equal("3", Header(produced.Message, TransportHeaders.RetryCount));
+        });
+
+        Assert.Equal(2, _producer.Produced.Select(produced => GuidHeader(produced.Message, TransportHeaders.MessageId)).Distinct().Count());
+    }
+
+    [Fact]
     public async Task Publish_EmptyBatch_ProducesNothing()
     {
         await CreateSut((typeof(TestEvent), "orders.created")).Publish(Array.Empty<TestEvent>(), TestContext.Current.CancellationToken);
