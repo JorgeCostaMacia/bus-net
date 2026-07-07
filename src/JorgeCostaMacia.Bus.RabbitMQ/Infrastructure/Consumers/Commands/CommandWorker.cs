@@ -1,6 +1,8 @@
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
@@ -11,7 +13,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands;
 /// <summary>
 /// The consumer hosting one command handler: binds its queue to the command's <c>direct</c> exchange
 /// (point-to-point — one queue) and, per delivery, deserializes the command once and invokes the
-/// handler resolved from the delivery's scope.
+/// handler resolved from the delivery's scope. A handler failure goes to the command's error handler,
+/// a malformed delivery (or a relayed failure) to its fault handler — both resolved from the scope.
 /// </summary>
 /// <typeparam name="TCommand">The command type consumed.</typeparam>
 /// <typeparam name="TCommandHandler">The handler type resolved per delivery.</typeparam>
@@ -38,4 +41,24 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <inheritdoc />
     protected override Task Handle(TCommandHandler handler, CommandContext<TCommand> context, CancellationToken cancellationToken)
         => handler.Handle(context, cancellationToken);
+
+    /// <inheritdoc />
+    protected override async Task<ErrorResult> HandleError(IServiceProvider services, CommandContext<TCommand> context, Exception exception, CancellationToken cancellationToken)
+    {
+        Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler> handler = services.GetRequiredService<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>();
+
+        await handler.Handle(new CommandErrorContext<TCommand>(context.Message, context.Transport, exception), cancellationToken);
+
+        return handler.Result;
+    }
+
+    /// <inheritdoc />
+    protected override async Task<FaultResult> HandleFault(IServiceProvider services, ReadOnlyMemory<byte> body, Transport transport, Exception exception, CancellationToken cancellationToken)
+    {
+        Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler> handler = services.GetRequiredService<Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>>();
+
+        await handler.Handle(CommandFaultContext.Create(body, transport, exception), cancellationToken);
+
+        return handler.Result;
+    }
 }

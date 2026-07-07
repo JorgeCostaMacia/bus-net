@@ -1,6 +1,8 @@
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Faults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
@@ -11,7 +13,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Events;
 /// <summary>
 /// The consumer hosting one event subscriber: binds its queue to the event's <c>fanout</c> exchange
 /// (broadcast — one queue per subscriber, each gets a copy) and, per delivery, deserializes the event
-/// once and invokes the subscriber resolved from the delivery's scope.
+/// once and invokes the subscriber resolved from the delivery's scope. A subscriber failure goes to
+/// the event's error handler, a malformed delivery (or a relayed failure) to its fault handler — both
+/// resolved from the scope.
 /// </summary>
 /// <typeparam name="TEvent">The event type consumed.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber type resolved per delivery.</typeparam>
@@ -38,4 +42,24 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
         => handler.Handle(context, cancellationToken);
+
+    /// <inheritdoc />
+    protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
+    {
+        Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber> handler = services.GetRequiredService<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>();
+
+        await handler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
+
+        return handler.Result;
+    }
+
+    /// <inheritdoc />
+    protected override async Task<FaultResult> HandleFault(IServiceProvider services, ReadOnlyMemory<byte> body, Transport transport, Exception exception, CancellationToken cancellationToken)
+    {
+        Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber> handler = services.GetRequiredService<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>();
+
+        await handler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
+
+        return handler.Result;
+    }
 }
