@@ -55,6 +55,9 @@ public record EventContext<TEvent> :
     /// <summary>UTC time when the conversation began.</summary>
     public DateTime ConversationOccurredAt => Transport.GetHeaderDateTime(TransportHeaders.ConversationOccurredAt);
 
+    /// <summary>The consumers this event targets (e.g. consumer group ids); empty means no filtering.</summary>
+    public ImmutableList<string> AggregateConsumers => Transport.GetHeaderStringList(TransportHeaders.AggregateConsumers);
+
     /// <summary>Unique id of the inbound message (domain trace).</summary>
     public Guid AggregateId => Transport.GetHeaderGuid(TransportHeaders.AggregateId);
 
@@ -63,9 +66,6 @@ public record EventContext<TEvent> :
 
     /// <summary>UTC event-time of the inbound message.</summary>
     public DateTime AggregateOccurredAt => Transport.GetHeaderDateTime(TransportHeaders.AggregateOccurredAt);
-
-    /// <summary>The consumers this event targets (e.g. consumer group ids); empty means no filtering.</summary>
-    public ImmutableList<string> AggregateConsumers => Transport.GetHeaderStringList(TransportHeaders.AggregateConsumers);
 
     /// <summary>Number of times this message has been retried (immediate or scheduled).</summary>
     public int RetryCount => Transport.GetHeaderInt(TransportHeaders.RetryCount);

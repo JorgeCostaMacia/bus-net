@@ -32,6 +32,12 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
 
     /// <summary>Creates the handler over the outbound gate, the logger and the consumer's contract.</summary>
+    /// <param name="producer">The outbound gate — retries re-publish and parks go through it.</param>
+    /// <param name="logger">The consumer's logger.</param>
+    /// <param name="exchange">The command's exchange — an immediate retry re-publishes to it.</param>
+    /// <param name="queue">The consumer queue — terminal failures park to its <c>.error</c>, and it is stamped on the parked error as the failing queue.</param>
+    /// <param name="retryIntervals">The retry ladder — one delay per attempt (<c>00:00</c> re-publishes immediately; a positive delay parks, as RabbitMQ has no scheduler yet).</param>
+    /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry (inheritance-aware).</param>
     public CommandErrorHandler(IProducer producer, ILogger logger, string exchange, string queue, ImmutableList<TimeSpan> retryIntervals, ImmutableList<Type> retryExcludeExceptionTypes)
     {
         _producer = producer;
@@ -47,11 +53,22 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     {
         try
         {
-            if (!Retryable(context) || _retryIntervals[context.RetryCount] > TimeSpan.Zero)
+            if (!Retryable(context))
             {
                 await ParkError(context, cancellationToken);
 
-                _logger.LogError(context.Error, "Handler failed; parked to {Queue}.", _queue + ERROR_QUEUE_SUFFIX);
+                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorQueue)) _logger.LogError(context.Error, "Handler failed.");
+
+                Result = ErrorResult.Parked;
+
+                return;
+            }
+
+            if (_retryIntervals[context.RetryCount] > TimeSpan.Zero)
+            {
+                await ParkError(context, cancellationToken);
+
+                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Handler failed.");
 
                 Result = ErrorResult.Parked;
 
@@ -59,6 +76,8 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
             }
 
             await Requeue(context, cancellationToken);
+
+            BusLogger.LogRetry(_logger, context.Error, context.RetryCount + 1);
 
             Result = ErrorResult.Retried;
         }
@@ -68,13 +87,13 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
         }
         catch (RabbitMQClientException produce)
         {
-            _logger.LogError(produce, "Producer failed; delivery redelivers.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
             Result = ErrorResult.Unhandled;
         }
         catch (Exception broken)
         {
-            _logger.LogError(broken, "Error handler failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Error handler failed.");
 
             Result = ErrorResult.Faulted;
         }

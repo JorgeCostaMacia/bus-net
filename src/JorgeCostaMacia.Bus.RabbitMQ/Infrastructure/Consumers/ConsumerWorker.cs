@@ -24,7 +24,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
 internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     where TContext : IContext
-    where THandler : class
+    where THandler : IHandler
 {
     private const string ERROR_QUEUE_SUFFIX = ".error";
     private const string FAULT_QUEUE_SUFFIX = ".fault";
@@ -113,6 +113,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     private async Task OnReceivedAsync(object sender, BasicDeliverEventArgs args)
     {
+        using IDisposable? workerScope = BusLogger.WorkerContext(_logger, _exchange, _queue);
+        using IDisposable? deliveryScope = BusLogger.ConsumerContext(_logger, args);
+
         await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
 
         TContext? context = default;
@@ -165,7 +168,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            _logger.LogCritical(failure, "Error handler failed; nacked with requeue.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Error handler failed; nacked with requeue.");
 
             await Nack(args);
 
@@ -204,7 +207,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            _logger.LogCritical(failure, "Fault handler failed; nacked with requeue.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Fault handler failed; nacked with requeue.");
 
             await Nack(args);
         }
@@ -226,5 +229,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         if (_channel is not null) await _channel.DisposeAsync();
 
         _stopping.Dispose();
+
+        using (BusLogger.WorkerContext(_logger, _exchange, _queue))
+        using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Worker stopped.");
     }
 }

@@ -45,7 +45,7 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
 
             await _producer.Produce(string.Empty, _queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault), FaultHeaders(context), cancellationToken);
 
-            _logger.LogError(context.Error, "Delivery faulted; parked to {Queue}.", _queue + FAULT_QUEUE_SUFFIX);
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToFaultQueue)) _logger.LogError(context.Error, "Delivery faulted.");
 
             Result = FaultResult.Parked;
         }
@@ -55,7 +55,7 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
         }
         catch (Exception park)
         {
-            _logger.LogError(park, "Parking failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
 
             Result = FaultResult.Unhandled;
         }
