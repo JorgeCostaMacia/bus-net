@@ -138,6 +138,11 @@ public class BusContextTests
         ServiceDescriptor handler = Assert.Single(services, e => e.ServiceType == typeof(TestCommandHandler));
         Assert.Equal(ServiceLifetime.Scoped, handler.Lifetime);
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
+
+        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Commands.Errors.CommandErrorHandler<TestCommand, TestCommandHandler>));
+        Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
+        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Commands.Faults.CommandFaultHandler<TestCommand, TestCommandHandler>));
+        Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
     }
 
     [Fact]
@@ -151,5 +156,10 @@ public class BusContextTests
 
         Assert.Single(services, e => e.ServiceType == typeof(TestEventSubscriber));
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
+
+        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Events.Errors.EventErrorHandler<TestEvent, TestEventSubscriber>));
+        Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
+        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Events.Faults.EventFaultHandler<TestEvent, TestEventSubscriber>));
+        Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
     }
 }
