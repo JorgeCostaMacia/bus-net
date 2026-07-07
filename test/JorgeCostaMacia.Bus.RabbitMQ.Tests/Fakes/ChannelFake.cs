@@ -11,7 +11,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 internal sealed class ChannelFake : IChannel
 {
     /// <summary>A captured publish.</summary>
-    public sealed record Publish(string Exchange, string RoutingKey, bool Persistent, IReadOnlyDictionary<string, object?>? Headers, ReadOnlyMemory<byte> Body);
+    public sealed record Publish(string Exchange, string RoutingKey, bool Persistent, string? MessageId, string? CorrelationId, string? Type, string? AppId, string? ContentType, long Timestamp, IReadOnlyDictionary<string, object?>? Headers, ReadOnlyMemory<byte> Body);
 
     /// <summary>The publishes handed to the channel, in order.</summary>
     public List<Publish> Published { get; } = [];
@@ -25,7 +25,7 @@ internal sealed class ChannelFake : IChannel
     {
         if (PublishFailure is not null) return ValueTask.FromException(PublishFailure);
 
-        Published.Add(new Publish(exchange, routingKey, basicProperties.Persistent, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body));
+        Published.Add(new Publish(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body));
 
         return ValueTask.CompletedTask;
     }
