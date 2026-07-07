@@ -22,15 +22,15 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
-    /// <summary>Creates the command consumer over the shared connection, the scope factory, the logger and its topology.</summary>
-    /// <param name="connection">The shared RabbitMQ connection the worker's channel is opened on.</param>
+    /// <summary>Creates the command consumer over the channel factory, the scope factory, the logger and its topology.</summary>
+    /// <param name="channelFactory">The factory the worker opens its channel from on start.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="exchange">The command's exchange.</param>
     /// <param name="queue">The queue this handler consumes.</param>
     /// <param name="prefetchCount">The maximum unacked messages the broker delivers before waiting for acks.</param>
-    public CommandWorker(Domain.IConnection connection, IServiceScopeFactory scopeFactory, ILogger<CommandWorker<TCommand, TCommandHandler>> logger, string exchange, string queue, ushort prefetchCount)
-        : base(connection, scopeFactory, logger, exchange, ExchangeType.Direct, queue, prefetchCount)
+    public CommandWorker(IConsumerChannelFactory channelFactory, IServiceScopeFactory scopeFactory, ILogger<CommandWorker<TCommand, TCommandHandler>> logger, string exchange, string queue, ushort prefetchCount)
+        : base(channelFactory, scopeFactory, logger, exchange, ExchangeType.Direct, queue, prefetchCount)
     {
     }
 

@@ -72,7 +72,7 @@ public sealed class ConsumerConfigurator
                 queue));
 
         _services.AddSingleton<IHostedService>(provider => new Commands.CommandWorker<TCommand, TCommandHandler>(
-            provider.GetRequiredService<Domain.IConnection>(),
+            provider.GetRequiredService<IConsumerChannelFactory>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<Commands.CommandWorker<TCommand, TCommandHandler>>>(),
             exchange,
@@ -120,7 +120,7 @@ public sealed class ConsumerConfigurator
                 queue));
 
         _services.AddSingleton<IHostedService>(provider => new Events.EventWorker<TEvent, TEventSubscriber>(
-            provider.GetRequiredService<Domain.IConnection>(),
+            provider.GetRequiredService<IConsumerChannelFactory>(),
             provider.GetRequiredService<IServiceScopeFactory>(),
             provider.GetRequiredService<ILogger<Events.EventWorker<TEvent, TEventSubscriber>>>(),
             exchange,

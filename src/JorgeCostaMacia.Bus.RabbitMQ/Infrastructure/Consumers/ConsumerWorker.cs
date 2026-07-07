@@ -4,21 +4,20 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 
 /// <summary>
-/// The base consumer hosting one handler over one queue: on start it declares its topology (the
-/// message exchange of the right kind, the durable queue bound straight to the exchange, and the
-/// durable <c>.error</c> / <c>.fault</c> park queues), sets the prefetch, and subscribes with a push
-/// consumer. Each delivery runs in its own service scope with each failure in its own lane: a
-/// malformed delivery (undeserializable body, unreadable envelope) goes to the fault handler; every
-/// other handling failure goes to the error handler, and on to the fault handler as the relay when it
-/// reports <see cref="ErrorResult.Faulted"/>. A dealt-with delivery is acked; an unresolved one is
-/// nacked with requeue to redeliver. The channel is not shared (one per worker), so the push loop is
-/// safe.
+/// The base consumer hosting one handler over one queue: on start it opens its channel from the
+/// factory, declares its topology (the message exchange of the right kind, the durable queue bound
+/// straight to the exchange, and the durable <c>.error</c> / <c>.fault</c> park queues), sets the
+/// prefetch, and subscribes with a push consumer. Each delivery runs in its own service scope with
+/// each failure in its own lane: a malformed delivery (undeserializable body, unreadable envelope)
+/// goes to the fault handler; every other handling failure goes to the error handler, and on to the
+/// fault handler as the relay when it reports <see cref="ErrorResult.Faulted"/>. A dealt-with delivery
+/// is acked; an unresolved one is nacked with requeue to redeliver. The channel is not shared (one per
+/// worker), so the push loop is safe.
 /// </summary>
 /// <typeparam name="TContext">The context type the handler receives.</typeparam>
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
@@ -29,7 +28,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private const string ERROR_QUEUE_SUFFIX = ".error";
     private const string FAULT_QUEUE_SUFFIX = ".fault";
 
-    private readonly Domain.IConnection _connection;
+    private readonly IConsumerChannelFactory _channelFactory;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
     private readonly string _exchange;
@@ -38,19 +37,19 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly ushort _prefetchCount;
     private readonly CancellationTokenSource _stopping = new();
 
-    private IChannel? _channel;
+    private IConsumerChannel? _channel;
 
-    /// <summary>Creates the consumer over the shared connection, the scope factory, the logger and its topology.</summary>
-    /// <param name="connection">The shared RabbitMQ connection the worker's channel is opened on.</param>
+    /// <summary>Creates the consumer over the channel factory, the scope factory, the logger and its topology.</summary>
+    /// <param name="channelFactory">The factory the worker opens its channel from on start.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="exchange">The message exchange the queue binds to.</param>
     /// <param name="exchangeType">The exchange type — <c>direct</c> for commands, <c>fanout</c> for events.</param>
     /// <param name="queue">The queue this handler consumes.</param>
     /// <param name="prefetchCount">The maximum unacked messages the broker delivers before waiting for acks.</param>
-    protected ConsumerWorker(Domain.IConnection connection, IServiceScopeFactory scopeFactory, ILogger logger, string exchange, string exchangeType, string queue, ushort prefetchCount)
+    protected ConsumerWorker(IConsumerChannelFactory channelFactory, IServiceScopeFactory scopeFactory, ILogger logger, string exchange, string exchangeType, string queue, ushort prefetchCount)
     {
-        _connection = connection;
+        _channelFactory = channelFactory;
         _scopeFactory = scopeFactory;
         _logger = logger;
         _exchange = exchange;
@@ -88,21 +87,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>Opens the channel, declares the topology (message exchange + queue + <c>.error</c> / <c>.fault</c> park queues), and starts consuming.</summary>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _channel = await _connection.CreateChannelAsync(cancellationToken);
+        _channel = await _channelFactory.CreateAsync(cancellationToken);
 
-        await _channel.ExchangeDeclareAsync(_exchange, _exchangeType, durable: true, autoDelete: false, cancellationToken: cancellationToken);
-        await _channel.QueueDeclareAsync(_queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
-        await _channel.QueueBindAsync(_queue, _exchange, routingKey: string.Empty, cancellationToken: cancellationToken);
-
-        await _channel.QueueDeclareAsync(_queue + ERROR_QUEUE_SUFFIX, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
-        await _channel.QueueDeclareAsync(_queue + FAULT_QUEUE_SUFFIX, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
-
-        await _channel.BasicQosAsync(prefetchSize: 0, prefetchCount: _prefetchCount, global: false, cancellationToken: cancellationToken);
-
-        AsyncEventingBasicConsumer consumer = new(_channel);
-        consumer.ReceivedAsync += OnReceivedAsync;
-
-        await _channel.BasicConsumeAsync(_queue, autoAck: false, consumer, cancellationToken);
+        await _channel.DeclareAsync(_exchange, _exchangeType, _queue, [_queue + ERROR_QUEUE_SUFFIX, _queue + FAULT_QUEUE_SUFFIX], _prefetchCount, cancellationToken);
+        await _channel.ConsumeAsync(_queue, OnReceivedAsync, cancellationToken);
     }
 
     /// <summary>
@@ -111,7 +99,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// the error handler (which relays to the fault handler on <see cref="ErrorResult.Faulted"/>). A
     /// shutdown cancellation leaves the delivery unacked for the broker to requeue.
     /// </summary>
-    private async Task OnReceivedAsync(object sender, BasicDeliverEventArgs args)
+    private async Task OnReceivedAsync(BasicDeliverEventArgs args)
     {
         using IDisposable? workerScope = BusLogger.WorkerContext(_logger, _exchange, _queue);
         using IDisposable? deliveryScope = BusLogger.ConsumerContext(_logger, args);
@@ -215,11 +203,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>Acks the delivery — it was dealt with.</summary>
     private async Task Ack(BasicDeliverEventArgs args)
-        => await _channel!.BasicAckAsync(args.DeliveryTag, multiple: false, _stopping.Token);
+        => await _channel!.AckAsync(args.DeliveryTag, _stopping.Token);
 
     /// <summary>Nacks the delivery with requeue — it was not dealt with and redelivers.</summary>
     private async Task Nack(BasicDeliverEventArgs args)
-        => await _channel!.BasicNackAsync(args.DeliveryTag, multiple: false, requeue: true, _stopping.Token);
+        => await _channel!.NackAsync(args.DeliveryTag, requeue: true, _stopping.Token);
 
     /// <summary>Stops consuming and closes the channel.</summary>
     public async Task StopAsync(CancellationToken cancellationToken)

@@ -34,6 +34,7 @@ internal static class BusInfrastructureContext
         producer(producerConfigurator);
 
         services.AddSingleton<IConnection>(_ => new Connection(connectionConfiguration.ConnectionFactory));
+        services.AddSingleton<IConsumerChannelFactory>(provider => new Consumers.ConsumerChannelFactory(provider.GetRequiredService<IConnection>()));
         services.AddScoped<IProducer, Producer>();
         services.AddScoped<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 

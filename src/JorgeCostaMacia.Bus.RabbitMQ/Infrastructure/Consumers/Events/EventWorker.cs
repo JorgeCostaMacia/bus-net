@@ -23,15 +23,15 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    /// <summary>Creates the event consumer over the shared connection, the scope factory, the logger and its topology.</summary>
-    /// <param name="connection">The shared RabbitMQ connection the worker's channel is opened on.</param>
+    /// <summary>Creates the event consumer over the channel factory, the scope factory, the logger and its topology.</summary>
+    /// <param name="channelFactory">The factory the worker opens its channel from on start.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="exchange">The event's exchange.</param>
     /// <param name="queue">The queue this subscriber consumes.</param>
     /// <param name="prefetchCount">The maximum unacked messages the broker delivers before waiting for acks.</param>
-    public EventWorker(Domain.IConnection connection, IServiceScopeFactory scopeFactory, ILogger<EventWorker<TEvent, TEventSubscriber>> logger, string exchange, string queue, ushort prefetchCount)
-        : base(connection, scopeFactory, logger, exchange, ExchangeType.Fanout, queue, prefetchCount)
+    public EventWorker(IConsumerChannelFactory channelFactory, IServiceScopeFactory scopeFactory, ILogger<EventWorker<TEvent, TEventSubscriber>> logger, string exchange, string queue, ushort prefetchCount)
+        : base(channelFactory, scopeFactory, logger, exchange, ExchangeType.Fanout, queue, prefetchCount)
     {
     }
 
