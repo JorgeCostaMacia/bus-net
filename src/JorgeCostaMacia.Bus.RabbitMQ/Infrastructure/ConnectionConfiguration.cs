@@ -5,9 +5,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 /// <summary>
 /// The connection configuration, bound from the <c>Bus:Connection</c> section: the single RabbitMQ
 /// connection shared by the producing and consuming sides. Unset values fall back to
-/// <see cref="RabbitConfigurationDefaults"/> when composing the <see cref="ConnectionFactory"/>.
+/// <see cref="ConnectionConfigurationDefaults"/> when composing the <see cref="ConnectionFactory"/>.
 /// </summary>
-public sealed record RabbitConfiguration
+public sealed record ConnectionConfiguration
 {
     /// <summary>The RabbitMQ host name. Required.</summary>
     public required string HostName { get; init; }
@@ -36,9 +36,9 @@ public sealed record RabbitConfiguration
         HostName = HostName,
         UserName = UserName,
         Password = Password,
-        Port = Port ?? RabbitConfigurationDefaults.PORT,
-        VirtualHost = VirtualHost ?? RabbitConfigurationDefaults.VIRTUAL_HOST,
-        ClientProvidedName = ClientProvidedName ?? RabbitConfigurationDefaults.CLIENT_PROVIDED_NAME,
-        AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? RabbitConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED
+        Port = Port ?? ConnectionConfigurationDefaults.PORT,
+        VirtualHost = VirtualHost ?? ConnectionConfigurationDefaults.VIRTUAL_HOST,
+        ClientProvidedName = ClientProvidedName ?? ConnectionConfigurationDefaults.CLIENT_PROVIDED_NAME,
+        AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? ConnectionConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED
     };
 }

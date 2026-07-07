@@ -27,13 +27,13 @@ internal static class BusInfrastructureContext
     /// <returns>The same service collection, to allow method chaining.</returns>
     internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null)
     {
-        RabbitConfiguration rabbit = CreateRabbitConfiguration(configuration);
+        ConnectionConfiguration connectionConfiguration = CreateConnectionConfiguration(configuration);
 
         ProducerConfigurator producerConfigurator = new();
 
         producer(producerConfigurator);
 
-        services.AddSingleton<IConnection>(_ => new Connection(rabbit.ConnectionFactory));
+        services.AddSingleton<IConnection>(_ => new Connection(connectionConfiguration.ConnectionFactory));
         services.AddScoped<IProducer, Producer>();
         services.AddScoped<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 
@@ -47,16 +47,16 @@ internal static class BusInfrastructureContext
         return services;
     }
 
-    /// <summary>Binds and validates the <c>Bus:Connection</c> section onto a <see cref="RabbitConfiguration"/>.</summary>
-    private static RabbitConfiguration CreateRabbitConfiguration(IConfiguration configuration)
+    /// <summary>Binds and validates the <c>Bus:Connection</c> section onto a <see cref="ConnectionConfiguration"/>.</summary>
+    private static ConnectionConfiguration CreateConnectionConfiguration(IConfiguration configuration)
     {
-        RabbitConfiguration rabbit = configuration.GetSection(CONNECTION_SECTION).Get<RabbitConfiguration>()
+        ConnectionConfiguration connectionConfiguration = configuration.GetSection(CONNECTION_SECTION).Get<ConnectionConfiguration>()
             ?? throw new InvalidOperationException($"'{CONNECTION_SECTION}' is null.");
 
-        if (string.IsNullOrWhiteSpace(rabbit.HostName)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(rabbit.HostName)}' is null.");
-        if (string.IsNullOrWhiteSpace(rabbit.UserName)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(rabbit.UserName)}' is null.");
-        if (string.IsNullOrWhiteSpace(rabbit.Password)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(rabbit.Password)}' is null.");
+        if (string.IsNullOrWhiteSpace(connectionConfiguration.HostName)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.HostName)}' is null.");
+        if (string.IsNullOrWhiteSpace(connectionConfiguration.UserName)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.UserName)}' is null.");
+        if (string.IsNullOrWhiteSpace(connectionConfiguration.Password)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.Password)}' is null.");
 
-        return rabbit;
+        return connectionConfiguration;
     }
 }

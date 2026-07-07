@@ -1,10 +1,10 @@
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 
 /// <summary>
-/// Default connection settings a <see cref="RabbitConfiguration"/> falls back to for values the
+/// Default connection settings a <see cref="ConnectionConfiguration"/> falls back to for values the
 /// <c>Bus:Connection</c> section does not supply.
 /// </summary>
-public static class RabbitConfigurationDefaults
+public static class ConnectionConfigurationDefaults
 {
     /// <summary>AMQP port. Default: <c>5672</c>.</summary>
     public const int PORT = 5672;
