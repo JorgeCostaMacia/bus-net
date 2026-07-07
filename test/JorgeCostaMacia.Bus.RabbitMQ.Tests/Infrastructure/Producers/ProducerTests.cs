@@ -82,6 +82,32 @@ public class ProducerTests
         Assert.Equal(messageId, new Guid((byte[])Assert.Single(_channel.Published).Headers![TransportHeaders.MessageId]!));
     }
 
+    [Fact]
+    public async Task Produce_MapsTheEnvelopeToNativeAmqpProperties()
+    {
+        Guid messageId = Guid.NewGuid();
+        Guid conversationId = Guid.NewGuid();
+        DateTime occurredAt = new(2026, 7, 7, 12, 30, 45, DateTimeKind.Utc);
+
+        Dictionary<string, object?> headers = new()
+        {
+            [TransportHeaders.MessageId] = messageId.ToByteArray(),
+            [TransportHeaders.ConversationId] = conversationId.ToByteArray(),
+            [TransportHeaders.MessageType] = "Orders.PlaceOrder"u8.ToArray(),
+            [TransportHeaders.MessageOccurredAt] = Encoding.UTF8.GetBytes(occurredAt.ToString("O"))
+        };
+
+        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
+
+        ChannelFake.Publish publish = Assert.Single(_channel.Published);
+        Assert.Equal(messageId.ToString(), publish.MessageId);
+        Assert.Equal(conversationId.ToString(), publish.CorrelationId);
+        Assert.Equal("Orders.PlaceOrder", publish.Type);
+        Assert.Equal("application/json", publish.ContentType);
+        Assert.Equal(new DateTimeOffset(occurredAt).ToUnixTimeSeconds(), publish.Timestamp);
+        Assert.False(string.IsNullOrWhiteSpace(publish.AppId)); // the host assembly, stamped by the producer
+    }
+
     private static string? Header(IReadOnlyDictionary<string, object?> headers, string key)
         => headers.TryGetValue(key, out object? value) && value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : null;
 }
