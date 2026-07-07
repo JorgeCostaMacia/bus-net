@@ -33,40 +33,24 @@ internal sealed class Bus : IBus
     }
 
     /// <inheritdoc />
-    public async Task Send<T>(T message, CancellationToken cancellationToken = default)
+    public Task Send<T>(T message, CancellationToken cancellationToken = default)
         where T : Command
-    {
-        string topic = Topic(message);
-
-        await _producer.Produce(topic, Prepare(topic, message), cancellationToken);
-    }
+        => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public async Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    public Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : Command
-    {
-        string topic = Topic(message);
-
-        await _producer.Produce(topic, Prepare(topic, message, transport), cancellationToken);
-    }
+        => Produce(message, transport, cancellationToken);
 
     /// <inheritdoc />
-    public async Task Publish<T>(T message, CancellationToken cancellationToken = default)
+    public Task Publish<T>(T message, CancellationToken cancellationToken = default)
         where T : Event
-    {
-        string topic = Topic(message);
-
-        await _producer.Produce(topic, Prepare(topic, message), cancellationToken);
-    }
+        => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public async Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    public Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
         where T : Event
-    {
-        string topic = Topic(message);
-
-        await _producer.Produce(topic, Prepare(topic, message, transport), cancellationToken);
-    }
+        => Produce(message, transport, cancellationToken);
 
     /// <inheritdoc />
     public Task Send<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
@@ -87,6 +71,24 @@ internal sealed class Bus : IBus
     public Task Publish<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
         where T : Event
         => _producer.Produce(messages.Select(message => Pair(message, transport)).ToList(), cancellationToken);
+
+    /// <summary>Produces a message with a fresh envelope to its topic.</summary>
+    private Task Produce<TMessage>(TMessage message, CancellationToken cancellationToken)
+        where TMessage : ITracedMessage, IFilteredMessage
+    {
+        string topic = Topic(message);
+
+        return _producer.Produce(topic, Prepare(topic, message), cancellationToken);
+    }
+
+    /// <summary>Produces a message continuing an inbound flow to its topic.</summary>
+    private Task Produce<TMessage>(TMessage message, ITransport transport, CancellationToken cancellationToken)
+        where TMessage : ITracedMessage, IFilteredMessage
+    {
+        string topic = Topic(message);
+
+        return _producer.Produce(topic, Prepare(topic, message, transport), cancellationToken);
+    }
 
     private string Topic<TMessage>(TMessage message)
     {
