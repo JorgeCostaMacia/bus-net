@@ -182,7 +182,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     {
         Headers headers = context.Transport.CloneHeaders();
 
-        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader((context.RetryCount + 1).ToString()));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(context.RetryCount + 1));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(_groupId));
 
         return headers;

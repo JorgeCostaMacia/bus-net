@@ -59,7 +59,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     }
 
     /// <summary>Deserializes the delivery into the handler's context.</summary>
-    /// <param name="args">The delivered message.</param>
     /// <returns>The delivery's context.</returns>
     /// <summary>The queue this worker consumes — the consumer identity used for targeted retries and filtering.</summary>
     protected string Queue => _queue;

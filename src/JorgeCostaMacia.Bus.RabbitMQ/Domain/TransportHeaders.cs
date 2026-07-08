@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
@@ -62,7 +63,7 @@ internal static class TransportHeaders
     public static byte[] ToHeader(Guid value) => value.ToByteArray();
 
     /// <summary>Encodes an integer to header bytes (its decimal digits).</summary>
-    public static byte[] ToHeader(int value) => Encoding.UTF8.GetBytes(value.ToString());
+    public static byte[] ToHeader(int value) => Encoding.UTF8.GetBytes(value.ToString(CultureInfo.InvariantCulture));
 
     /// <summary>Encodes a string list to header bytes (comma-joined, UTF-8).</summary>
     public static byte[] ToHeader(IEnumerable<string> values) => Encoding.UTF8.GetBytes(string.Join(',', values));
