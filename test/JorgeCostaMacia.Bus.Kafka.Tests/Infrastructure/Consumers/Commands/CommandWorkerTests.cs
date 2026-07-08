@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
