@@ -128,11 +128,23 @@ public class EventWorkerTests
     }
 
     [Fact]
-    public async Task NoClientSideFiltering_ProcessesEvenWhenTargetingOtherConsumers()
+    public async Task TargetedToOtherConsumers_SkipsAndAcks()
     {
         ConsumerChannelFake channel = new();
 
         await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe"), consumers: "other.subscriber"));
+
+        Assert.Null(_subscriber.Received);
+        Assert.Empty(_producer.Produced);
+        Assert.Equal(10ul, Assert.Single(channel.Acked));
+    }
+
+    [Fact]
+    public async Task TargetedToThisQueue_Processes()
+    {
+        ConsumerChannelFake channel = new();
+
+        await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber, {Deliveries.QUEUE}"));
 
         Assert.Equal("pepe", _subscriber.Received?.Name);
         Assert.Equal(10ul, Assert.Single(channel.Acked));

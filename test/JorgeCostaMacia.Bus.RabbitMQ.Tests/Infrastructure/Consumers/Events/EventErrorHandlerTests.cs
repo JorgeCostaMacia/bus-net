@@ -89,6 +89,7 @@ public class EventErrorHandlerTests
         Assert.Equal(Deliveries.EXCHANGE, exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal("1", Deliveries.Header(headers, TransportHeaders.RetryCount));
+        Assert.Equal(Deliveries.QUEUE, Deliveries.Header(headers, TransportHeaders.AggregateConsumers));   // re-targeted: only this queue reprocesses the fanout retry
     }
 
     [Fact]
