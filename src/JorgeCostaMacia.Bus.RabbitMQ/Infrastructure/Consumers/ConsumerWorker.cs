@@ -121,7 +121,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         if (Filtered(args))
         {
-            await Ack(args);
+            await AckQuietly(args);
 
             return;
         }
@@ -147,16 +147,37 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         try
         {
             await Handle(scope.ServiceProvider.GetRequiredService<THandler>(), context, _stopping.Token);
-
-            await Ack(args);
         }
         catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
         {
             // Shutting down — leave the delivery unacked for the broker to requeue on channel close.
+            return;
         }
         catch (Exception exception)
         {
             await Error(scope.ServiceProvider, args, context, exception);
+
+            return;
+        }
+
+        await AckQuietly(args);
+    }
+
+    /// <summary>
+    /// Acks a delivery whose work is already done (handled or filtered). An ack failure must never
+    /// reach the error lane — its re-publish would duplicate the work — so it is only logged: left
+    /// unacked, the broker redelivers on channel recovery and the idempotent handler absorbs it.
+    /// </summary>
+    /// <param name="args">The delivery to ack.</param>
+    private async Task AckQuietly(BasicDeliverEventArgs args)
+    {
+        try
+        {
+            await Ack(args);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Ack failed after the delivery was already resolved; it stays unacked for the broker to redeliver.");
         }
     }
 

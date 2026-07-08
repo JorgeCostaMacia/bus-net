@@ -49,9 +49,14 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
         return Task.CompletedTask;
     }
 
+    /// <summary>When set, every ack throws it — the broker-drop-at-ack seam.</summary>
+    public Exception? AckFailure { get; set; }
+
     /// <inheritdoc />
     public Task AckAsync(ulong deliveryTag, CancellationToken cancellationToken = default)
     {
+        if (AckFailure is not null) throw AckFailure;
+
         Acked.Add(deliveryTag);
 
         return Task.CompletedTask;

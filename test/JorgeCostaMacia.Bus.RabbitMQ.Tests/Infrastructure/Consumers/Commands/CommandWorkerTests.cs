@@ -60,6 +60,18 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task AckFails_AfterSuccessfulHandling_DoesNotParkNorNack()
+    {
+        ConsumerChannelFake channel = new() { AckFailure = new BrokerFailure() };
+
+        await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestCommand("pepe")));
+
+        Assert.Equal("pepe", _handler.Received?.Name);
+        Assert.Empty(_producer.Produced);   // never routed to the error lane — that would duplicate the work
+        Assert.Empty(channel.Nacked);       // left unacked: the broker redelivers on recovery
+    }
+
+    [Fact]
     public async Task HandlerThrows_NoLadder_ParksToErrorQueue_AndAcks()
     {
         _handler.Failure = new InvalidOperationException("boom");
