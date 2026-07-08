@@ -77,7 +77,7 @@ Use the **`gitflow` skill** for any branch/release work.
 ```
 dotnet format bus-net.slnx                  # apply .editorconfig (using order, whitespace) — run before committing
 dotnet build  bus-net.slnx -c Release
-dotnet test   bus-net.slnx -c Release --logger "console;verbosity=minimal"
+dotnet test   bus-net.slnx -c Release       # MTP prints a per-assembly summary; --logger is VSTest-only (MTP0001)
 dotnet pack   bus-net.slnx -c Release        # packs all packable; tests are IsPackable=false
 ```
 
