@@ -187,7 +187,7 @@ public sealed record Transport : ITransport
     {
         string header = GetHeaderString(key);
 
-        if (int.TryParse(header, out int value)) return value;
+        if (int.TryParse(header, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)) return value;
 
         throw new InvalidCastException($"The key '{key}' was not a valid int.");
     }

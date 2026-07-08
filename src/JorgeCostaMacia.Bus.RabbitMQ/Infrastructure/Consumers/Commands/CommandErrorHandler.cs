@@ -118,7 +118,7 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     {
         Dictionary<string, object?> headers = context.Transport.CloneHeaders();
 
-        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader((context.RetryCount + 1).ToString()));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(context.RetryCount + 1));
 
         return headers;
     }
