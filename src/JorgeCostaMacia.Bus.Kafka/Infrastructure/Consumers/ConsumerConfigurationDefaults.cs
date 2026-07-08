@@ -8,8 +8,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 /// </summary>
 public static class ConsumerConfigurationDefaults
 {
-    /// <summary>Security protocol. Default: <c>Ssl</c>.</summary>
-    public const SecurityProtocol SECURITY_PROTOCOL = SecurityProtocol.Ssl;
+    /// <summary>Security protocol. Default: <c>SaslSsl</c> — the SASL credentials this configuration requires are only sent under a SASL protocol (and it matches the producer default).</summary>
+    public const SecurityProtocol SECURITY_PROTOCOL = SecurityProtocol.SaslSsl;
 
     /// <summary>SASL mechanism. Default: <c>ScramSha512</c>.</summary>
     public const SaslMechanism SASL_MECHANISM = SaslMechanism.ScramSha512;
