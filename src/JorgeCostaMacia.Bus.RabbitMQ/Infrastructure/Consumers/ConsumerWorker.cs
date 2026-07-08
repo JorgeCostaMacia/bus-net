@@ -61,6 +61,17 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>Deserializes the delivery into the handler's context.</summary>
     /// <param name="args">The delivered message.</param>
     /// <returns>The delivery's context.</returns>
+    /// <summary>The queue this worker consumes — the consumer identity used for targeted retries and filtering.</summary>
+    protected string Queue => _queue;
+
+    /// <summary>
+    /// Consumer-side filtering hook: a filtered delivery is acked and skipped before deserializing the
+    /// body. Default: nothing is filtered.
+    /// </summary>
+    /// <param name="args">The delivered message.</param>
+    /// <returns>Whether the delivery is skipped.</returns>
+    protected virtual bool Filtered(BasicDeliverEventArgs args) => false;
+
     protected abstract TContext CreateContext(BasicDeliverEventArgs args);
 
     /// <summary>Invokes the handler over the delivery's context.</summary>
@@ -107,6 +118,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         using IDisposable? deliveryScope = BusLogger.ConsumerContext(_logger, args);
 
         await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
+
+        if (Filtered(args))
+        {
+            await Ack(args);
+
+            return;
+        }
 
         TContext context;
 

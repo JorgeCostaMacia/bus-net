@@ -113,12 +113,17 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     private Task ParkError(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
         => _producer.Produce(string.Empty, _queue + ERROR_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(EventError<TEvent>.Create(context, _queue)), ErrorHeaders(context), cancellationToken);
 
-    /// <summary>The retry's headers — the envelope cloned with <c>RetryCount</c> incremented.</summary>
-    private static Dictionary<string, object?> RetryHeaders(EventErrorContext<TEvent> context)
+    /// <summary>
+    /// The retry's headers — the envelope cloned with <c>RetryCount</c> incremented and the retry
+    /// re-targeted to this queue only (<c>AggregateConsumers</c>), so the fanout re-publish is skipped
+    /// by every other subscriber instead of being reprocessed by all of them.
+    /// </summary>
+    private Dictionary<string, object?> RetryHeaders(EventErrorContext<TEvent> context)
     {
         Dictionary<string, object?> headers = context.Transport.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader((context.RetryCount + 1).ToString()));
+        TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(_queue));
 
         return headers;
     }

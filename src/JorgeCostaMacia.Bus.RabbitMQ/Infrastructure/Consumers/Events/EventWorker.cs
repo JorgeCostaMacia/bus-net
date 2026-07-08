@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
@@ -33,6 +34,28 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     public EventWorker(IConsumerChannelFactory channelFactory, IServiceScopeFactory scopeFactory, ILogger<EventWorker<TEvent, TEventSubscriber>> logger, string exchange, string queue, ushort prefetchCount)
         : base(channelFactory, scopeFactory, logger, exchange, ExchangeType.Fanout, queue, prefetchCount)
     {
+    }
+
+    /// <summary>
+    /// Consumer-side filtering: when the event targets specific consumers
+    /// (<c>AggregateConsumers</c> header non-empty — e.g. a retry re-targeted to the failing queue) and
+    /// this queue is not among them, the delivery is acked and skipped without deserializing the body.
+    /// </summary>
+    /// <param name="args">The delivered message.</param>
+    /// <returns>Whether the delivery is skipped.</returns>
+    protected override bool Filtered(BasicDeliverEventArgs args)
+    {
+        if (args.BasicProperties.Headers is not { } headers) return false;
+        if (!headers.TryGetValue(TransportHeaders.AggregateConsumers, out object? value) || value is not byte[] bytes) return false;
+
+        string consumers = Encoding.UTF8.GetString(bytes);
+
+        if (string.IsNullOrWhiteSpace(consumers)) return false;
+
+        return !consumers
+            .Split(',')
+            .Select(consumer => consumer.Trim())
+            .Contains(Queue);
     }
 
     /// <inheritdoc />
