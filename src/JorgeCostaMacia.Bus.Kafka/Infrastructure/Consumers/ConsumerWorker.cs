@@ -226,12 +226,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// The per-delivery flow inside its own service scope: rebuild the context, handle it (the handler
-    /// resolved from the scope) and store the offset; a malformed delivery goes to the fault handler,
-    /// every other handling failure to the error handler (which relays to the fault handler when it
-    /// reports <see cref="ErrorResult.Faulted"/>). The handler and its error and fault handlers are all
-    /// resolved from this scope and disposed — asynchronously — when the delivery ends, so each failure
-    /// gets a clean handler; a disposal that throws surfaces to the loop rather than tearing it down. A
-    /// shutdown cancellation is rethrown for the loop to exit through.
+    /// resolved from the scope) and store the offset. The two steps fail into different lanes — a
+    /// context that cannot be built is a malformed delivery and goes to the fault handler, while any
+    /// exception thrown by the handler itself (whatever its type) goes to the error handler and its
+    /// retry ladder (which still relays to the fault handler when it reports
+    /// <see cref="ErrorResult.Faulted"/>, e.g. an envelope whose lazy getters cannot be read). The
+    /// handler and its error and fault handlers are all resolved from this scope and disposed —
+    /// asynchronously — when the delivery ends, so each failure gets a clean handler; a disposal that
+    /// throws surfaces to the loop rather than tearing it down. A shutdown cancellation is rethrown for
+    /// the loop to exit through.
     /// </summary>
     /// <param name="result">The delivered message.</param>
     /// <param name="cancellationToken">The loop's cancellation token.</param>
@@ -239,12 +242,25 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     {
         await using AsyncServiceScope services = _scopeFactory.CreateAsyncScope();
 
-        TContext? context = default;
+        TContext context;
 
         try
         {
             context = CreateContext(result, Transport.Create(result));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await Fault(services.ServiceProvider, result, exception, cancellationToken);
 
+            return;
+        }
+
+        try
+        {
             await Handle(services.ServiceProvider.GetRequiredService<THandler>(), context, cancellationToken);
 
             Store(result);
@@ -252,18 +268,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
-        }
-        catch (JsonException exception)
-        {
-            await Fault(services.ServiceProvider, result, exception, cancellationToken);
-        }
-        catch (KeyNotFoundException exception)
-        {
-            await Fault(services.ServiceProvider, result, exception, cancellationToken);
-        }
-        catch (InvalidCastException exception)
-        {
-            await Fault(services.ServiceProvider, result, exception, cancellationToken);
         }
         catch (Exception exception)
         {
