@@ -1,4 +1,3 @@
-using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using RabbitMQ.Client;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;

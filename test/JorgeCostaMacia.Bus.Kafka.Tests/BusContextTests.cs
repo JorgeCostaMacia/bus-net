@@ -1,6 +1,5 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Configuration;
