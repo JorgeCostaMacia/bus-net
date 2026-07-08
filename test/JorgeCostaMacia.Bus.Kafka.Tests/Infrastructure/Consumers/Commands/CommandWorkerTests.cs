@@ -81,6 +81,20 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task HandlerThrowsKeyNotFound_GoesToErrorLane_NotFault()
+    {
+        // a dictionary miss inside USER code is a handling failure (retry ladder), not a malformed delivery
+        _handler.Failure = new KeyNotFoundException("user code dictionary miss");
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+
+        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+
+        (string topic, _) = Assert.Single(_producer.Produced);
+        Assert.Equal(Deliveries.TOPIC, topic);
+        Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+    }
+
+    [Fact]
     public async Task MalformedBody_ParksToFaultTopic_AndStores()
     {
         ConsumerFake consumer = new(Deliveries.Garbage());

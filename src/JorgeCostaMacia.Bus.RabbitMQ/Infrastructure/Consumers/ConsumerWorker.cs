@@ -95,9 +95,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// One delivery inside its own service scope: build the context, run the handler resolved from the
-    /// scope, then ack. A malformed delivery goes to the fault handler; every other handling failure to
-    /// the error handler (which relays to the fault handler on <see cref="ErrorResult.Faulted"/>). A
-    /// shutdown cancellation leaves the delivery unacked for the broker to requeue.
+    /// scope, then ack. The two steps fail into different lanes — a context that cannot be built is a
+    /// malformed delivery and goes to the fault handler, while any exception thrown by the handler
+    /// itself (whatever its type) goes to the error handler and its retry ladder (which still relays to
+    /// the fault handler on <see cref="ErrorResult.Faulted"/>). A shutdown cancellation leaves the
+    /// delivery unacked for the broker to requeue.
     /// </summary>
     private async Task OnReceivedAsync(BasicDeliverEventArgs args)
     {
@@ -106,12 +108,26 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
 
-        TContext? context = default;
+        TContext context;
 
         try
         {
             context = CreateContext(args);
+        }
+        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
+        {
+            // Shutting down — leave the delivery unacked for the broker to requeue on channel close.
+            return;
+        }
+        catch (Exception exception)
+        {
+            await Fault(scope.ServiceProvider, args, exception);
 
+            return;
+        }
+
+        try
+        {
             await Handle(scope.ServiceProvider.GetRequiredService<THandler>(), context, _stopping.Token);
 
             await Ack(args);
@@ -119,18 +135,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
         {
             // Shutting down — leave the delivery unacked for the broker to requeue on channel close.
-        }
-        catch (JsonException exception)
-        {
-            await Fault(scope.ServiceProvider, args, exception);
-        }
-        catch (KeyNotFoundException exception)
-        {
-            await Fault(scope.ServiceProvider, args, exception);
-        }
-        catch (InvalidCastException exception)
-        {
-            await Fault(scope.ServiceProvider, args, exception);
         }
         catch (Exception exception)
         {
