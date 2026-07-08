@@ -31,7 +31,7 @@ public static class UrnFactory
 
         HashSet<string> urns = [Urn(type)];
 
-        foreach (Type @interface in type.GetInterfaces().Where(e => e.Namespace is not null && !e.Namespace.StartsWith("System")))
+        foreach (Type @interface in type.GetInterfaces().Where(e => e.Namespace is not null && e.Namespace != "System" && !e.Namespace.StartsWith("System.", StringComparison.Ordinal)))
         {
             urns.Add(Urn(@interface));
         }
