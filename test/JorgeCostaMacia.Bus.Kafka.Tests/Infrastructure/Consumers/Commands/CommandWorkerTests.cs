@@ -107,6 +107,19 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task Tombstone_ParksToFaultTopic_AndStores()
+    {
+        ConsumerFake consumer = new(Deliveries.Tombstone());
+
+        await Drive(Worker(consumer), consumer);
+
+        Assert.Null(_handler.Received);
+        (string topic, _) = Assert.Single(_producer.Produced);
+        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+    }
+
+    [Fact]
     public async Task MultipleDeliveries_ProcessedInOrder_EachStored()
     {
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("a"), 10), Deliveries.Delivery(new TestCommand("b"), 11));

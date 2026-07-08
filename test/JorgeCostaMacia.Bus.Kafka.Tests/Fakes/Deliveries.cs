@@ -37,6 +37,9 @@ internal static class Deliveries
     /// <summary>A delivery whose body deserializes to <see langword="null"/> — drives the null-body/fault path.</summary>
     public static ConsumeResult<Ignore, byte[]> NullBody(long offset = 10) => Result("null"u8.ToArray(), [], offset);
 
+    /// <summary>A tombstone — a delivery with no body at all (<c>Value = null</c>) — drives the fault path without crashing it.</summary>
+    public static ConsumeResult<Ignore, byte[]> Tombstone(long offset = 10) => Result(null!, [], offset);
+
     /// <summary>Reads a header as UTF-8 text, or <see langword="null"/> when absent.</summary>
     public static string? Header(Message<Null, byte[]> message, string key)
         => message.Headers.TryGetLastBytes(key, out byte[] value) ? Encoding.UTF8.GetString(value) : null;
