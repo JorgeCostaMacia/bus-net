@@ -8,8 +8,13 @@ internal sealed class ProducerFake : IProducer
 {
     public List<(string Topic, Message<Null, byte[]> Message)> Produced { get; } = [];
 
+    /// <summary>When set, every produce throws it — the broker-down seam.</summary>
+    public Exception? Failure { get; set; }
+
     public Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
     {
+        if (Failure is not null) throw Failure;
+
         Produced.Add((topic, message));
 
         return Task.CompletedTask;

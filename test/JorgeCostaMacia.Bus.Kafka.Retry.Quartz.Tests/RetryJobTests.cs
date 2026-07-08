@@ -1,9 +1,12 @@
+using System.Collections.Specialized;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests.Fakes;
+using Microsoft.Extensions.Logging.Abstractions;
 using Quartz;
+using Quartz.Impl;
 
 namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests;
 
@@ -11,7 +14,7 @@ public class RetryJobTests
 {
     private readonly ProducerFake _producer = new();
 
-    private Task Execute(JobDataMap data) => new RetryJob(_producer).Execute(new JobExecutionContextFake(data));
+    private Task Execute(JobDataMap data) => new RetryJob(_producer, NullLogger<RetryJob>.Instance).Execute(new JobExecutionContextFake(data));
 
     private static string EncodeHeaders(params (string Key, byte[]? Value)[] headers)
         => JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.Value)));
@@ -72,5 +75,75 @@ public class RetryJobTests
 
         await Assert.ThrowsAnyAsync<Exception>(() => Execute(data));
         Assert.Empty(_producer.Produced);
+    }
+
+    [Fact]
+    public async Task Execute_ProduceFails_SchedulesTheNextReexecution()
+    {
+        (IScheduler scheduler, IJobDetail job, ITrigger trigger) = await Seed();
+        _producer.Failure = new InvalidOperationException("boom");
+
+        await Execute(Data(), job, trigger, scheduler);
+
+        ITrigger reexecution = Assert.Single(await scheduler.GetTriggersOfJob(job.Key), e => e.Key.Group == "orders.error:1");
+        Assert.Equal("1", reexecution.JobDataMap.GetString(RetryJob.REEXECUTION_KEY));
+        Assert.True(reexecution.StartTimeUtc > DateTimeOffset.UtcNow.Add(RetryJob.REEXECUTION_DELAYS[0]).AddMinutes(-1));
+    }
+
+    [Fact]
+    public async Task Execute_LadderExhausted_DeadLettersTheJobDurable()
+    {
+        (IScheduler scheduler, IJobDetail job, ITrigger trigger) = await Seed();
+        _producer.Failure = new InvalidOperationException("boom");
+        JobDataMap data = Data();
+        data[RetryJob.REEXECUTION_KEY] = RetryJob.REEXECUTION_DELAYS.Length.ToString();
+
+        await Execute(data, job, trigger, scheduler);
+
+        IJobDetail? parked = await scheduler.GetJobDetail(job.Key);
+        Assert.NotNull(parked);
+        Assert.True(parked.Durable);
+        Assert.Contains(".fault:boom", parked.Description);
+        Assert.DoesNotContain(await scheduler.GetTriggersOfJob(job.Key), e => e.Key.Group.Contains(".error:"));
+    }
+
+    [Fact]
+    public async Task Execute_DurableJobSucceeds_DeletesItself()
+    {
+        (IScheduler scheduler, IJobDetail job, ITrigger trigger) = await Seed(durable: true);
+
+        await Execute(Data(), job, trigger, scheduler);
+
+        Assert.Single(_producer.Produced);
+        Assert.Null(await scheduler.GetJobDetail(job.Key));
+    }
+
+    private Task Execute(JobDataMap data, IJobDetail job, ITrigger trigger, IScheduler scheduler)
+        => new RetryJob(_producer, NullLogger<RetryJob>.Instance).Execute(new JobExecutionContextFake(data, job, trigger, scheduler));
+
+    /// <summary>A real in-memory scheduler (never started) seeded with the job — durable alone, or with its one-shot trigger.</summary>
+    private static async Task<(IScheduler Scheduler, IJobDetail Job, ITrigger Trigger)> Seed(bool durable = false)
+    {
+        IScheduler scheduler = await new StdSchedulerFactory(new NameValueCollection
+        {
+            ["quartz.scheduler.instanceName"] = $"test-{Guid.NewGuid():N}",
+            ["quartz.jobStore.type"] = "Quartz.Simpl.RAMJobStore, Quartz",
+            ["quartz.threadPool.threadCount"] = "1"
+        }).GetScheduler();
+
+        JobBuilder builder = JobBuilder.Create<RetryJob>().WithIdentity("message-1:0", "orders");
+        IJobDetail job = (durable ? builder.StoreDurably() : builder).Build();
+        ITrigger trigger = TriggerBuilder.Create().ForJob(job).WithIdentity("message-1:0", "orders").StartAt(DateTimeOffset.UtcNow.AddMinutes(30)).Build();
+
+        if (durable)
+        {
+            await scheduler.AddJob(job, replace: false);
+        }
+        else
+        {
+            await scheduler.ScheduleJob(job, trigger);
+        }
+
+        return (scheduler, job, trigger);
     }
 }
