@@ -148,7 +148,8 @@ internal sealed class Bus : IBus
     /// Builds the envelope continuing an inbound flow: the inbound envelope is cloned from the
     /// <paramref name="transport"/>, the message-level fields are re-stamped for this hop (new id/type/
     /// urn/occurred-at, origin = the inbound destination, destination = this message's exchange, domain
-    /// trace from the message), and the conversation and the retry counter are carried over unchanged.
+    /// trace from the message), and the conversation is carried over unchanged; the retry counter is
+    /// re-stamped to zero — a continuation is a new message with its own retry budget.
     /// </summary>
     private static Dictionary<string, object?> Prepare<TMessage>(string exchange, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage
@@ -169,6 +170,7 @@ internal sealed class Bus : IBus
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(message.AggregateCorrelationId));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(0));
 
         return headers;
     }

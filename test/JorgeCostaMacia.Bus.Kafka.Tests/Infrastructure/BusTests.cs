@@ -90,7 +90,7 @@ public class BusTests
         Assert.Equal("orders", Header(produced, TransportHeaders.ConversationAddress));
         Assert.Equal("orders", Header(produced, TransportHeaders.MessageOriginAddress));
         Assert.Equal("payments", Header(produced, TransportHeaders.MessageDestinationAddress));
-        Assert.Equal("2", Header(produced, TransportHeaders.RetryCount));
+        Assert.Equal("0", Header(produced, TransportHeaders.RetryCount));
         Assert.NotEqual(inboundMessageId, GuidHeader(produced, TransportHeaders.MessageId));
         Assert.Equal(typeof(TestEvent).FullName, Header(produced, TransportHeaders.MessageType));
         Assert.Equal(message.AggregateId, GuidHeader(produced, TransportHeaders.AggregateId));
@@ -170,7 +170,7 @@ public class BusTests
             Assert.Equal(conversationId, GuidHeader(produced.Message, TransportHeaders.ConversationId));
             Assert.Equal("orders", Header(produced.Message, TransportHeaders.MessageOriginAddress));
             Assert.Equal("payments", Header(produced.Message, TransportHeaders.MessageDestinationAddress));
-            Assert.Equal("3", Header(produced.Message, TransportHeaders.RetryCount));
+            Assert.Equal("0", Header(produced.Message, TransportHeaders.RetryCount));
         });
 
         Assert.Equal(2, _producer.Produced.Select(produced => GuidHeader(produced.Message, TransportHeaders.MessageId)).Distinct().Count());
