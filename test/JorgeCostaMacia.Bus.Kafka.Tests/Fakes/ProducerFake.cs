@@ -13,9 +13,12 @@ internal sealed class ProducerFake : IProducer
 
     public Exception? Failure { get; set; }
 
+    /// <summary>When non-empty, <see cref="Failure"/> only throws for these topics — a partial outage (e.g. the retry lane down, the fault lane healthy).</summary>
+    public HashSet<string> FailingTopics { get; } = [];
+
     public Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
     {
-        if (Failure is not null) throw Failure;
+        if (Failure is not null && (FailingTopics.Count == 0 || FailingTopics.Contains(topic))) throw Failure;
 
         Produced.Add((topic, message));
 
