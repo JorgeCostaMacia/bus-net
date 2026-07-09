@@ -40,6 +40,13 @@ internal static class Deliveries
     /// <summary>A tombstone — a delivery with no body at all (<c>Value = null</c>) — drives the fault path without crashing it.</summary>
     public static ConsumeResult<Ignore, byte[]> Tombstone(long offset = 10) => Result(null!, [], offset);
 
+    /// <summary>A well-formed body with NO trace headers — the envelope getters (retry count, aggregate ids) throw on read.</summary>
+    public static ConsumeResult<Ignore, byte[]> MissingTrace<TMessage>(TMessage message, long offset = 10)
+        => Result(JsonSerializer.SerializeToUtf8Bytes(message), [], offset);
+
+    /// <summary>A transport over an envelope with NO trace headers — for the error handlers' unreadable-envelope path.</summary>
+    public static Transport BareTransport() => Domain.Transport.Create(Result("{}"u8.ToArray(), []));
+
     /// <summary>Reads a header as UTF-8 text, or <see langword="null"/> when absent.</summary>
     public static string? Header(Message<Null, byte[]> message, string key)
         => message.Headers.TryGetLastBytes(key, out byte[] value) ? Encoding.UTF8.GetString(value) : null;
