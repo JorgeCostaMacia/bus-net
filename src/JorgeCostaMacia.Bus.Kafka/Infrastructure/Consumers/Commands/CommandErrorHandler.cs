@@ -17,7 +17,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 /// scheduler registered, parked to <c>.error</c> as terminal, since it cannot be delayed); a terminal
 /// failure parks a <see cref="CommandError{TCommand}"/> to the topic's <c>.error</c>. It reports how
 /// it left the delivery through <c>Result</c>: a produce failure or a scheduler hiccup leaves it
-/// <see cref="ErrorResult.Unhandled"/> (unacked, redelivers); only an unreadable envelope
+/// <see cref="ErrorResult.Unhandled"/> (the worker escalates it to the fault handler); only an unreadable envelope
 /// reports <see cref="ErrorResult.Faulted"/>, handing the delivery to the fault handler.
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler manages the failures of.</typeparam>
@@ -128,7 +128,7 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     /// <summary>
     /// Parks a delayed retry through the scheduler — produced back to the topic at its time. With no
     /// scheduler registered the failure cannot be delayed, so it parks to the error topic as terminal;
-    /// a scheduler that fails leaves the delivery unacked to redeliver.
+    /// a scheduler that fails reports <see cref="ErrorResult.Unhandled"/> — the worker escalates the delivery to the fault handler.
     /// </summary>
     private async Task<ErrorResult> Schedule(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
     {

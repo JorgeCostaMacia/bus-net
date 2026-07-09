@@ -171,9 +171,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// The consumer loop — the delivery flow with each failure in its own lane: our shutdown exits
     /// through the while condition; consume errors back off (the client reconnects on its own; a fatal
     /// one stops the application); a malformed delivery goes to the fault handler; every other handling
-    /// failure goes to the error handler, and to the fault handler as the relay when it reports
-    /// <see cref="ErrorResult.Faulted"/>. A dealt-with delivery is acked; an unresolved one is
-    /// left unacked and redelivers.
+    /// failure goes to the error handler, and to the fault handler when it reports
+    /// <see cref="ErrorResult.Faulted"/> or fails itself (<see cref="ErrorResult.Unhandled"/>). A
+    /// dealt-with delivery is acked; one that not even the fault handler could park is logged
+    /// critical with its coordinates — the recovery signal.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
@@ -279,7 +280,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// A handling failure: hands the delivery to the error handler resolved from its scope and acts on
     /// its verdict — a requeue, schedule or park acks it; a report of
     /// <see cref="ErrorResult.Faulted"/> (or a context that never built) hands it to the fault
-    /// handler; anything else leaves it unacked to redeliver.
+    /// handler. An error handler that FAILS — its produce reports
+    /// <see cref="ErrorResult.Unhandled"/> or it throws — also escalates to the fault handler: an
+    /// unmanageable failure belongs to the fault lane, where the message stays available even when
+    /// the retry lane's infrastructure is broken.
     /// </summary>
     private async Task Error(IServiceProvider services, ConsumeResult<Ignore, byte[]> result, TContext? context, Exception exception, CancellationToken cancellationToken)
     {
@@ -291,11 +295,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                 ? await HandleError(services, context, exception, cancellationToken)
                 : ErrorResult.Faulted;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Error handler failed.");
+            _logger.LogError(failure, "Error handler failed; escalating the delivery to the fault lane.");
 
-            return;
+            outcome = ErrorResult.Unhandled;
         }
 
         switch (outcome)
@@ -304,7 +312,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                 Store(result);
                 break;
 
-            case ErrorResult.Faulted:
+            case ErrorResult.Faulted or ErrorResult.Unhandled:
                 await Fault(services, result, exception, cancellationToken);
                 break;
         }
@@ -312,7 +320,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// A broken (or relayed) delivery: hands it to the fault handler resolved from its scope and acks
-    /// it when the handler parks it; an unparked delivery is left unacked to redeliver. Never throws —
+    /// it when the handler parks it; an unparked delivery is logged critical with its coordinates
+    /// (not acked — the next commit on its partition buries it, so the log is the recovery signal:
+    /// restart before that for a redelivery, or re-inject from the topic). Never throws —
     /// a fault handler that itself fails leaves the delivery unacked rather than tearing down the loop.
     /// </summary>
     private async Task Fault(IServiceProvider services, ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
@@ -321,11 +331,21 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         {
             FaultResult outcome = await HandleFault(services, result.Message.Value, Transport.Create(result), exception, cancellationToken);
 
-            if (outcome is FaultResult.Parked) Store(result);
+            if (outcome is FaultResult.Parked)
+            {
+                Store(result);
+
+                return;
+            }
+
+            // both lanes are down: the delivery could not be parked anywhere. Not acked — but a later
+            // delivery on this partition will commit past it, so this alert is the recovery signal:
+            // restart before that happens (redelivery) or re-inject from the topic while it is retained.
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(exception, "Fault park failed for {TopicPartitionOffset}; the delivery is NOT parked and will be buried by the next commit on its partition.", result.TopicPartitionOffset);
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Fault handler failed.");
+            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Fault handler failed for {TopicPartitionOffset}; the delivery is NOT parked and will be buried by the next commit on its partition.", result.TopicPartitionOffset);
         }
     }
 

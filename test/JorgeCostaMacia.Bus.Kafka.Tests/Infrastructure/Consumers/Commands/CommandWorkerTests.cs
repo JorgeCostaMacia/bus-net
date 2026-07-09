@@ -122,6 +122,23 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task ErrorLaneDown_EscalatesAndParksToFaultTopic()
+    {
+        // the handler fails AND the retry lane's produce fails (partial outage): the error handler
+        // reports Unhandled and the worker escalates — the valid message must end parked to .fault.
+        _handler.Failure = new InvalidOperationException("boom");
+        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
+        _producer.FailingTopics.Add(Deliveries.TOPIC);
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+
+        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+
+        (string topic, _) = Assert.Single(_producer.Produced);
+        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+    }
+
+    [Fact]
     public async Task FatalConsumeError_StopsTheApplication()
     {
         ConsumerFake consumer = new() { ConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Fatal, "fatal", isFatal: true)) };

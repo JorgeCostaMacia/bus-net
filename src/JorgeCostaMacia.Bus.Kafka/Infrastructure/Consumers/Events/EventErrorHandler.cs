@@ -18,7 +18,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 /// its time — or, with no scheduler registered, parked to <c>.error</c> as terminal, since it cannot
 /// be delayed); a terminal failure parks an <see cref="EventError{TEvent}"/> to the topic's
 /// <c>.error</c>. It reports how it left the delivery through <c>Result</c>: a produce failure or a
-/// scheduler hiccup leaves it <see cref="ErrorResult.Unhandled"/> (unacked, redelivers); only
+/// scheduler hiccup leaves it <see cref="ErrorResult.Unhandled"/> (the worker escalates it to the fault handler); only
 /// an unreadable envelope reports <see cref="ErrorResult.Faulted"/>, handing the delivery to
 /// the fault handler.
 /// </summary>
@@ -130,7 +130,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     /// <summary>
     /// Parks a delayed retry through the scheduler — produced back to the topic at its time. With no
     /// scheduler registered the failure cannot be delayed, so it parks to the error topic as terminal;
-    /// a scheduler that fails leaves the delivery unacked to redeliver.
+    /// a scheduler that fails reports <see cref="ErrorResult.Unhandled"/> — the worker escalates the delivery to the fault handler.
     /// </summary>
     private async Task<ErrorResult> Schedule(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
     {
