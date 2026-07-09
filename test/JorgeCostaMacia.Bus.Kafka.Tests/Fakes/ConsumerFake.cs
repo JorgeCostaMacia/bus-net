@@ -36,6 +36,9 @@ internal sealed class ConsumerFake : IConsumer
     /// <summary>Completes once every fed delivery has been consumed and fully processed.</summary>
     public Task Drained => _drained.Task;
 
+    /// <summary>When set, thrown ONCE by the next consume after the queue drains — the broker-failure seam.</summary>
+    public ConsumeException? ConsumeFailure { get; set; }
+
     /// <inheritdoc />
     public void Subscribe(string topic) => SubscribedTopic = topic;
 
@@ -45,6 +48,15 @@ internal sealed class ConsumerFake : IConsumer
         if (_pending.Count > 0) return _pending.Dequeue();
 
         _drained.TrySetResult();
+
+        if (ConsumeFailure is not null)
+        {
+            ConsumeException failure = ConsumeFailure;
+            ConsumeFailure = null;
+
+            throw failure;
+        }
+
         _park.Wait(cancellationToken);
 
         throw new OperationCanceledException(cancellationToken);

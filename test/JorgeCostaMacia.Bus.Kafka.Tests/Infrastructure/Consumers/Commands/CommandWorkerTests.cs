@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
@@ -115,6 +116,31 @@ public class CommandWorkerTests
         await Drive(Worker(consumer), consumer);
 
         Assert.Null(_handler.Received);
+        (string topic, _) = Assert.Single(_producer.Produced);
+        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+    }
+
+    [Fact]
+    public async Task FatalConsumeError_StopsTheApplication()
+    {
+        ConsumerFake consumer = new() { ConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Fatal, "fatal", isFatal: true)) };
+
+        await Drive(Worker(consumer), consumer);
+
+        Assert.True(_lifetime.StopRequested);
+    }
+
+    [Fact]
+    public async Task UnreadableEnvelope_RelaysToFaultTopic()
+    {
+        // the body parses and the handler runs, but the envelope has no trace headers: the error
+        // handler cannot read the retry count and reports Faulted — the delivery must end parked.
+        _handler.Failure = new InvalidOperationException("boom");
+        ConsumerFake consumer = new(Deliveries.MissingTrace(new TestCommand("pepe")));
+
+        await Drive(Worker(consumer), consumer);
+
         (string topic, _) = Assert.Single(_producer.Produced);
         Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
