@@ -56,7 +56,7 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
 
             await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, message, cancellationToken);
 
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToFaultTopic)) _logger.LogError(context.Error, "Delivery faulted.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultTopic)) _logger.LogError(context.Error, "Delivery faulted.");
 
             Result = FaultResult.Parked;
         }
@@ -66,7 +66,7 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
         }
         catch (Exception park)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
 
             Result = FaultResult.Unhandled;
         }

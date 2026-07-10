@@ -15,7 +15,9 @@ public class RetrySchedulerTests
     private const string TOPIC = "orders";
     private const string GROUP_ID = "orders.handler";
 
-    private static readonly DateTime SCHEDULED_AT = new(2026, 7, 6, 8, 0, 0, DateTimeKind.Utc);
+    // in the future on purpose: Quartz fast-forwards a repeating trigger whose start is already in
+    // the past (it does not replay missed repetitions), which would break the StartAt assertions.
+    private static readonly DateTime SCHEDULED_AT = DateTime.UtcNow.AddDays(1);
 
     // A real in-memory Quartz scheduler, never started — ScheduleJob persists to the RAM store without firing.
     // A unique instance name keeps each test's scheduler isolated in the shared repository.
@@ -55,6 +57,23 @@ public class RetrySchedulerTests
     }
 
     [Fact]
+    public async Task Schedule_ParksTheJobDurable()
+    {
+        // durable from birth: when the last repetition fails, Quartz completes the trigger — the
+        // durable job must stay parked in the store as the dead-letter instead of dying with it.
+        Guid messageId = Guid.NewGuid();
+        ISchedulerFactory factory = Factory();
+
+        await new RetryScheduler(factory).Schedule(TOPIC, GROUP_ID, "body"u8.ToArray(), Headers(messageId, 2), SCHEDULED_AT, TestContext.Current.CancellationToken);
+
+        IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
+        IJobDetail? job = await scheduler.GetJobDetail(new JobKey($"{messageId:N}:2", TOPIC), TestContext.Current.CancellationToken);
+
+        Assert.NotNull(job);
+        Assert.True(job.Durable);
+    }
+
+    [Fact]
     public async Task Schedule_DescribesTheJobAndTriggerWithTheGroupId()
     {
         Guid messageId = Guid.NewGuid();
@@ -83,6 +102,23 @@ public class RetrySchedulerTests
         ITrigger trigger = Assert.Single(await scheduler.GetTriggersOfJob(new JobKey($"{messageId:N}:1", TOPIC), TestContext.Current.CancellationToken));
 
         Assert.Equal(new DateTimeOffset(SCHEDULED_AT), trigger.StartTimeUtc);
+    }
+
+    [Fact]
+    public async Task Schedule_TriggerRepeatsEveryFiveMinutes_UpToMaxAttempts()
+    {
+        // the produce re-executions ARE the trigger's own repetitions — a failed produce has
+        // nothing to schedule, and Quartz itself counts the fires and completes the trigger.
+        Guid messageId = Guid.NewGuid();
+        ISchedulerFactory factory = Factory();
+
+        await new RetryScheduler(factory).Schedule(TOPIC, GROUP_ID, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);
+
+        IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
+        ISimpleTrigger trigger = Assert.IsAssignableFrom<ISimpleTrigger>(Assert.Single(await scheduler.GetTriggersOfJob(new JobKey($"{messageId:N}:1", TOPIC), TestContext.Current.CancellationToken)));
+
+        Assert.Equal(TimeSpan.FromMinutes(5), trigger.RepeatInterval);
+        Assert.Equal(4, trigger.RepeatCount);
     }
 
     [Fact]
@@ -121,18 +157,24 @@ public class RetrySchedulerTests
     }
 
     [Fact]
-    public async Task Schedule_SameDeliveryTwice_IsIdempotent_ParksOneJob()
+    public async Task Schedule_SameDeliveryTwice_ReparksTheSameJob_LastWriteWins()
     {
+        // an at-least-once duplicate of the same failure must not throw nor duplicate the park: it
+        // overwrites job and trigger, restarting the ladder from the newest scheduled time (which
+        // also revives a dead-letter parked under the same key).
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
         RetryScheduler sut = new(factory);
 
         await sut.Schedule(TOPIC, GROUP_ID, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);
-        await sut.Schedule(TOPIC, GROUP_ID, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);   // duplicate — must not throw
+        await sut.Schedule(TOPIC, GROUP_ID, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT.AddMinutes(10), TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
         JobKey key = Assert.Single(await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(TOPIC), TestContext.Current.CancellationToken));
+        ITrigger trigger = Assert.Single(await scheduler.GetTriggersOfJob(key, TestContext.Current.CancellationToken));
+
         Assert.Equal($"{messageId:N}:1", key.Name);
+        Assert.Equal(new DateTimeOffset(SCHEDULED_AT.AddMinutes(10)), trigger.StartTimeUtc);
     }
 
     [Fact]

@@ -15,14 +15,18 @@ public class CommandWorkerTests
     private readonly ProducerFake _producer = new();
     private readonly RecordingCommandHandler _handler = new();
 
-    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerChannelFake channel, ImmutableList<TimeSpan>? intervals = null)
+    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(
+        ConsumerChannelFake channel,
+        ImmutableList<TimeSpan>? intervals = null,
+        Domain.Commands.Errors.CommandErrorHandler<TestCommand, RecordingCommandHandler>? errorHandler = null,
+        Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>? faultHandler = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<Domain.Commands.Errors.CommandErrorHandler<TestCommand, RecordingCommandHandler>>(_ =>
-                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
+                errorHandler ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
             .AddScoped<Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>>(_ =>
-                new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.QUEUE))
+                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.QUEUE))
             .BuildServiceProvider();
 
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
@@ -161,5 +165,46 @@ public class CommandWorkerTests
 
         Assert.Equal("pepe", _handler.Received?.Name);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
+    }
+
+    [Fact]
+    public async Task ShutdownDuringErrorHandling_LeavesTheDeliveryUnacked_WithoutNack()
+    {
+        // the app shuts down while the error lane runs: the cancellation is not a failure — the
+        // delivery is left unacked, without nack, for the broker to requeue on channel close.
+        _handler.Failure = new InvalidOperationException("boom");
+        StoppingCommandErrorHandler errorHandler = new();
+        ConsumerChannelFake channel = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, errorHandler: errorHandler);
+        errorHandler.Stop = () => worker.StopAsync(TestContext.Current.CancellationToken);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await channel.DeliverAsync(Deliveries.Delivery(new TestCommand("pepe")));
+        await errorHandler.Stopping!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.Empty(channel.Acked);
+        Assert.Empty(channel.Nacked);
+        Assert.Empty(_producer.Produced);
+        Assert.True(channel.Disposed);
+    }
+
+    [Fact]
+    public async Task ShutdownDuringFaultPark_LeavesTheDeliveryUnacked_WithoutNack()
+    {
+        // the app shuts down while the fault lane is parking a broken delivery: the cancellation is
+        // not a failure — the delivery is left unacked, without nack, for the broker to requeue.
+        StoppingCommandFaultHandler faultHandler = new();
+        ConsumerChannelFake channel = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, faultHandler: faultHandler);
+        faultHandler.Stop = () => worker.StopAsync(TestContext.Current.CancellationToken);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await channel.DeliverAsync(Deliveries.Garbage());
+        await faultHandler.Stopping!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.Empty(channel.Acked);
+        Assert.Empty(channel.Nacked);
+        Assert.Empty(_producer.Produced);
+        Assert.True(channel.Disposed);
     }
 }

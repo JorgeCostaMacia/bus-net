@@ -185,6 +185,99 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task TransientConsumeError_BacksOffAndKeepsConsuming()
+    {
+        // a non-fatal ConsumeException is the client reconnecting on its own: the loop backs off and
+        // survives — the delivery consumed after the failure is still handled and acked.
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")))
+        {
+            FirstConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Transport))
+        };
+
+        await Drive(Worker(consumer), consumer);
+
+        Assert.Equal("pepe", _handler.Received?.Name);
+        Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+        Assert.False(_lifetime.StopRequested);
+    }
+
+    [Fact]
+    public async Task StopAsync_GracePeriodExpired_AbandonsTheWorker_WithoutDisposingTheConsumer()
+    {
+        // the shutdown's grace period runs out while the loop is still blocked: the stop returns
+        // without failing the host and without closing or disposing the consumer under the live loop
+        // — the session timeout evicts it and the process teardown reclaims it.
+        ConsumerFake consumer = new() { Hang = true };
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await consumer.Drained.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await worker.StopAsync(new CancellationToken(canceled: true));
+
+        Assert.False(consumer.Closed);
+        Assert.False(consumer.Disposed);
+
+        consumer.Release();
+    }
+
+    [Fact]
+    public async Task StoreFails_PartitionLost_KeepsConsuming_AndAcksTheNextDelivery()
+    {
+        // the partition was reclaimed by another owner between handling and storing: the stale store
+        // is swallowed (the new owner redelivers) and the loop keeps consuming its remaining work.
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
+        {
+            StoreFailure = new KafkaException(new Error(ErrorCode.Local_State))
+        };
+
+        await Drive(Worker(consumer), consumer);
+
+        Assert.Equal("second", _handler.Received?.Name);
+        Assert.Equal(11, Assert.Single(consumer.Stored).Offset.Value);
+        Assert.False(_lifetime.StopRequested);
+    }
+
+    [Fact]
+    public async Task StoreFails_UnexpectedError_KeepsConsuming_AndAcksTheNextDelivery()
+    {
+        // an arbitrary store failure leaves the delivery unacked (a restart redelivers it) without
+        // tearing anything down: the loop keeps consuming and acking the deliveries that follow.
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
+        {
+            StoreFailure = new InvalidOperationException("store down")
+        };
+
+        await Drive(Worker(consumer), consumer);
+
+        Assert.Equal("second", _handler.Received?.Name);
+        Assert.Equal(11, Assert.Single(consumer.Stored).Offset.Value);
+        Assert.False(_lifetime.StopRequested);
+    }
+
+    [Fact]
+    public async Task ShutdownDuringFaultPark_ExitsTheLoopCleanly_WithoutStoringTheDelivery()
+    {
+        // the app shuts down while the fault lane is parking a delivery: the cancellation is rethrown
+        // for the loop to exit through — no crash, nothing acked, nothing produced — and the stop
+        // still closes the consumer gracefully.
+        StoppingCommandFaultHandler faultHandler = new();
+        ConsumerFake consumer = new(Deliveries.Garbage());
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer, faultHandler: faultHandler);
+        faultHandler.Stop = () => worker.StopAsync(TestContext.Current.CancellationToken);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        Task stop = await faultHandler.Stopping.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await stop.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.Empty(consumer.Stored);
+        Assert.Empty(_producer.Produced);
+        Assert.True(consumer.Closed);
+        Assert.True(consumer.Disposed);
+        Assert.False(_lifetime.StopRequested);
+    }
+
+    [Fact]
     public async Task UnreadableEnvelope_RelaysToFaultTopic()
     {
         // the body parses and the handler runs, but the envelope has no trace headers: the error

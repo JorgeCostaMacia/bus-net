@@ -21,13 +21,16 @@ internal sealed class KafkaProducerFake : IProducer<Null, byte[]>
     /// <summary>An exception to fail every produce with, or <see langword="null"/> to succeed.</summary>
     public Exception? ProduceFailure { get; set; }
 
+    /// <summary>When non-empty, <see cref="ProduceFailure"/> only throws for these topics — the partial-batch-failure seam.</summary>
+    public HashSet<string> FailingTopics { get; } = [];
+
     /// <summary>An exception to fail the flush with, or <see langword="null"/> to succeed.</summary>
     public Exception? FlushFailure { get; set; }
 
     /// <inheritdoc />
     public Task<DeliveryResult<Null, byte[]>> ProduceAsync(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
     {
-        if (ProduceFailure is not null) return Task.FromException<DeliveryResult<Null, byte[]>>(ProduceFailure);
+        if (ProduceFailure is not null && (FailingTopics.Count == 0 || FailingTopics.Contains(topic))) return Task.FromException<DeliveryResult<Null, byte[]>>(ProduceFailure);
 
         Produced.Add((topic, message));
 

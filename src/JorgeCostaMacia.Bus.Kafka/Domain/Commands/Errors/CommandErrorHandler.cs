@@ -3,13 +3,15 @@ using JorgeCostaMacia.Bus.Domain;
 namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
 
 /// <summary>
-/// Ergonomic base for a command's error handler — the app's own error management (log, compensate,
-/// notify, decide), invoked when the command's handler fails terminally and the delivery parks to
-/// <c>.error</c>: closes the <see cref="IHandler{TMessage, TContext}"/> contract over
-/// <see cref="CommandErrorContext{TCommand}"/>, so a concrete error handler declares only its
-/// command type and gets fully-typed access to the failed command, its envelope and the exception.
+/// Base of the command's error handler — the bus's own error lane, invoked when the command's
+/// handler fails to decide the delivery's outcome (requeue, schedule or park to <c>.error</c>).
+/// Framework-internal: a service tunes the lane through its handler registration
+/// (<c>retryIntervals</c>, <c>retryExcludeExceptionTypes</c>) and the optional retry scheduler —
+/// never by replacing this handler. Closes the <see cref="IHandler{TMessage, TContext}"/> contract
+/// over <see cref="CommandErrorContext{TCommand}"/>, so the error handler declares only its command
+/// type and gets fully-typed access to the failed command, its envelope and the exception.
 /// </summary>
-/// <typeparam name="TCommand">The command type whose terminal failures this handler manages.</typeparam>
+/// <typeparam name="TCommand">The command type whose handling failures this handler manages.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler this error handler is paired with — ties the error handler to its command and handler, so each pairing is a distinct type resolvable on its own.</typeparam>
 internal abstract class CommandErrorHandler<TCommand, TCommandHandler> : IHandler<TCommand, CommandErrorContext<TCommand>>
     where TCommand : Command

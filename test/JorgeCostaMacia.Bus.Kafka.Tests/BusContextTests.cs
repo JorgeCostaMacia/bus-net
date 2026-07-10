@@ -92,6 +92,25 @@ public class BusContextTests
     }
 
     [Fact]
+    public void AddBusContext_ConsumerMissingSaslPassword_Throws()
+    {
+        Dictionary<string, string?> values = new()
+        {
+            ["Bus:Producer:BootstrapServers"] = "bus:9092",
+            ["Bus:Producer:SaslUsername"] = "user",
+            ["Bus:Producer:SaslPassword"] = "pass",
+            ["Bus:Consumer:BootstrapServers"] = "bus:9092",
+            ["Bus:Consumer:SaslUsername"] = "user"
+        };
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(configuration, _ => { }, _ => { }));
+
+        Assert.Contains("SaslPassword", exception.Message);
+    }
+
+    [Fact]
     public void AddCommand_DuplicateType_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddBusContext(Configuration(),
@@ -123,6 +142,22 @@ public class BusContextTests
                 consumer => consumer.AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
 
         Assert.Contains("Bus:Consumer", exception.Message);
+    }
+
+    [Fact]
+    public void AddCommandHandler_DuplicateGroupId_Throws()
+    {
+        // like the message → topic map, the group-id registry rejects duplicates at registration:
+        // two consumers sharing a group id also share the machine-name group.instance.id and fence
+        // each other out of the group at startup.
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(Configuration(consumer: true),
+                producer => producer.AddCommand<TestCommand>("orders"),
+                consumer => consumer
+                    .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")
+                    .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
+
+        Assert.Contains("orders.handler", exception.Message);
     }
 
     [Fact]

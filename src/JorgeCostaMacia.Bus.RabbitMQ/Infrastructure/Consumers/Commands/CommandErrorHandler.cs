@@ -57,7 +57,7 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
             {
                 await ParkError(context, cancellationToken);
 
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorQueue)) _logger.LogError(context.Error, "Handler failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToErrorQueue)) _logger.LogError(context.Error, "Handler failed.");
 
                 Result = ErrorResult.Parked;
 
@@ -68,7 +68,7 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
             {
                 await ParkError(context, cancellationToken);
 
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Handler failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Handler failed.");
 
                 Result = ErrorResult.Parked;
 
@@ -87,13 +87,13 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
         }
         catch (RabbitMQClientException produce)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
             Result = ErrorResult.Unhandled;
         }
         catch (Exception broken)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Error handler failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Error handler failed.");
 
             Result = ErrorResult.Faulted;
         }

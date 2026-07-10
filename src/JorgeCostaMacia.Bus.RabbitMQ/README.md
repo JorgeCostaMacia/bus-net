@@ -15,6 +15,10 @@
 dotnet add package JorgeCostaMacia.Bus.RabbitMQ
 ```
 
+## Logging
+
+Log messages are fixed, low-cardinality grouping keys; every variable detail — exchange, queue, body, the decoded envelope headers, the `BusDescription` outcome expansion — travels as structured properties through Serilog's `LogContext`. Wire `.Enrich.FromLogContext()` into the host's Serilog pipeline (the usual default) so those properties reach the sinks.
+
 ## Requirements
 
 One of the following SDKs: **.NET 8 / 9 / 10** *(.NET 10 recommended)*.

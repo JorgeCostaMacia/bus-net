@@ -22,6 +22,20 @@ public class EventErrorHandlerTests
         => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], excludes ?? []);
 
     [Fact]
+    public async Task MissingRetryCountHeader_ReportsFaulted()
+    {
+        // an envelope whose retry count cannot be read is unreadable for the ladder: the handler
+        // reports Faulted so the worker relays the delivery to the fault lane instead of retrying.
+        EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.BareTransport(), new InvalidOperationException("boom"));
+
+        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
+        await sut.Handle(context, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorResult.Faulted, sut.Result);
+        Assert.Empty(_producer.Produced);
+    }
+
+    [Fact]
     public async Task NoLadder_ParksToErrorTopic()
     {
         EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));

@@ -50,6 +50,26 @@ public class ErrorInfoTests
         Assert.Equal(3, error.Data.Count);
     }
 
+    [Fact]
+    public void Create_UnserializableDataValues_TravelAsText()
+    {
+        // the parked error is serialized through both failure lanes — a value that cannot serialize
+        // (a reference cycle, a Type…) must degrade to its text instead of poisoning the park and
+        // turning the failure into a hot redelivery loop.
+        InvalidOperationException exception = new("boom");
+        Dictionary<string, object> cyclic = [];
+        cyclic["self"] = cyclic;
+        exception.Data["cyclic"] = cyclic;
+        exception.Data["type"] = typeof(InvalidOperationException);
+        exception.Data["order"] = 42;
+
+        ErrorInfo error = ErrorInfo.Create(exception);
+
+        Assert.IsType<string>(error.Data["cyclic"]);
+        Assert.Equal(typeof(InvalidOperationException).ToString(), error.Data["type"]);
+        Assert.Equal(42, error.Data["order"]);   // serializable values keep their type
+    }
+
     private static Exception Throw(Exception exception)
     {
         try
