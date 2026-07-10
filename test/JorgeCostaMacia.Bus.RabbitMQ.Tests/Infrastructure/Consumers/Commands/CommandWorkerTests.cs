@@ -76,6 +76,65 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task ErrorHandlerThrows_NacksWithRequeue_WithoutTearingDown()
+    {
+        // the error lane's endgame: the error handler itself breaking returns the delivery to the
+        // broker (nack with requeue) instead of tearing down the worker.
+        _handler.Failure = new InvalidOperationException("boom");
+        ConsumerChannelFake channel = new();
+
+        await Deliver(channel, Worker(channel, errorHandler: new ThrowingCommandErrorHandler()), Deliveries.Delivery(new TestCommand("pepe")));
+
+        Assert.Empty(channel.Acked);
+        Assert.Empty(_producer.Produced);
+        (ulong deliveryTag, bool requeue) = Assert.Single(channel.Nacked);
+        Assert.Equal(10ul, deliveryTag);
+        Assert.True(requeue);
+    }
+
+    [Fact]
+    public async Task FaultHandlerThrows_NacksWithRequeue_WithoutTearingDown()
+    {
+        // the last net's endgame: even the fault handler breaking returns the delivery to the
+        // broker (nack with requeue) instead of tearing down the worker.
+        ConsumerChannelFake channel = new();
+
+        await Deliver(channel, Worker(channel, faultHandler: new ThrowingCommandFaultHandler()), Deliveries.Garbage());
+
+        Assert.Empty(channel.Acked);
+        Assert.Empty(_producer.Produced);
+        (ulong deliveryTag, bool requeue) = Assert.Single(channel.Nacked);
+        Assert.Equal(10ul, deliveryTag);
+        Assert.True(requeue);
+    }
+
+    [Fact]
+    public async Task AckFails_AfterErrorPark_DoesNotNackNorParkTwice()
+    {
+        // the park to .error succeeded and only the ack failed: a nack would redeliver and park a
+        // duplicate — the delivery stays unacked (logged) for the broker to redeliver on recovery.
+        _handler.Failure = new InvalidOperationException("boom");
+        ConsumerChannelFake channel = new() { AckFailure = new BrokerFailure() };
+
+        await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestCommand("pepe")));
+
+        Assert.Equal($"{Deliveries.QUEUE}.error", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Empty(channel.Nacked);
+    }
+
+    [Fact]
+    public async Task AckFails_AfterFaultPark_DoesNotNackNorParkTwice()
+    {
+        // the same isolation for the fault lane: the park to .fault exists, only the receipt failed.
+        ConsumerChannelFake channel = new() { AckFailure = new BrokerFailure() };
+
+        await Deliver(channel, Worker(channel), Deliveries.Garbage());
+
+        Assert.Equal($"{Deliveries.QUEUE}.fault", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Empty(channel.Nacked);
+    }
+
+    [Fact]
     public async Task HandlerThrows_NoLadder_ParksToErrorQueue_AndAcks()
     {
         _handler.Failure = new InvalidOperationException("boom");
