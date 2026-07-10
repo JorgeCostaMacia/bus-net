@@ -22,7 +22,7 @@ public class EventWorkerTests
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
             .AddScoped<ErrorHandlerBase>(_ =>
-                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
+                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, null, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
             .AddScoped<FaultHandlerBase>(_ =>
                 new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.QUEUE))
             .BuildServiceProvider();

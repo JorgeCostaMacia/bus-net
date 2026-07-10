@@ -79,7 +79,7 @@ The `Bus:Connection` section configures the single RabbitMQ connection both side
 
 ### Retries and park queues
 
-`retryIntervals` is the retry ladder — one delay per attempt. A `00:00` entry re-publishes the delivery to its exchange **immediately**, envelope cloned and `RetryCount` incremented; a **positive** delay would need a retry scheduler (none on RabbitMQ yet), so it parks as terminal. `retryExcludeExceptionTypes` skips the ladder for the listed exception types (inheritance-aware). The default is an empty ladder: the first failure parks.
+`retryIntervals` is the retry ladder — one delay per attempt. A `00:00` entry re-publishes the delivery to its exchange **immediately**, envelope cloned and `RetryCount` incremented; a **positive** delay parks the delivery through the optional `IRetryScheduler` to be re-published at its time — register [JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz](https://www.nuget.org/packages/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz/) to enable it; with no scheduler registered it parks as terminal, since it cannot be delayed. `retryExcludeExceptionTypes` skips the ladder for the listed exception types (inheritance-aware). The default is an empty ladder: the first failure parks.
 
 Each queue gets two durable park queues, unbound — reached by name via the default exchange. A terminal handling failure parks to **`{queue}.error`** as a typed error record (the original message fully typed, the whole failure chain and the transport details, with the original envelope cloned in the parked headers); a malformed delivery — undeserializable body, unreadable envelope — and a broken error lane park the raw delivery to **`{queue}.fault`**.
 

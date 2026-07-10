@@ -87,6 +87,22 @@ internal static class BusLogger
         }
     }
 
+    /// <summary>Logs a failed handling parked for a delayed retry, with the retry number and its time in the context.</summary>
+    /// <param name="logger">The logger.</param>
+    /// <param name="exception">The handling failure.</param>
+    /// <param name="retry">The retry number stamped on the parked delivery.</param>
+    /// <param name="scheduledAt">The UTC time the retry is produced back at.</param>
+    public static void LogRetry(ILogger logger, Exception exception, int retry, DateTime scheduledAt)
+    {
+        using (LogContext.Push(
+            new PropertyEnricher("Retry", retry),
+            new PropertyEnricher("ScheduledAt", scheduledAt),
+            new PropertyEnricher("BusDescription", BusLoggerDescriptions.ScheduledToRetry)))
+        {
+            logger.LogWarning(exception, "Handler failed.");
+        }
+    }
+
     /// <summary>Decodes every envelope header into the context — Guids and counters typed, the rest as text. A delivery with no headers contributes nothing rather than throwing — logging must never fault, least of all in a catch about to rethrow.</summary>
     /// <param name="context">The enricher list to fill.</param>
     /// <param name="headers">The delivery's headers, or <see langword="null"/> when the message carries none.</param>

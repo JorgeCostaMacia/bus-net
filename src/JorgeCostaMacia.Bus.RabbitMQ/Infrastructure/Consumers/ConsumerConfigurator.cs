@@ -38,7 +38,7 @@ public sealed class ConsumerConfigurator
     /// <typeparam name="TCommand">The command type consumed.</typeparam>
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
     /// <param name="queue">The queue this handler consumes, bound to the command's exchange.</param>
-    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> re-publishes to the exchange immediately; a positive delay parks, as RabbitMQ has no scheduler yet), or <see langword="null"/> for the default (none).</param>
+    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> re-publishes to the exchange immediately), or <see langword="null"/> for the default (none).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
     /// <param name="prefetchCount">The maximum unacked messages delivered before waiting for acks.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
@@ -59,6 +59,7 @@ public sealed class ConsumerConfigurator
         _services.AddScoped<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>(provider =>
             new Commands.CommandErrorHandler<TCommand, TCommandHandler>(
                 provider.GetRequiredService<IProducer>(),
+                provider.GetService<IRetryScheduler>(),
                 provider.GetRequiredService<ILogger<Commands.CommandErrorHandler<TCommand, TCommandHandler>>>(),
                 exchange,
                 queue,
@@ -86,7 +87,7 @@ public sealed class ConsumerConfigurator
     /// <typeparam name="TEvent">The event type consumed.</typeparam>
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
     /// <param name="queue">The queue this subscriber consumes, bound to the event's exchange.</param>
-    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> re-publishes to the exchange immediately; a positive delay parks, as RabbitMQ has no scheduler yet), or <see langword="null"/> for the default (none).</param>
+    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> re-publishes to the exchange immediately), or <see langword="null"/> for the default (none).</param>
     /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
     /// <param name="prefetchCount">The maximum unacked messages delivered before waiting for acks.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
@@ -107,6 +108,7 @@ public sealed class ConsumerConfigurator
         _services.AddScoped<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>(provider =>
             new Events.EventErrorHandler<TEvent, TEventSubscriber>(
                 provider.GetRequiredService<IProducer>(),
+                provider.GetService<IRetryScheduler>(),
                 provider.GetRequiredService<ILogger<Events.EventErrorHandler<TEvent, TEventSubscriber>>>(),
                 exchange,
                 queue,
