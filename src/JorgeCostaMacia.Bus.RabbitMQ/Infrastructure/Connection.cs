@@ -42,6 +42,13 @@ internal sealed class Connection : Domain.IConnection
         return await connection.CreateChannelAsync(options, cancellationToken);
     }
 
+    /// <summary>
+    /// Whether the wrapped connection is open: a connection never opened yet counts as open (it is
+    /// opened lazily on first use, so nothing has needed it), an open one is open, and a dropped one
+    /// reports <see langword="false"/> while automatic recovery re-establishes it.
+    /// </summary>
+    public bool IsOpen => _connection is not { IsOpen: false };
+
     /// <summary>Returns the open connection, opening (or re-opening) it under the gate when needed.</summary>
     private async Task<global::RabbitMQ.Client.IConnection> OpenAsync(CancellationToken cancellationToken)
     {

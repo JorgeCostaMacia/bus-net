@@ -15,6 +15,9 @@ internal sealed class ConnectionFake : IConnection
     /// <summary>How many channels were requested from the connection.</summary>
     public int Created { get; private set; }
 
+    /// <summary>Whether the connection reports open — settable, the health check's seam; defaults to open.</summary>
+    public bool IsOpen { get; set; } = true;
+
     /// <inheritdoc />
     public Task<IChannel> CreateChannelAsync(CancellationToken cancellationToken = default)
     {

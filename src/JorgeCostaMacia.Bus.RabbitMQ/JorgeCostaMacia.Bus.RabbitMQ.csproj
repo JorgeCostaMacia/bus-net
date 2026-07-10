@@ -6,6 +6,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.HealthChecks" />
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.Tests" />
 		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.Tests" />
 	</ItemGroup>
 
