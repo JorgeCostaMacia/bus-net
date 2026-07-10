@@ -90,15 +90,19 @@ public sealed record Transport : ITransport
         return clonedHeaders;
     }
 
-    /// <summary>Returns the raw bytes of the header with the given <paramref name="key"/>.</summary>
+    /// <summary>
+    /// Returns the bytes of the header with the given <paramref name="key"/>. The envelope's own
+    /// headers travel as raw bytes, but an AMQP field table from a foreign publisher can carry typed
+    /// values — a string is read as-is, any other primitive through its invariant text.
+    /// </summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value as bytes.</returns>
-    /// <exception cref="KeyNotFoundException">No header with <paramref name="key"/> is present (or it is not byte-valued).</exception>
+    /// <exception cref="KeyNotFoundException">No header with <paramref name="key"/> is present.</exception>
     public byte[] GetHeader(string key)
     {
-        if (!Headers.TryGetValue(key, out object? value) || value is not byte[] bytes) throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
+        if (!Headers.TryGetValue(key, out object? value) || value is null) throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
 
-        return bytes;
+        return ToBytes(value);
     }
 
     /// <summary>Reads the header with the given <paramref name="key"/> as a <see cref="Guid"/>.</summary>
@@ -123,7 +127,18 @@ public sealed record Transport : ITransport
     /// <param name="key">The header key.</param>
     /// <returns>The header value decoded as UTF-8, or <see langword="null"/> when absent.</returns>
     public string? GetHeaderStringOrDefault(string key)
-        => Headers.TryGetValue(key, out object? value) && value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : null;
+        => Headers.TryGetValue(key, out object? value) && value is not null ? Encoding.UTF8.GetString(ToBytes(value)) : null;
+
+    /// <summary>Renders a header value to bytes: raw bytes as-is, a string as its UTF-8 bytes, any other primitive through its invariant text.</summary>
+    /// <param name="value">The header value from the field table.</param>
+    /// <returns>The value's bytes.</returns>
+    private static byte[] ToBytes(object value)
+        => value switch
+        {
+            byte[] bytes => bytes,
+            string text => Encoding.UTF8.GetBytes(text),
+            _ => Encoding.UTF8.GetBytes(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty)
+        };
 
     /// <summary>Reads the header with the given <paramref name="key"/> as a UTC <see cref="DateTime"/>.</summary>
     /// <param name="key">The header key.</param>

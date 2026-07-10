@@ -154,9 +154,10 @@ internal sealed class Bus : IBus
     private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage
     {
+        if (transport is not Transport inbound) throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the Kafka transport; the Kafka bus can only continue a delivery received over Kafka.");
+
         Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         Type type = message.GetType();
-        Transport inbound = (Transport)transport;
 
         Headers headers = inbound.CloneHeaders();
 

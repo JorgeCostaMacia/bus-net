@@ -47,6 +47,26 @@ public class TransportTests
         => Assert.Throws<KeyNotFoundException>(() => CreateSut().GetHeaderString("missing"));
 
     [Fact]
+    public void GetString_ForeignStringValue_ReadsItAsIs()
+    {
+        // an AMQP field table from a foreign publisher can carry a string instead of bytes.
+        Transport transport = new(new Dictionary<string, object?> { ["key"] = "value" }, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+
+        Assert.Equal("value", transport.GetHeaderString("key"));
+        Assert.Equal("value", transport.GetHeaderStringOrDefault("key"));
+    }
+
+    [Fact]
+    public void GetString_ForeignIntValue_ReadsItsInvariantText()
+    {
+        // and a number: read through its invariant text, so the typed getters still work.
+        Transport transport = new(new Dictionary<string, object?> { ["key"] = 7 }, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+
+        Assert.Equal("7", transport.GetHeaderString("key"));
+        Assert.Equal(7, transport.GetHeaderInt("key"));
+    }
+
+    [Fact]
     public void GetStringOrDefault_Absent_ReturnsNull()
     {
         Transport transport = CreateSut(("present", "value"u8.ToArray()));

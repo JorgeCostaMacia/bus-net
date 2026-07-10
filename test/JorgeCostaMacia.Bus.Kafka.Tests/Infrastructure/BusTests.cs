@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
@@ -10,6 +11,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
 public class BusTests
 {
+    private sealed record ForeignTransport : ITransport;
+
     private readonly ProducerFake _producer = new();
 
     private KafkaBus CreateSut(params (Type Type, string Topic)[] messages)
@@ -95,6 +98,18 @@ public class BusTests
         Assert.Equal(typeof(TestEvent).FullName, Header(produced, TransportHeaders.MessageType));
         Assert.Equal(message.AggregateId, GuidHeader(produced, TransportHeaders.AggregateId));
         Assert.Equal("g1", Header(produced, TransportHeaders.AggregateConsumers));
+    }
+
+    [Fact]
+    public async Task Send_WithForeignTransport_ThrowsReadably()
+    {
+        // continuing over a transport from another bus is a wiring mistake: the failure names the
+        // foreign type and the transport this bus needs, instead of an opaque cast error.
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateSut((typeof(TestCommand), "payments")).Send(new TestCommand("pepe"), new ForeignTransport(), TestContext.Current.CancellationToken));
+
+        Assert.Contains(typeof(ForeignTransport).FullName!, exception.Message);
+        Assert.Contains("Kafka", exception.Message);
     }
 
     [Fact]
