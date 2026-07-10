@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 
 /// <summary>
-/// The default implementation of the command's error handler — manages <b>only</b> the error case of
+/// The bus's implementation of the command's error handler — manages <b>only</b> the error case of
 /// a failed command delivery over the context the worker already built (the command deserialized
 /// once, reused here): a retryable failure follows the interval ladder (a <c>00:00</c> interval
 /// requeues to the topic's tail immediately, envelope cloned and <c>RetryCount</c> incremented; a

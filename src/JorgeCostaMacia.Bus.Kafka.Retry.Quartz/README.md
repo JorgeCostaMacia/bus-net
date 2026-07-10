@@ -23,7 +23,7 @@ This package is **agnostic to the Quartz store** — you configure Quartz (its s
 
 ```csharp
 services
-    .AddBusContext(configuration, producer => producer.AddCommand<PlaceOrder>("orders"), consumer => /* … */)
+    .AddBusContext(configuration, producer => producer.AddCommand<PlaceOrder>("orders"), consumer => consumer.AddCommandHandler<PlaceOrder, PlaceOrderHandler>("orders.handler"))
     .AddQuartz(q => q.UsePersistentStore(store =>
     {
         store.UsePostgres(/* connection string */);   // any provider

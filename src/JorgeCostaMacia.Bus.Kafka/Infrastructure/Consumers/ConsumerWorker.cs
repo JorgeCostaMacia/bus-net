@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
@@ -87,13 +86,12 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// Cancels the consumer loop, awaits it and closes the consumer gracefully — <c>Close</c> commits
-    /// the final stored offsets and leaves the group. On the modern client (librdkafka 2.x) a clean
-    /// <c>Close</c> leaves the group even under static membership (<c>GroupInstanceId</c>), so a rolling
-    /// deploy rebalances; static membership still spares the group a rebalance when a member drops and
-    /// rejoins within the session timeout (a transient disconnect, not a graceful stop). When the
-    /// shutdown's grace period runs out before the loop ends, the worker is abandoned instead of
-    /// failing the host's stop: disposing under a live loop is unsafe, so the consumer is evicted by
-    /// session timeout and the process teardown reclaims it.
+    /// the final stored offsets. Under static membership (<c>GroupInstanceId</c>, the default) a
+    /// closing member does not leave the group: a restart within the session timeout reclaims its
+    /// assignment with no rebalance, and eviction is by session timeout only. When the shutdown's
+    /// grace period runs out before the loop ends, the worker is abandoned instead of failing the
+    /// host's stop: disposing under a live loop is unsafe, so the consumer is evicted by session
+    /// timeout and the process teardown reclaims it.
     /// </summary>
     /// <param name="cancellationToken">A token bounding how long the stop may wait.</param>
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -323,8 +321,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// it when the handler parks it; an unparked delivery is logged as an error — its coordinates
     /// already travel in the delivery scope (not acked: the next commit on its partition buries it,
     /// so the log is the recovery signal — restart before that for a redelivery, or re-inject from
-    /// the topic). Never throws — a fault handler that itself fails leaves the delivery unacked
-    /// rather than tearing down the loop.
+    /// the topic). Never throws for a failure — a fault handler that itself fails leaves the delivery
+    /// unacked rather than tearing down the loop; a shutdown cancellation is rethrown, unlogged, for
+    /// the loop to exit through.
     /// </summary>
     private async Task Fault(IServiceProvider services, ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
@@ -339,10 +338,19 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                 return;
             }
 
+            // a shutdown cancellation is not a failure: the park was reported undone because the
+            // produce was canceled — the delivery stays unacked and a restart redelivers it.
+            if (cancellationToken.IsCancellationRequested) return;
+
             // both lanes are down: the delivery could not be parked anywhere. Not acked — but a later
             // delivery on this partition will commit past it, so this alert is the recovery signal:
             // restart before that happens (redelivery) or re-inject from the topic while it is retained.
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryBuried)) _logger.LogError(exception, "Fault park failed.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // shutting down, not a failure — rethrown for the loop to exit through.
+            throw;
         }
         catch (Exception failure)
         {

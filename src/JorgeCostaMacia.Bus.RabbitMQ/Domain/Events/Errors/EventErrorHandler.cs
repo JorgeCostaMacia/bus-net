@@ -3,13 +3,15 @@ using JorgeCostaMacia.Bus.Domain;
 namespace JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Errors;
 
 /// <summary>
-/// Ergonomic base for an event's error handler — the app's own error management, invoked when the
-/// event's subscriber fails terminally and the delivery parks to its error queue: closes the
-/// <see cref="IHandler{TMessage, TContext}"/> contract over <see cref="EventErrorContext{TEvent}"/>,
-/// so a concrete error handler declares only its event type and gets fully-typed access to the failed
-/// event, its envelope and the exception.
+/// Base of the event's error handler — the bus's own error lane, invoked when the event's
+/// subscriber fails to decide the delivery's outcome (republish to retry or park to its error
+/// queue). Framework-internal: a service tunes the lane through its subscriber registration
+/// (<c>retryIntervals</c>, <c>retryExcludeExceptionTypes</c>) and the optional retry scheduler —
+/// never by replacing this handler. Closes the <see cref="IHandler{TMessage, TContext}"/> contract
+/// over <see cref="EventErrorContext{TEvent}"/>, so the error handler declares only its event type
+/// and gets fully-typed access to the failed event, its envelope and the exception.
 /// </summary>
-/// <typeparam name="TEvent">The event type whose terminal failures this handler manages.</typeparam>
+/// <typeparam name="TEvent">The event type whose handling failures this handler manages.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber this error handler is paired with — ties it to its event and subscriber, so each pairing is a distinct type resolvable on its own.</typeparam>
 internal abstract class EventErrorHandler<TEvent, TEventSubscriber> : IHandler<TEvent, EventErrorContext<TEvent>>
     where TEvent : Event

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using Microsoft.Extensions.DependencyInjection;
@@ -196,6 +195,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                 ? await HandleError(services, context, exception, _stopping.Token)
                 : ErrorResult.Faulted;
         }
+        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
+        {
+            // shutting down, not a failure: the delivery stays unacked and the broker redelivers it.
+            return;
+        }
         catch (Exception failure)
         {
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Error handler failed.");
@@ -234,6 +238,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
             if (outcome is FaultResult.Parked) await Ack(args);
             else await Nack(args);
+        }
+        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
+        {
+            // shutting down, not a failure: the delivery stays unacked and the broker redelivers it.
         }
         catch (Exception failure)
         {

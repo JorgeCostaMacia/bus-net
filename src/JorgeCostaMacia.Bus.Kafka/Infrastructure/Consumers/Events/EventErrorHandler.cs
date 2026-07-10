@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 
 /// <summary>
-/// The default implementation of the event's error handler — manages <b>only</b> the error case of a
+/// The bus's implementation of the event's error handler — manages <b>only</b> the error case of a
 /// failed event delivery over the context the worker already built (the event deserialized once,
 /// reused here): a retryable failure follows the interval ladder (a <c>00:00</c> interval requeues
 /// to the topic's tail immediately, envelope cloned, <c>RetryCount</c> incremented and the retry

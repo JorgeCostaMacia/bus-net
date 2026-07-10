@@ -77,4 +77,24 @@ public class ProducerTests
 
         Assert.Equal(["orders", "payments"], _kafka.Produced.Select(produced => produced.Topic));
     }
+
+    [Fact]
+    public async Task Produce_Batch_OneFails_ThrowsTheFailure_AndStillProducesTheRest()
+    {
+        // the pairs are enqueued together and awaited together: one failing pair faults the await
+        // (awaiting still means broker-acked for EVERY message), while the other pairs are still
+        // produced — a partial batch failure does not roll back nor stop the rest.
+        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+        _kafka.FailingTopics.Add("payments");
+        List<KeyValuePair<string, Message<Null, byte[]>>> messages =
+        [
+            new("orders", Message("a")),
+            new("payments", Message("b")),
+            new("shipping", Message("c"))
+        ];
+
+        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce(messages, TestContext.Current.CancellationToken));
+
+        Assert.Equal(["orders", "shipping"], _kafka.Produced.Select(produced => produced.Topic));
+    }
 }

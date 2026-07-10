@@ -14,11 +14,11 @@ JorgeCostaMacia.Bus            root: transport- AND pattern-agnostic vocabulary 
 │                              IFilteredMessage, ITransport, IContext + envelope facets, ISenderBus<T> /
 │                              IPublisherBus<T>, IHandler (NO requester / request-response, NO ICommand/IEvent)
 ├─ Bus.UrnFactory             urn:message:{type} lists for MessageTypeUrn (polymorphic routing)
-├─ Bus.RabbitMq               own implementation on the official RabbitMQ.Client (NOT MassTransit)
+├─ Bus.RabbitMQ               own implementation on the official RabbitMQ.Client (NOT MassTransit)
 └─ Bus.Kafka                  own implementation on Confluent.Kafka
 ```
 
-- **Concrete-first**: the command/event distinction is defined BY EACH TRANSPORT, not the root — `Bus.Kafka` ships `Command` / `Event` abstract records (implementing the root message contracts; `Event` also `IDomainEvent`), `CommandHandler<T>` / `EventSubscriber<T>` bases (`: IHandler<T, …Context<T>>`) and `IBus : ISenderBus<Command>, IPublisherBus<Event>`. RabbitMq will mirror the same simple names in its own namespace; migrating transports is swapping a `global using`. Cross-transport shared code types against the root contracts (`ITracedMessage`, facets, `IHandler`), which both transports implement.
+- **Concrete-first**: the command/event distinction is defined BY EACH TRANSPORT, not the root — `Bus.Kafka` ships `Command` / `Event` abstract records (implementing the root message contracts; `Event` also `IDomainEvent`), `CommandHandler<T>` / `EventSubscriber<T>` bases (`: IHandler<T, …Context<T>>`) and `IBus : ISenderBus<Command>, IPublisherBus<Event>`. `Bus.RabbitMQ` mirrors the same simple names in its own namespace; migrating transports is swapping a `global using`. Cross-transport shared code types against the root contracts (`ITracedMessage`, facets, `IHandler`), which both transports implement.
 
 - **No requester** — the RabbitMQ-only request/response bus is dropped (it was the only hard-to-port piece). **No query bus** — dropped.
 - **Ordering is a non-concern by design**: Kafka partitions on its own (no message key); consumers resolve conflicts by **`ITracedMessage.AggregateOccurredAt`** (event-time last-writer-wins), so out-of-order / reprocessed messages never overwrite a newer applied one. `AggregateId` is internal domain/tracing metadata, **not** a partition key.
@@ -27,7 +27,7 @@ JorgeCostaMacia.Bus            root: transport- AND pattern-agnostic vocabulary 
 ## Dependencies
 
 - **Cross-repo, on shared-net**: the transports → `JorgeCostaMacia.DomainEvent` (their `Event` record implements `IDomainEvent`) — **`PackageReference`** to the published package, pinned in `Directory.Packages.props`. Never `ProjectReference` across repos.
-- **Intra-repo, between `Bus.*` packages** (`RabbitMq`/`Kafka` → `Bus` + `Bus.UrnFactory`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
+- **Intra-repo, between `Bus.*` packages** (`RabbitMQ`/`Kafka` → `Bus` + `Bus.UrnFactory`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
 - **Transport clients**: `RabbitMQ.Client`, `Confluent.Kafka` — third-party `PackageReference`, versioned in `Directory.Packages.props`.
 
 ## Dependencies — Central Package Management

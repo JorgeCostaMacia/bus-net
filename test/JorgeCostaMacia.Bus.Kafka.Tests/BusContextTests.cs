@@ -92,6 +92,25 @@ public class BusContextTests
     }
 
     [Fact]
+    public void AddBusContext_ConsumerMissingSaslPassword_Throws()
+    {
+        Dictionary<string, string?> values = new()
+        {
+            ["Bus:Producer:BootstrapServers"] = "bus:9092",
+            ["Bus:Producer:SaslUsername"] = "user",
+            ["Bus:Producer:SaslPassword"] = "pass",
+            ["Bus:Consumer:BootstrapServers"] = "bus:9092",
+            ["Bus:Consumer:SaslUsername"] = "user"
+        };
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(configuration, _ => { }, _ => { }));
+
+        Assert.Contains("SaslPassword", exception.Message);
+    }
+
+    [Fact]
     public void AddCommand_DuplicateType_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddBusContext(Configuration(),
