@@ -15,6 +15,78 @@
 dotnet add package JorgeCostaMacia.Bus.RabbitMQ
 ```
 
+## Usage
+
+One `AddBusContext` call registers the whole bus over the `Bus:Connection` configuration section. The **producer** lambda maps each message this service sends or publishes to its exchange — a command's `direct`, an event's `fanout`; the optional **consumer** lambda registers this service's handlers, each on its own queue (name it after the consuming group, e.g. `orders.handler`, `billing.on.orders.placed.subscriber`) — omit it for a send-only service. Events mirror commands with the `AddEvent<TEvent>` / `AddEventSubscriber<TEvent, TEventSubscriber>` pair: the fanout exchange copies each event to every bound queue, so one queue per subscribing group.
+
+```csharp
+services.AddBusContext(configuration,
+    producer => producer.AddCommand<PlaceOrder>("orders"),
+    consumer => consumer.AddCommandHandler<PlaceOrder, PlaceOrderHandler>("orders.handler", retryIntervals: [TimeSpan.Zero, TimeSpan.Zero]));
+```
+
+A message is a record over the `Command` / `Event` base (the serializer's constructor on top, the convenient one below); a handler closes `CommandHandler<T>` / `EventSubscriber<T>` and is scoped — one instance per delivery. Send and publish through the scoped `IBus`.
+
+```csharp
+public sealed record PlaceOrder : Command
+{
+    public string OrderId { get; init; }
+
+    [JsonConstructor]
+    public PlaceOrder(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string orderId)
+        : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
+        => OrderId = orderId;
+
+    public PlaceOrder(string orderId)
+        : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
+        => OrderId = orderId;
+}
+
+public sealed class PlaceOrderHandler : CommandHandler<PlaceOrder>
+{
+    public override Task Handle(CommandContext<PlaceOrder> context, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;   // context.Message, context.Transport, and the envelope facets (ids, conversation, retry count, host)
+}
+```
+
+```csharp
+public sealed class OrdersService(IBus bus)
+{
+    public Task Place(string orderId, CancellationToken cancellationToken = default)
+        => bus.Send(new PlaceOrder(orderId), cancellationToken);
+}
+```
+
+### Configuration
+
+The `Bus:Connection` section configures the single RabbitMQ connection both sides share. `HostName`, `UserName` and `Password` are required (startup fails fast without them); the rest default to: `Port` `5672`, `VirtualHost` `/`, `ClientProvidedName` the machine name, `AutomaticRecoveryEnabled` `true`.
+
+```json
+{
+  "Bus": {
+    "Connection": {
+      "HostName": "rabbit",
+      "UserName": "user",
+      "Password": "pass",
+      "Port": 5672,
+      "VirtualHost": "/",
+      "ClientProvidedName": "orders-api",
+      "AutomaticRecoveryEnabled": true
+    }
+  }
+}
+```
+
+### Retries and park queues
+
+`retryIntervals` is the retry ladder — one delay per attempt. A `00:00` entry re-publishes the delivery to its exchange **immediately**, envelope cloned and `RetryCount` incremented; a **positive** delay would need a retry scheduler (none on RabbitMQ yet), so it parks as terminal. `retryExcludeExceptionTypes` skips the ladder for the listed exception types (inheritance-aware). The default is an empty ladder: the first failure parks.
+
+Each queue gets two durable park queues, unbound — reached by name via the default exchange. A terminal handling failure parks to **`{queue}.error`** as a typed error record (the original message fully typed, the whole failure chain and the transport details, with the original envelope cloned in the parked headers); a malformed delivery — undeserializable body, unreadable envelope — and a broken error lane park the raw delivery to **`{queue}.fault`**.
+
+### Topology at startup
+
+The producer declares its own topology: a hosted worker creates every mapped exchange (a command's `direct`, an event's `fanout`) before the app starts serving, so a send-only service does not depend on a consumer having created it. Each consumer declares its exchange, its durable queue bound to it, and its `.error` / `.fault` park queues. Every declare is idempotent — whoever arrives first creates it, the other's declare is a no-op.
+
 ## Wire format
 
 Message bodies are JSON serialized with .NET's Web defaults — **camelCase** property names, case-insensitive reads. The envelope travels in **`jcm-`-prefixed headers** (`jcm-message-id`, `jcm-retry-count`, …), hyphenated like the header conventions of HTTP and AMQP (the broker's own `x-*` headers included); dictionary keys in bodies are user data and travel untouched.
