@@ -7,8 +7,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
+using ErrorHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Errors.CommandErrorHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
+using FaultHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults.CommandFaultHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandWorkerTests
 {
@@ -20,15 +22,15 @@ public class CommandWorkerTests
     private CommandWorker<TestCommand, RecordingCommandHandler> Worker(
         ConsumerChannelFake channel,
         ImmutableList<TimeSpan>? intervals = null,
-        Domain.Commands.Errors.CommandErrorHandler<TestCommand, RecordingCommandHandler>? errorHandler = null,
-        Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>? faultHandler = null,
+        ErrorHandlerBase? errorHandler = null,
+        FaultHandlerBase? faultHandler = null,
         ILogger<CommandWorker<TestCommand, RecordingCommandHandler>>? logger = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
-            .AddScoped<Domain.Commands.Errors.CommandErrorHandler<TestCommand, RecordingCommandHandler>>(_ =>
+            .AddScoped<ErrorHandlerBase>(_ =>
                 errorHandler ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
-            .AddScoped<Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>>(_ =>
+            .AddScoped<FaultHandlerBase>(_ =>
                 faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.QUEUE))
             .BuildServiceProvider();
 

@@ -5,7 +5,7 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using RabbitBus = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Bus;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure;
 
 public class BusTests
 {

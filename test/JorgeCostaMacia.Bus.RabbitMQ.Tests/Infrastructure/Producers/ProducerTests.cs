@@ -3,7 +3,7 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using RabbitProducer = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers.Producer;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Producers;
 
 public class ProducerTests
 {

@@ -2,7 +2,7 @@ using JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using RabbitMQ.Client;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Producers;
 
 public class TopologyWorkerTests
 {
