@@ -13,4 +13,11 @@ internal interface IConnection : IAsyncDisposable
     /// <summary>Opens a new channel on the shared connection.</summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task<IChannel> CreateChannelAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Whether the wrapped connection is open — a connection never opened yet counts as open (it is
+    /// opened lazily on first use), while a dropped one reports <see langword="false"/> until
+    /// automatic recovery re-establishes it.
+    /// </summary>
+    bool IsOpen { get; }
 }
