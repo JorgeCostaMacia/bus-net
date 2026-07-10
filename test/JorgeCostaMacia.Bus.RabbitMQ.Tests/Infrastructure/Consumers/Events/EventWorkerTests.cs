@@ -5,8 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
+using ErrorHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Errors.EventErrorHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestEvent, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingEventSubscriber>;
+using FaultHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Faults.EventFaultHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestEvent, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingEventSubscriber>;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Events;
 
 public class EventWorkerTests
 {
@@ -19,9 +21,9 @@ public class EventWorkerTests
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
-            .AddScoped<Domain.Events.Errors.EventErrorHandler<TestEvent, RecordingEventSubscriber>>(_ =>
+            .AddScoped<ErrorHandlerBase>(_ =>
                 new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
-            .AddScoped<Domain.Events.Faults.EventFaultHandler<TestEvent, RecordingEventSubscriber>>(_ =>
+            .AddScoped<FaultHandlerBase>(_ =>
                 new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.QUEUE))
             .BuildServiceProvider();
 

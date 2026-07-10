@@ -1,7 +1,7 @@
 using JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 using RabbitMQ.Client;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure;
 
 public class ConnectionConfigurationTests
 {

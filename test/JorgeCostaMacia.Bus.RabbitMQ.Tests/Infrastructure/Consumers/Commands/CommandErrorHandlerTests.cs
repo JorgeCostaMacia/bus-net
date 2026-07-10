@@ -5,8 +5,9 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Errors;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client.Exceptions;
+using ErrorHandler = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands.CommandErrorHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandErrorHandlerTests
 {
@@ -18,7 +19,7 @@ public class CommandErrorHandlerTests
 
     private readonly ProducerFake _producer = new();
 
-    private Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null)
+    private ErrorHandler CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null)
         => new(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], excludes ?? []);
 
     [Fact]
@@ -26,7 +27,7 @@ public class CommandErrorHandlerTests
     {
         CommandErrorContext<TestCommand> context = new(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
 
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError();
+        ErrorHandler sut = CommandError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
@@ -80,7 +81,7 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task ZeroInterval_RepublishesToTheExchange()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero]);
+        ErrorHandler sut = CommandError([TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -94,7 +95,7 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_ParksAsTerminal_WithNoScheduler()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.FromMinutes(5)]);
+        ErrorHandler sut = CommandError([TimeSpan.FromMinutes(5)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -107,7 +108,7 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task LadderExhausted_Parks()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero]);
+        ErrorHandler sut = CommandError([TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -118,7 +119,7 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task ExcludedException_Parks_InheritanceAware()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero], [typeof(BaseFailure)]);
+        ErrorHandler sut = CommandError([TimeSpan.Zero], [typeof(BaseFailure)]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
 
@@ -130,7 +131,7 @@ public class CommandErrorHandlerTests
     public async Task RequeueBrokerFailure_LeavesUnhandled()
     {
         _producer.Failure = new BrokerFailure();
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero]);
+        ErrorHandler sut = CommandError([TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -141,7 +142,7 @@ public class CommandErrorHandlerTests
     public async Task RequeueUnexpectedError_LeavesFaulted()
     {
         _producer.Failure = new InvalidOperationException("unexpected");
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero]);
+        ErrorHandler sut = CommandError([TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -151,7 +152,7 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task SecondRetry_ContinuesTheCumulativeCount()
     {
-        Infrastructure.Consumers.Commands.CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
+        ErrorHandler sut = CommandError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(retryCount: 1), new InvalidOperationException()), TestContext.Current.CancellationToken);
 

@@ -3,7 +3,7 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Domain;
 
 public class HostContextTests
 {

@@ -1,6 +1,6 @@
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Domain.Events;
 
 public class EventTests
 {

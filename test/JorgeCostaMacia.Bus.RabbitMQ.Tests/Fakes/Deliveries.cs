@@ -3,6 +3,7 @@ using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitTransport = JorgeCostaMacia.Bus.RabbitMQ.Domain.Transport;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 
@@ -22,7 +23,7 @@ internal static class Deliveries
 
     /// <summary>A transport over a minimal envelope (retry count + aggregate trace) — for the error/fault handler tests that only need the transport.</summary>
     public static Transport Transport(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
-        => Domain.Transport.Create(Args("{}"u8.ToArray(), TraceHeaders(retryCount, aggregateId, aggregateCorrelationId)));
+        => RabbitTransport.Create(Args("{}"u8.ToArray(), TraceHeaders(retryCount, aggregateId, aggregateCorrelationId)));
 
     /// <summary>A well-formed delivery carrying the serialized message and the aggregate trace; <paramref name="consumers"/> stamps the <c>AggregateConsumers</c> header.</summary>
     public static BasicDeliverEventArgs Delivery<TMessage>(TMessage message, ulong deliveryTag = 10, string? consumers = null)

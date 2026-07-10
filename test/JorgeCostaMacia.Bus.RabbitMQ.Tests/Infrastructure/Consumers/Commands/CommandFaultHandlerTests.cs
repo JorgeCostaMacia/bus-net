@@ -3,14 +3,15 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using FaultHandler = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands.CommandFaultHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandFaultHandlerTests
 {
     private readonly ProducerFake _producer = new();
 
-    private Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
+    private FaultHandler Fault()
         => new(_producer, NullLogger.Instance, Deliveries.QUEUE);
 
     [Fact]
@@ -18,7 +19,7 @@ public class CommandFaultHandlerTests
     {
         CommandFaultContext context = CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
 
-        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
+        FaultHandler sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Parked, sut.Result);
@@ -68,7 +69,7 @@ public class CommandFaultHandlerTests
     {
         _producer.Failure = new InvalidOperationException("broker down");
 
-        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
+        FaultHandler sut = Fault();
         await sut.Handle(CommandFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);

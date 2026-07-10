@@ -1,7 +1,7 @@
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Domain.Commands;
 
 public class CommandTests
 {
