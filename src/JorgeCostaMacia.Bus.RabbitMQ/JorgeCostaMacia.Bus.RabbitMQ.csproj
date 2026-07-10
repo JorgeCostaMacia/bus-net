@@ -8,6 +8,8 @@
 	<ItemGroup>
 		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.HealthChecks" />
 		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.Tests" />
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz" />
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests" />
 		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.RabbitMQ.Tests" />
 	</ItemGroup>
 
