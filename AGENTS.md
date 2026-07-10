@@ -61,16 +61,20 @@ Use the **`gitflow` skill** for any branch/release work.
 
 ## Relevant skills
 
-`gitflow` is from `jorgecostamacia-agent-skills`; the rest from `dotnet-agent-skills`.
+Skills that apply to this repo — let them trigger, or invoke explicitly. `gitflow`, `solid`, `clean-architecture`, `ddd` and `testing` are from `jorgecostamacia-agent-skills`; the rest from `dotnet-agent-skills` (the `dotnet/skills` marketplace).
 
 - **`gitflow`** — all branch/release work.
+- **`solid`** — SOLID-principles design review; apply when shaping or reviewing the public surface (bus interfaces, worker/handler seams, transport options).
+- **`clean-architecture`** — layers and the inward dependency rule; these packages are the messaging Infrastructure/Presentation seam (bus consumers ARE driving adapters) consumed by the bounded contexts.
+- **`ddd`** — tactical DDD; here mainly **domain events vs integration events** (the `IDomainEvent` marker crossing into transport contracts is this repo's core concept) and typed domain errors.
+- **`testing`** — testing principles: done-means-tested, one test file per unit, names as specification, classicist doubles (the transport fakes), rule coverage.
 - **`dotnet`** — C# language server + general .NET development (the transport implementations live here).
 - **`dotnet-msbuild`** — `Directory.Build.props`, project-file quality, CPM.
 - **`dotnet-nuget`** — dependency management.
 - **`dotnet-test`** / **`dotnet-test-migration`** — tests; the xUnit.v3 / MTP setup.
 - **`dotnet-upgrade`** — target-framework migrations.
 
-*(Not relevant here: `dotnet-aspnetcore` — that's http-net.)*
+Not relevant to this repo (skip): `validation-net` (no FluentValidation here — messages are primitive DTO contracts; boundary validation is the consuming app's job), `dotnet-aspnetcore` (that's http-net), `dotnet-ai`, `dotnet-maui`, `dotnet-blazor`, `dotnet-data`, `dotnet-template-engine`, `dotnet11`, `dotnet-diag`, `dotnet-advanced`.
 
 ## Build & test
 
