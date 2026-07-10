@@ -100,6 +100,27 @@ public class BusTests
     }
 
     [Fact]
+    public async Task Publish_WithTransport_EmptyAggregateConsumers_ClearsTheInboundTargeting()
+    {
+        // the continuation re-stamps AggregateConsumers from the outbound message: an untargeted
+        // message (empty list) clears the inbound targeting instead of carrying it over.
+        Dictionary<string, object?> inbound = new()
+        {
+            [TransportHeaders.MessageDestinationAddress] = "orders"u8.ToArray(),
+            [TransportHeaders.ConversationId] = Guid.NewGuid().ToByteArray(),
+            [TransportHeaders.AggregateConsumers] = "old"u8.ToArray(),
+            [TransportHeaders.RetryCount] = "2"u8.ToArray()
+        };
+
+        Transport transport = new(inbound, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+        TestEvent message = new("pepe");
+
+        await CreateSut((typeof(TestEvent), "payments")).Publish(message, transport, TestContext.Current.CancellationToken);
+
+        Assert.Equal(string.Empty, Header(Assert.Single(_producer.Produced).Headers, TransportHeaders.AggregateConsumers));
+    }
+
+    [Fact]
     public async Task Publish_WithForeignTransport_ThrowsReadably()
     {
         // continuing over a transport from another bus is a wiring mistake: the failure names the
