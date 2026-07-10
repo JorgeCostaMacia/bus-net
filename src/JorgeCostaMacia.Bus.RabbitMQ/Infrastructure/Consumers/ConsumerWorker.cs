@@ -211,8 +211,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         switch (outcome)
         {
+            // the retry/park is already published: an ack failure here must not undo that work —
+            // quietly logged, the broker redelivers and the idempotent handling absorbs it.
             case ErrorResult.Retried or ErrorResult.Scheduled or ErrorResult.Parked:
-                await Ack(args);
+                await AckQuietly(args);
                 break;
 
             case ErrorResult.Faulted:
@@ -232,23 +234,30 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     private async Task Fault(IServiceProvider services, BasicDeliverEventArgs args, Exception exception)
     {
+        FaultResult outcome;
+
         try
         {
-            FaultResult outcome = await HandleFault(services, args.Body, Transport.Create(args), exception, _stopping.Token);
-
-            if (outcome is FaultResult.Parked) await Ack(args);
-            else await Nack(args);
+            outcome = await HandleFault(services, args.Body, Transport.Create(args), exception, _stopping.Token);
         }
         catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
         {
             // shutting down, not a failure: the delivery stays unacked and the broker redelivers it.
+            return;
         }
         catch (Exception failure)
         {
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Fault handler failed.");
 
             await Nack(args);
+
+            return;
         }
+
+        // the fault is already parked: an ack failure here must not undo that work (a nack would
+        // redeliver and park a duplicate) — quietly logged, the broker redelivers on recovery.
+        if (outcome is FaultResult.Parked) await AckQuietly(args);
+        else await Nack(args);
     }
 
     /// <summary>Acks the delivery — it was dealt with.</summary>
