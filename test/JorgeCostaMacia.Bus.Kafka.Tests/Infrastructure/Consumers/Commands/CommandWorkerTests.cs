@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ public class CommandWorkerTests
     private readonly ProducerFake _producer = new();
     private readonly RetrySchedulerFake _scheduler = new();
     private readonly LifetimeFake _lifetime = new();
+    private readonly BusHealth _health = new();
     private readonly RecordingCommandHandler _handler = new();
 
     private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>? faultHandler = null)
@@ -29,6 +31,7 @@ public class CommandWorkerTests
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
             _lifetime,
+            _health,
             Deliveries.TOPIC,
             Deliveries.GROUP_ID);
     }
@@ -53,6 +56,19 @@ public class CommandWorkerTests
         Assert.Empty(_producer.Produced);
         Assert.True(consumer.Closed);
         Assert.True(consumer.Disposed);
+    }
+
+    [Fact]
+    public async Task ConsumedDelivery_ReportsTheBrokersUp()
+    {
+        // a delivery in hand proves the brokers are reachable: consuming flips a down tracker back
+        // up before the handler runs — its failures are the delivery's problem, not the connection's.
+        _health.Down();
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+
+        await Drive(Worker(consumer), consumer);
+
+        Assert.True(_health.IsUp);
     }
 
     [Fact]

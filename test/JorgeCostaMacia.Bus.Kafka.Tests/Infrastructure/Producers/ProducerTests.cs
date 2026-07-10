@@ -1,6 +1,7 @@
 using System.Text;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 using KafkaProducer = JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers.Producer;
@@ -10,8 +11,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests;
 public class ProducerTests
 {
     private readonly KafkaProducerFake _kafka = new();
+    private readonly BusHealth _health = new();
 
-    private KafkaProducer Sut() => new(_kafka, NullLogger<KafkaProducer>.Instance);
+    private KafkaProducer Sut() => new(_kafka, _health, NullLogger<KafkaProducer>.Instance);
 
     private static Message<Null, byte[]> Message(string value = "{}") => new() { Value = Encoding.UTF8.GetBytes(value) };
 
@@ -22,6 +24,29 @@ public class ProducerTests
 
         (string topic, _) = Assert.Single(_kafka.Produced);
         Assert.Equal("orders", topic);
+    }
+
+    [Fact]
+    public async Task Produce_Success_ReportsTheBrokersUp()
+    {
+        _health.Down();
+
+        await Sut().Produce("orders", Message(), TestContext.Current.CancellationToken);
+
+        Assert.True(_health.IsUp);
+    }
+
+    [Fact]
+    public async Task Produce_Failure_DoesNotReportTheBrokersUp()
+    {
+        // only a broker-acked produce is the reachability proof: a failed one must leave the state
+        // where it was, so a down bus does not flip up on a produce that never reached a broker.
+        _health.Down();
+        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+
+        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
+
+        Assert.False(_health.IsUp);
     }
 
     [Fact]

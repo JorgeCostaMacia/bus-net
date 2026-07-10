@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ public class EventWorkerTests
     private readonly ProducerFake _producer = new();
     private readonly RetrySchedulerFake _scheduler = new();
     private readonly LifetimeFake _lifetime = new();
+    private readonly BusHealth _health = new();
     private readonly RecordingEventSubscriber _subscriber = new();
 
     private EventWorker<TestEvent, RecordingEventSubscriber> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null)
@@ -28,6 +30,7 @@ public class EventWorkerTests
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<EventWorker<TestEvent, RecordingEventSubscriber>>.Instance,
             _lifetime,
+            _health,
             Deliveries.TOPIC,
             Deliveries.GROUP_ID);
     }
