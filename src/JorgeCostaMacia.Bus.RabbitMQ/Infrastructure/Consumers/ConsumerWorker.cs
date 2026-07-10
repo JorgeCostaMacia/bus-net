@@ -57,8 +57,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _prefetchCount = prefetchCount;
     }
 
-    /// <summary>Deserializes the delivery into the handler's context.</summary>
-    /// <returns>The delivery's context.</returns>
     /// <summary>The queue this worker consumes — the consumer identity used for targeted retries and filtering.</summary>
     protected string Queue => _queue;
 
@@ -70,6 +68,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <returns>Whether the delivery is skipped.</returns>
     protected virtual bool Filtered(BasicDeliverEventArgs args) => false;
 
+    /// <summary>Builds the concrete context for a delivery from its args.</summary>
+    /// <param name="args">The delivered message.</param>
+    /// <returns>The context handed to the handler.</returns>
     protected abstract TContext CreateContext(BasicDeliverEventArgs args);
 
     /// <summary>Invokes the handler over the delivery's context.</summary>

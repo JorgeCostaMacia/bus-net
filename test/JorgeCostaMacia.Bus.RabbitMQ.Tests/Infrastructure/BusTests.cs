@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using RabbitBus = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Bus;
@@ -8,6 +9,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
 
 public class BusTests
 {
+    private sealed record ForeignTransport : ITransport;
+
     private readonly ProducerFake _producer = new();
 
     private RabbitBus CreateSut(params (Type Type, string Exchange)[] messages)
@@ -94,6 +97,18 @@ public class BusTests
         Assert.Equal(typeof(TestEvent).FullName, Header(headers, TransportHeaders.MessageType));
         Assert.Equal(message.AggregateId, GuidHeader(headers, TransportHeaders.AggregateId));
         Assert.Equal("g1", Header(headers, TransportHeaders.AggregateConsumers));
+    }
+
+    [Fact]
+    public async Task Publish_WithForeignTransport_ThrowsReadably()
+    {
+        // continuing over a transport from another bus is a wiring mistake: the failure names the
+        // foreign type and the transport this bus needs, instead of an opaque cast error.
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateSut((typeof(TestEvent), "payments")).Publish(new TestEvent("pepe"), new ForeignTransport(), TestContext.Current.CancellationToken));
+
+        Assert.Contains(typeof(ForeignTransport).FullName!, exception.Message);
+        Assert.Contains("RabbitMQ", exception.Message);
     }
 
     [Fact]

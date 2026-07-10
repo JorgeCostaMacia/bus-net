@@ -154,9 +154,10 @@ internal sealed class Bus : IBus
     private static Dictionary<string, object?> Prepare<TMessage>(string exchange, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage
     {
+        if (transport is not Transport inbound) throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the RabbitMQ transport; the RabbitMQ bus can only continue a delivery received over RabbitMQ.");
+
         Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         Type type = message.GetType();
-        Transport inbound = (Transport)transport;
 
         Dictionary<string, object?> headers = inbound.CloneHeaders();
 
