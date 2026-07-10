@@ -23,11 +23,12 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
-    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger and its contract — the handler and its error and fault handlers are resolved per delivery from the scope.</summary>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker and its contract — the handler and its error and fault handlers are resolved per delivery from the scope.</summary>
     /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
+    /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandWorker(
@@ -35,9 +36,10 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
         IServiceScopeFactory scopeFactory,
         ILogger<CommandWorker<TCommand, TCommandHandler>> logger,
         IHostApplicationLifetime lifetime,
+        BusHealth health,
         string topic,
         string groupId)
-        : base(consumer, scopeFactory, logger, lifetime, topic, groupId)
+        : base(consumer, scopeFactory, logger, lifetime, health, topic, groupId)
     {
     }
 

@@ -92,12 +92,14 @@ public sealed class ConsumerConfigurator
         {
             ILogger<Commands.CommandWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<Commands.CommandWorker<TCommand, TCommandHandler>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
+            BusHealth health = provider.GetRequiredService<BusHealth>();
 
             return new Commands.CommandWorker<TCommand, TCommandHandler>(
-                new Consumer(CreateBuilder(provider, configuration, logger, lifetime)),
+                new Consumer(CreateBuilder(provider, configuration, logger, lifetime, health)),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
+                health,
                 topic,
                 groupId);
         });
@@ -156,12 +158,14 @@ public sealed class ConsumerConfigurator
         {
             ILogger<Events.EventWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<Events.EventWorker<TEvent, TEventSubscriber>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
+            BusHealth health = provider.GetRequiredService<BusHealth>();
 
             return new Events.EventWorker<TEvent, TEventSubscriber>(
-                new Consumer(CreateBuilder(provider, configuration, logger, lifetime)),
+                new Consumer(CreateBuilder(provider, configuration, logger, lifetime, health)),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
+                health,
                 topic,
                 groupId);
         });
@@ -203,10 +207,11 @@ public sealed class ConsumerConfigurator
 
     /// <summary>
     /// Composes a consumer's Kafka builder: the settings plus every callback wired — the client's
-    /// error/log/statistics to the Kafka category (a fatal error stops the application), the commit
-    /// results and the partition lifecycle to the worker's logger.
+    /// error/log/statistics to the Kafka category (a fatal error stops the application, an
+    /// <c>AllBrokersDown</c> flips the reachability tracker down), the commit results and the
+    /// partition lifecycle to the worker's logger.
     /// </summary>
-    private static ConsumerBuilder<Ignore, byte[]> CreateBuilder(IServiceProvider provider, ConsumerConfig configuration, ILogger logger, IHostApplicationLifetime lifetime)
+    private static ConsumerBuilder<Ignore, byte[]> CreateBuilder(IServiceProvider provider, ConsumerConfig configuration, ILogger logger, IHostApplicationLifetime lifetime, BusHealth health)
     {
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
 
@@ -215,6 +220,7 @@ public sealed class ConsumerConfigurator
             {
                 KafkaLogger.LogError(kafkaLogger, kafkaError);
 
+                if (kafkaError.Code == ErrorCode.Local_AllBrokersDown) health.Down();
                 if (kafkaError.IsFatal) lifetime.StopApplication();
             })
             .SetLogHandler((_, log) => KafkaLogger.Log(kafkaLogger, log))

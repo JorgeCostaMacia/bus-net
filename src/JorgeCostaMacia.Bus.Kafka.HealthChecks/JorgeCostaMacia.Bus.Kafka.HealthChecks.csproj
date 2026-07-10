@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>Health check for JorgeCostaMacia.Bus.Kafka — reports whether the bus reaches the Kafka brokers, fed by the client's all-brokers-down signal and by every successful produce or consumed delivery, for ASP.NET Core health endpoints (liveness/readiness). Separate package so the transport stays free of the HealthChecks dependency.</Description>
+		<PackageTags>bus,kafka,healthchecks,messaging</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="JorgeCostaMacia.Bus.Kafka.HealthChecks.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../JorgeCostaMacia.Bus.Kafka/JorgeCostaMacia.Bus.Kafka.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+		<PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" />
+	</ItemGroup>
+
+</Project>

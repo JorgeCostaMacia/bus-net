@@ -41,17 +41,19 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
     private readonly IHostApplicationLifetime _lifetime;
+    private readonly BusHealth _health;
 
     private readonly string _topic;
 
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
 
-    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger and its contract.</summary>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker and its contract.</summary>
     /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message — the handler and its error and fault handlers are resolved from it.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
+    /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
@@ -59,6 +61,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         IServiceScopeFactory scopeFactory,
         ILogger logger,
         IHostApplicationLifetime lifetime,
+        BusHealth health,
         string topic,
         string groupId)
     {
@@ -66,6 +69,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _scopeFactory = scopeFactory;
         _logger = logger;
         _lifetime = lifetime;
+        _health = health;
         _topic = topic;
         GroupId = groupId;
     }
@@ -186,6 +190,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             try
             {
                 result = _consumer.Consume(cancellationToken);
+
+                // a delivery in hand proves the brokers are reachable — report it before handling,
+                // whose failures are the delivery's problem, not the connection's.
+                _health.Up();
 
                 logContext = BusLogger.ConsumerContext(result);
 
