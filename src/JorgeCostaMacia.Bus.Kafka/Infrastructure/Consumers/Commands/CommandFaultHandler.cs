@@ -50,7 +50,7 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
 
             Message<Null, byte[]> message = new()
             {
-                Value = JsonSerializer.SerializeToUtf8Bytes(fault),
+                Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options),
                 Headers = FaultHeaders(context)
             };
 

@@ -44,7 +44,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
-        => new(JsonSerializer.Deserialize<TEvent>(result.Message.Value) ?? throw new JsonException("The event body deserialized to null."), transport);
+        => new(JsonSerializer.Deserialize<TEvent>(result.Message.Value, BusSerializer.Options) ?? throw new JsonException("The event body deserialized to null."), transport);
 
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)

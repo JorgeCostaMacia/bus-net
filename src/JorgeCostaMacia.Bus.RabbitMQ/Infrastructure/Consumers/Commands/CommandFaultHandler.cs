@@ -43,7 +43,7 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
         {
             CommandFault fault = CommandFault.Create(context, _queue);
 
-            await _producer.Produce(string.Empty, _queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault), FaultHeaders(context), cancellationToken);
+            await _producer.Produce(string.Empty, _queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), FaultHeaders(context), cancellationToken);
 
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultQueue)) _logger.LogError(context.Error, "Delivery faulted.");
 

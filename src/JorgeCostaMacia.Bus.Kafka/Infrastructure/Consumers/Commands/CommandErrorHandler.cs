@@ -168,12 +168,12 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     {
         CommandError<TCommand> error = CommandError<TCommand>.Create(context, _groupId);
 
-        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error), Headers = ErrorHeaders(context) }, cancellationToken);
+        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error, BusSerializer.Options), Headers = ErrorHeaders(context) }, cancellationToken);
     }
 
     /// <summary>The retry's body — the typed command re-serialized.</summary>
     private static byte[] Body(CommandErrorContext<TCommand> context)
-        => JsonSerializer.SerializeToUtf8Bytes(context.Message);
+        => JsonSerializer.SerializeToUtf8Bytes(context.Message, BusSerializer.Options);
 
     /// <summary>The retry's headers — the envelope cloned with <c>RetryCount</c> incremented.</summary>
     private static Headers RetryHeaders(CommandErrorContext<TCommand> context)

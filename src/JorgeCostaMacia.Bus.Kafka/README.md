@@ -15,6 +15,10 @@
 dotnet add package JorgeCostaMacia.Bus.Kafka
 ```
 
+## Wire format
+
+Message bodies are JSON serialized with .NET's Web defaults — **camelCase** property names, case-insensitive reads. The envelope travels in **`jcm-`-prefixed headers** (`jcm-message-id`, `jcm-retry-count`, …), hyphenated like the header conventions of HTTP and AMQP; dictionary keys in bodies are user data and travel untouched.
+
 ## Logging
 
 Log messages are fixed, low-cardinality grouping keys; every variable detail — topic, group id, body, the decoded envelope headers, the `BusDescription` outcome expansion — travels as structured properties through Serilog's `LogContext`. Wire `.Enrich.FromLogContext()` into the host's Serilog pipeline (the usual default) so those properties reach the sinks.

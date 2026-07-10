@@ -78,7 +78,7 @@ internal sealed class Bus : IBus
     {
         string exchange = Exchange(message);
 
-        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType()), Prepare(exchange, message), cancellationToken);
+        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message), cancellationToken);
     }
 
     /// <summary>Publishes a message continuing an inbound flow to its exchange.</summary>
@@ -87,7 +87,7 @@ internal sealed class Bus : IBus
     {
         string exchange = Exchange(message);
 
-        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType()), Prepare(exchange, message, transport), cancellationToken);
+        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message, transport), cancellationToken);
     }
 
     /// <summary>Publishes a batch, each with a fresh envelope, to their exchanges — sequentially, as a channel is not safe for concurrent publish.</summary>

@@ -48,13 +48,13 @@ public class CommandErrorHandlerTests
         Assert.Equal($"{Deliveries.TOPIC}.error", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
-        Assert.Equal(typeof(InvalidOperationException).FullName, body.GetProperty("Error").GetProperty("Type").GetString());
-        Assert.Equal("boom", body.GetProperty("Error").GetProperty("Message").GetString());
-        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("GroupId").GetString());
-        Assert.Equal(Deliveries.TOPIC, body.GetProperty("Topic").GetString());
-        Assert.Equal(0, body.GetProperty("Partition").GetInt32());
-        Assert.Equal(10, body.GetProperty("Offset").GetInt64());
-        Assert.Equal("pepe", body.GetProperty("Message").GetProperty("Name").GetString());
+        Assert.Equal(typeof(InvalidOperationException).FullName, body.GetProperty("error").GetProperty("type").GetString());
+        Assert.Equal("boom", body.GetProperty("error").GetProperty("message").GetString());
+        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("groupId").GetString());
+        Assert.Equal(Deliveries.TOPIC, body.GetProperty("topic").GetString());
+        Assert.Equal(0, body.GetProperty("partition").GetInt32());
+        Assert.Equal(10, body.GetProperty("offset").GetInt64());
+        Assert.Equal("pepe", body.GetProperty("message").GetProperty("name").GetString());
 
         Assert.Equal(typeof(InvalidOperationException).FullName, Deliveries.Header(message, TransportHeaders.ErrorType));
         Assert.Equal(Deliveries.GROUP_ID, Deliveries.Header(message, TransportHeaders.ErrorGroupId));
@@ -84,11 +84,11 @@ public class CommandErrorHandlerTests
         await CommandError().Handle(context, TestContext.Current.CancellationToken);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Message.Value);
-        JsonElement error = body.GetProperty("Error");
-        Assert.Equal("the real cause", error.GetProperty("InnerError").GetProperty("Message").GetString());
-        Assert.Contains(nameof(FormatException), error.GetProperty("InnerError").GetProperty("Type").GetString());
-        Assert.Equal("required", error.GetProperty("Data").GetProperty("field").GetString());
-        Assert.Equal(Environment.MachineName, body.GetProperty("MachineName").GetString());
+        JsonElement error = body.GetProperty("error");
+        Assert.Equal("the real cause", error.GetProperty("innerError").GetProperty("message").GetString());
+        Assert.Contains(nameof(FormatException), error.GetProperty("innerError").GetProperty("type").GetString());
+        Assert.Equal("required", error.GetProperty("data").GetProperty("field").GetString());
+        Assert.Equal(Environment.MachineName, body.GetProperty("machineName").GetString());
     }
 
     [Fact]

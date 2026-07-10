@@ -112,7 +112,7 @@ public class BusTests
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Body);
 
-        Assert.Equal("pepe", body.GetProperty("Name").GetString());
+        Assert.Equal("pepe", body.GetProperty("name").GetString());
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class BusTests
 
         Assert.Equal(3, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced => Assert.Equal("orders.created", produced.Exchange));
-        Assert.Equal(["a", "b", "c"], _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Body).GetProperty("Name").GetString()));
+        Assert.Equal(["a", "b", "c"], _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Body).GetProperty("name").GetString()));
     }
 
     [Fact]
