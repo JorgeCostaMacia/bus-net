@@ -113,8 +113,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     private async Task OnReceivedAsync(BasicDeliverEventArgs args)
     {
-        using IDisposable? workerScope = BusLogger.WorkerContext(_logger, _exchange, _queue);
-        using IDisposable? deliveryScope = BusLogger.ConsumerContext(_logger, args);
+        using IDisposable workerScope = BusLogger.WorkerContext(_exchange, _queue);
+        using IDisposable deliveryScope = BusLogger.ConsumerContext(args);
 
         await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
 
@@ -176,7 +176,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Ack failed after the delivery was already resolved; it stays unacked for the broker to redeliver.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredOnRecovery)) _logger.LogWarning(exception, "Ack failed.");
         }
     }
 
@@ -198,7 +198,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Error handler failed; nacked with requeue.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Error handler failed.");
 
             await Nack(args);
 
@@ -237,7 +237,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Fault handler failed; nacked with requeue.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Fault handler failed.");
 
             await Nack(args);
         }
@@ -247,9 +247,18 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private async Task Ack(BasicDeliverEventArgs args)
         => await _channel!.AckAsync(args.DeliveryTag, _stopping.Token);
 
-    /// <summary>Nacks the delivery with requeue — it was not dealt with and redelivers.</summary>
+    /// <summary>
+    /// Nacks the delivery with requeue — it was not dealt with and redelivers. A requeued delivery
+    /// comes back immediately, so a persistent failure would spin hot (× prefetch): the nack waits a
+    /// second first (like the Kafka worker's consume backoff), skipped when stopping so shutdown
+    /// doesn't linger.
+    /// </summary>
     private async Task Nack(BasicDeliverEventArgs args)
-        => await _channel!.NackAsync(args.DeliveryTag, requeue: true, _stopping.Token);
+    {
+        if (!_stopping.IsCancellationRequested) await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+
+        await _channel!.NackAsync(args.DeliveryTag, requeue: true, _stopping.Token);
+    }
 
     /// <summary>
     /// Stops consuming and closes the channel. The stop is signalled and the channel disposed, but the
@@ -264,7 +273,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         if (_channel is not null) await _channel.DisposeAsync();
 
-        using (BusLogger.WorkerContext(_logger, _exchange, _queue))
-        using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Worker stopped.");
+        using (BusLogger.WorkerContext(_exchange, _queue))
+        using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Worker stopped.");
     }
 }

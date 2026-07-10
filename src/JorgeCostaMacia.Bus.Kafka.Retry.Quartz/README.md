@@ -1,6 +1,6 @@
 # JorgeCostaMacia.Bus.Kafka.Retry.Quartz
 
-**Quartz-backed delayed retry for `JorgeCostaMacia.Bus.Kafka`** — a persistent, clustered `IRetryScheduler` that parks a failed delivery as a one-shot [Quartz](https://www.nuget.org/packages/Quartz/) job and re-produces it to its topic when the delay elapses. The bus's immediate retries (a `00:00` interval) requeue through Kafka; the **positive** intervals of the retry ladder go through this scheduler. Register the scheduler on the **sending** service; the **worker fleet** just runs Quartz against the shared store.
+**Quartz-backed delayed retry for `JorgeCostaMacia.Bus.Kafka`** — a persistent, clustered `IRetryScheduler` that parks a failed delivery as a durable [Quartz](https://www.nuget.org/packages/Quartz/) job and re-produces it to its topic when the delay elapses — retrying every five minutes while the produce keeps failing, then staying parked as a dead-letter. The bus's immediate retries (a `00:00` interval) requeue through Kafka; the **positive** intervals of the retry ladder go through this scheduler. Register the scheduler on the **sending** service; the **worker fleet** just runs Quartz against the shared store.
 
 [![NuGet](https://img.shields.io/nuget/v/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Kafka.Retry.Quartz/)
 [![Downloads](https://img.shields.io/nuget/dt/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.svg)](https://www.nuget.org/packages/JorgeCostaMacia.Bus.Kafka.Retry.Quartz/)
@@ -43,7 +43,7 @@ services
     .AddQuartzHostedService();
 ```
 
-Each parked retry is a one-shot job grouped under its topic, named `messageId:retryCount` (traceable, and the same delivery scheduled twice deduplicates) and described with the failing consumer group id.
+Each parked retry is a **durable** job grouped under its topic, named `messageId:retryCount` (traceable; the same delivery parked twice just overwrites itself) and described with the failing consumer group id. Its single trigger fires the produce **exactly at the scheduled time**, then repeats it **every five minutes** while it keeps failing — four re-executions after the first fire, the same semantics as the bus's retries. A successful produce deletes the job; with the attempts exhausted Quartz completes the trigger and the durable job stays **parked as the dead-letter**: trigger-less, visible in the store, re-firable with `IScheduler.TriggerJob` (it deletes itself when a re-fire finally succeeds). The produce exception bubbles out of the job, so any Quartz job listeners (e.g. `JorgeCostaMacia.Quartz.Serilog`) observe every failed attempt.
 
 ## Requirements
 

@@ -82,7 +82,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
             {
                 await ParkError(context, cancellationToken);
 
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(context.Error, "Subscriber failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(context.Error, "Subscriber failed.");
 
                 Result = ErrorResult.Parked;
 
@@ -99,13 +99,13 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
 
             Result = ErrorResult.Unhandled;
         }
         catch (Exception broken)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Subscriber failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Subscriber failed.");
 
             Result = ErrorResult.Faulted;
         }
@@ -138,7 +138,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
         {
             await ParkError(context, cancellationToken);
 
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Subscriber failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Subscriber failed.");
 
             return ErrorResult.Parked;
         }
@@ -159,7 +159,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
         }
         catch (Exception schedule)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ScheduleFailed)) _logger.LogError(schedule, "Retry failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ScheduleFailed)) _logger.LogError(schedule, "Retry failed.");
 
             return ErrorResult.Unhandled;
         }

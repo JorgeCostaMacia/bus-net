@@ -27,6 +27,7 @@ public sealed class ConsumerConfigurator
     private readonly IServiceCollection _services;
     private readonly IReadOnlyDictionary<Type, string> _messages;
     private readonly ConsumerConfiguration _configuration;
+    private readonly HashSet<string> _groupIds = new(StringComparer.Ordinal);
 
     /// <summary>Binds the consumer configuration from the <c>Bus:Consumer</c> section and takes the routing map to resolve topics.</summary>
     /// <param name="services">The service collection.</param>
@@ -59,6 +60,8 @@ public sealed class ConsumerConfigurator
         where TCommand : Command
         where TCommandHandler : CommandHandler<TCommand>
     {
+        RegisterGroupId(groupId);
+
         string topic = _messages.TryGetValue(typeof(TCommand), out string? mapped)
             ? mapped
             : throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
@@ -121,6 +124,8 @@ public sealed class ConsumerConfigurator
         where TEvent : Event
         where TEventSubscriber : EventSubscriber<TEvent>
     {
+        RegisterGroupId(groupId);
+
         string topic = _messages.TryGetValue(typeof(TEvent), out string? mapped)
             ? mapped
             : throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
@@ -169,9 +174,21 @@ public sealed class ConsumerConfigurator
     /// since the configurator is only built when the app opts into consuming (a send-only service
     /// omits the consumer lambda and never reaches here).
     /// </summary>
-    /// <param name="configuration">The application configuration.</param>
     /// <returns>The global consumer configuration.</returns>
     /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
+    /// <summary>
+    /// Tracks every registered consumer group id and rejects a duplicate — like the message → topic
+    /// map, the registry is the single source the registrations check against. Two consumers sharing
+    /// a group id would also share the default machine-name <c>group.instance.id</c> and fence each
+    /// other out of the group (a fatal broker error that stops the application at startup).
+    /// </summary>
+    /// <param name="groupId">The consumer group id being registered.</param>
+    /// <exception cref="InvalidOperationException">The group id is already registered by another handler.</exception>
+    private void RegisterGroupId(string groupId)
+    {
+        if (!_groupIds.Add(groupId)) throw new InvalidOperationException($"Consumer group id '{groupId}' is already registered; give each handler its own group id.");
+    }
+
     private static ConsumerConfiguration CreateConsumerConfiguration(IConfiguration configuration)
     {
         ConsumerConfiguration consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>()

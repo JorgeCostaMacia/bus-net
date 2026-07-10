@@ -42,11 +42,11 @@ internal sealed class ProducerWorker : IHostedService
         }
         catch (OperationCanceledException)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.QueuedMessagesMayBeLost)) _logger.LogWarning("Flush canceled.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.QueuedMessagesMayBeLost)) _logger.LogWarning("Flush canceled.");
         }
         catch (Exception exception)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.QueuedMessagesMayBeLost)) _logger.LogWarning(exception, "Flush failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.QueuedMessagesMayBeLost)) _logger.LogWarning(exception, "Flush failed.");
         }
 
         return Task.CompletedTask;

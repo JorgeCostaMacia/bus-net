@@ -108,7 +108,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (OperationCanceledException)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerAbandoned)) _logger.LogWarning("Stop canceled.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerAbandoned)) _logger.LogWarning("Stop canceled.");
 
             return;
         }
@@ -178,7 +178,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
-        using IDisposable? scope = BusLogger.WorkerContext(_logger, _topic, GroupId);
+        using IDisposable scope = BusLogger.WorkerContext(_topic, GroupId);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -189,7 +189,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             {
                 result = _consumer.Consume(cancellationToken);
 
-                logContext = BusLogger.ConsumerContext(_logger, result);
+                logContext = BusLogger.ConsumerContext(result);
 
                 if (Filtered(result))
                 {
@@ -202,11 +202,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Consume canceled.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Consume canceled.");
             }
             catch (ConsumeException exception) when (exception.Error.IsFatal)
             {
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ApplicationStopped)) _logger.LogCritical(exception, "Consume failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ApplicationStopped)) _logger.LogCritical(exception, "Consume failed.");
 
                 _lifetime.StopApplication();
 
@@ -214,7 +214,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (Exception exception)
             {
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
 
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
@@ -301,7 +301,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            _logger.LogError(failure, "Error handler failed; escalating the delivery to the fault lane.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.EscalatedToFaultHandler)) _logger.LogError(failure, "Error handler failed.");
 
             outcome = ErrorResult.Unhandled;
         }
@@ -320,10 +320,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// A broken (or relayed) delivery: hands it to the fault handler resolved from its scope and acks
-    /// it when the handler parks it; an unparked delivery is logged critical with its coordinates
-    /// (not acked — the next commit on its partition buries it, so the log is the recovery signal:
-    /// restart before that for a redelivery, or re-inject from the topic). Never throws —
-    /// a fault handler that itself fails leaves the delivery unacked rather than tearing down the loop.
+    /// it when the handler parks it; an unparked delivery is logged as an error — its coordinates
+    /// already travel in the delivery scope (not acked: the next commit on its partition buries it,
+    /// so the log is the recovery signal — restart before that for a redelivery, or re-inject from
+    /// the topic). Never throws — a fault handler that itself fails leaves the delivery unacked
+    /// rather than tearing down the loop.
     /// </summary>
     private async Task Fault(IServiceProvider services, ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
     {
@@ -341,11 +342,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             // both lanes are down: the delivery could not be parked anywhere. Not acked — but a later
             // delivery on this partition will commit past it, so this alert is the recovery signal:
             // restart before that happens (redelivery) or re-inject from the topic while it is retained.
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(exception, "Fault park failed for {TopicPartitionOffset}; the delivery is NOT parked and will be buried by the next commit on its partition.", result.TopicPartitionOffset);
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryBuried)) _logger.LogError(exception, "Fault park failed.");
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogCritical(failure, "Fault handler failed for {TopicPartitionOffset}; the delivery is NOT parked and will be buried by the next commit on its partition.", result.TopicPartitionOffset);
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryBuried)) _logger.LogError(failure, "Fault handler failed.");
         }
     }
 
@@ -357,11 +358,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RedeliveredToNewOwner)) _logger.LogWarning("Partition lost.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredToNewOwner)) _logger.LogWarning("Partition lost.");
         }
         catch (Exception exception)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogWarning(exception, "Store failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogWarning(exception, "Store failed.");
         }
     }
 }

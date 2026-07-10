@@ -55,8 +55,8 @@ internal sealed class Producer : IProducer
         }
         catch (ProduceException<Null, byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
         {
-            using (BusLogger.ProducerContext(_logger, topic, message))
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ProducerQueueFull))
+            using (BusLogger.ProducerContext(topic, message))
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ProducerQueueFull))
             {
                 _logger.LogError(exception, "Producer failed.");
             }
@@ -65,8 +65,8 @@ internal sealed class Producer : IProducer
         }
         catch (ProduceException<Null, byte[]> exception)
         {
-            using (BusLogger.ProducerContext(_logger, topic, message))
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.SendFaulted))
+            using (BusLogger.ProducerContext(topic, message))
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.SendFaulted))
             {
                 _logger.LogError(exception, "Producer failed.");
             }

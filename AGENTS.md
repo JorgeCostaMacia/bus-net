@@ -61,13 +61,14 @@ Use the **`gitflow` skill** for any branch/release work.
 
 ## Relevant skills
 
-Skills that apply to this repo — let them trigger, or invoke explicitly. `gitflow`, `solid`, `clean-architecture`, `ddd` and `testing` are from `jorgecostamacia-agent-skills`; the rest from `dotnet-agent-skills` (the `dotnet/skills` marketplace).
+Skills that apply to this repo — let them trigger, or invoke explicitly. `gitflow`, `solid`, `clean-architecture`, `ddd`, `testing` and `logging-net` are from `jorgecostamacia-agent-skills`; the rest from `dotnet-agent-skills` (the `dotnet/skills` marketplace).
 
 - **`gitflow`** — all branch/release work.
 - **`solid`** — SOLID-principles design review; apply when shaping or reviewing the public surface (bus interfaces, worker/handler seams, transport options).
 - **`clean-architecture`** — layers and the inward dependency rule; these packages are the messaging Infrastructure/Presentation seam (bus consumers ARE driving adapters) consumed by the bounded contexts.
 - **`ddd`** — tactical DDD; here mainly **domain events vs integration events** (the `IDomainEvent` marker crossing into transport contracts is this repo's core concept) and typed domain errors.
 - **`testing`** — testing principles: done-means-tested, one test file per unit, names as specification, classicist doubles (the transport fakes), rule coverage.
+- **`logging-net`** — the logging style for every log statement: fixed low-cardinality messages as grouping keys, all variable data via the log context, correlation ids in every scope (the bus's `BusLogger` + description-context pattern follows it).
 - **`dotnet`** — C# language server + general .NET development (the transport implementations live here).
 - **`dotnet-msbuild`** — `Directory.Build.props`, project-file quality, CPM.
 - **`dotnet-nuget`** — dependency management.

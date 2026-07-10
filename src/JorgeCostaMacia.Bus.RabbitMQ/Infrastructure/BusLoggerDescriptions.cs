@@ -11,6 +11,8 @@ internal static class BusLoggerDescriptions
     public const string ParkedToErrorQueue = "Parked to the error queue.";
     public const string ParkedToFaultQueue = "Parked to the fault queue.";
     public const string DeliveryNotAcked = "The delivery is not acked.";
+    public const string NackedWithRequeue = "Nacked with requeue; the broker redelivers the delivery.";
+    public const string RedeliveredOnRecovery = "The delivery is resolved but stays unacked; the broker redelivers it on channel recovery and the idempotent handler absorbs it.";
     public const string HandedToFaultHandler = "The envelope is unreadable; handed to the fault handler.";
     public const string RetrySchedulerMissing = "No retry scheduler is registered; parked to the error queue as terminal.";
     public const string WorkerStopped = "The worker stopped.";

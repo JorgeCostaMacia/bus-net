@@ -126,6 +126,22 @@ public class BusContextTests
     }
 
     [Fact]
+    public void AddCommandHandler_DuplicateGroupId_Throws()
+    {
+        // like the message → topic map, the group-id registry rejects duplicates at registration:
+        // two consumers sharing a group id also share the machine-name group.instance.id and fence
+        // each other out of the group at startup.
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(Configuration(consumer: true),
+                producer => producer.AddCommand<TestCommand>("orders"),
+                consumer => consumer
+                    .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")
+                    .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
+
+        Assert.Contains("orders.handler", exception.Message);
+    }
+
+    [Fact]
     public void AddCommandHandler_RegistersTheHandlerAndItsWorker()
     {
         ServiceCollection services = [];
