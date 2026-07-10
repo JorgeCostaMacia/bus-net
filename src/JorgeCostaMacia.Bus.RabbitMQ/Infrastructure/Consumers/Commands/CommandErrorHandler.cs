@@ -107,11 +107,11 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
 
     /// <summary>Re-publishes the retry to the command's exchange, envelope cloned and retry count incremented.</summary>
     private Task Requeue(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
-        => _producer.Produce(_exchange, string.Empty, JsonSerializer.SerializeToUtf8Bytes(context.Message), RetryHeaders(context), cancellationToken);
+        => _producer.Produce(_exchange, string.Empty, JsonSerializer.SerializeToUtf8Bytes(context.Message, BusSerializer.Options), RetryHeaders(context), cancellationToken);
 
     /// <summary>Parks the handler failure to the error queue: a <see cref="CommandError{TCommand}"/> built from the context, published via the default exchange to <c>{queue}.error</c>.</summary>
     private Task ParkError(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
-        => _producer.Produce(string.Empty, _queue + ERROR_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(CommandError<TCommand>.Create(context, _queue)), ErrorHeaders(context), cancellationToken);
+        => _producer.Produce(string.Empty, _queue + ERROR_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(CommandError<TCommand>.Create(context, _queue), BusSerializer.Options), ErrorHeaders(context), cancellationToken);
 
     /// <summary>The retry's headers — the envelope cloned with <c>RetryCount</c> incremented.</summary>
     private static Dictionary<string, object?> RetryHeaders(CommandErrorContext<TCommand> context)

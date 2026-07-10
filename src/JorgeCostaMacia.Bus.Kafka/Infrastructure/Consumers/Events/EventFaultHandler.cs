@@ -50,7 +50,7 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
 
             Message<Null, byte[]> message = new()
             {
-                Value = JsonSerializer.SerializeToUtf8Bytes(fault),
+                Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options),
                 Headers = FaultHeaders(context)
             };
 

@@ -141,7 +141,7 @@ internal sealed class Bus : IBus
             { TransportHeaders.RetryCount, TransportHeaders.ToHeader("0") }
         };
 
-        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
+        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options), Headers = headers };
     }
 
     /// <summary>
@@ -172,7 +172,7 @@ internal sealed class Bus : IBus
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers));
         TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(0));
 
-        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
+        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options), Headers = headers };
     }
 
     /// <summary>The (topic, message) pair for a message with a fresh envelope — the batch counterpart of a single Send/Publish.</summary>

@@ -5,7 +5,7 @@ using System.Text;
 namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 
 /// <summary>
-/// The header hub — the <c>jcm_</c>-prefixed header keys that carry the message envelope, which keys
+/// The header hub — the <c>jcm-</c>-prefixed header keys that carry the message envelope, which keys
 /// travel as Guids/ints, how a value is encoded to header bytes (<see cref="ToHeader(string)"/> and
 /// overloads), and how a key is re-stamped (<see cref="Restamp"/>). Values travel as raw bytes in the
 /// AMQP field table (RabbitMQ returns string headers as bytes anyway), matching the Kafka encoding.
@@ -14,32 +14,32 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 internal static class TransportHeaders
 {
     /// <summary>The common prefix shared by every envelope header key.</summary>
-    public const string Prefix = "jcm_";
+    public const string Prefix = "jcm-";
 
-    public const string MessageId = Prefix + "message_id";
-    public const string MessageType = Prefix + "message_type";
-    public const string MessageTypeUrn = Prefix + "message_type_urn";
-    public const string MessageDestinationAddress = Prefix + "message_destination_address";
-    public const string MessageOriginAddress = Prefix + "message_origin_address";
-    public const string MessageOccurredAt = Prefix + "message_occurred_at";
-    public const string ConversationId = Prefix + "conversation_id";
-    public const string ConversationAddress = Prefix + "conversation_address";
-    public const string ConversationOccurredAt = Prefix + "conversation_occurred_at";
-    public const string AggregateId = Prefix + "aggregate_id";
-    public const string AggregateCorrelationId = Prefix + "aggregate_correlation_id";
-    public const string AggregateOccurredAt = Prefix + "aggregate_occurred_at";
-    public const string AggregateConsumers = Prefix + "aggregate_consumers";
-    public const string RetryCount = Prefix + "retry_count";
-    public const string ErrorType = Prefix + "error_type";
-    public const string ErrorMessage = Prefix + "error_message";
-    public const string ErrorGroupId = Prefix + "error_group_id";
-    public const string ErrorOccurredAt = Prefix + "error_occurred_at";
-    public const string HostMachineName = Prefix + "host_machine_name";
-    public const string HostAssembly = Prefix + "host_assembly";
-    public const string HostAssemblyVersion = Prefix + "host_assembly_version";
-    public const string HostFrameworkVersion = Prefix + "host_framework_version";
-    public const string HostBusVersion = Prefix + "host_bus_version";
-    public const string HostOperatingSystemVersion = Prefix + "host_operating_system_version";
+    public const string MessageId = Prefix + "message-id";
+    public const string MessageType = Prefix + "message-type";
+    public const string MessageTypeUrn = Prefix + "message-type-urn";
+    public const string MessageDestinationAddress = Prefix + "message-destination-address";
+    public const string MessageOriginAddress = Prefix + "message-origin-address";
+    public const string MessageOccurredAt = Prefix + "message-occurred-at";
+    public const string ConversationId = Prefix + "conversation-id";
+    public const string ConversationAddress = Prefix + "conversation-address";
+    public const string ConversationOccurredAt = Prefix + "conversation-occurred-at";
+    public const string AggregateId = Prefix + "aggregate-id";
+    public const string AggregateCorrelationId = Prefix + "aggregate-correlation-id";
+    public const string AggregateOccurredAt = Prefix + "aggregate-occurred-at";
+    public const string AggregateConsumers = Prefix + "aggregate-consumers";
+    public const string RetryCount = Prefix + "retry-count";
+    public const string ErrorType = Prefix + "error-type";
+    public const string ErrorMessage = Prefix + "error-message";
+    public const string ErrorGroupId = Prefix + "error-group-id";
+    public const string ErrorOccurredAt = Prefix + "error-occurred-at";
+    public const string HostMachineName = Prefix + "host-machine-name";
+    public const string HostAssembly = Prefix + "host-assembly";
+    public const string HostAssemblyVersion = Prefix + "host-assembly-version";
+    public const string HostFrameworkVersion = Prefix + "host-framework-version";
+    public const string HostBusVersion = Prefix + "host-bus-version";
+    public const string HostOperatingSystemVersion = Prefix + "host-operating-system-version";
 
     /// <summary>The keys whose values travel as 16 raw <see cref="Guid"/> bytes.</summary>
     public static readonly ImmutableList<string> GuidHeaders =

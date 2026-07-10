@@ -60,7 +60,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(BasicDeliverEventArgs args)
-        => new(JsonSerializer.Deserialize<TEvent>(args.Body.Span) ?? throw new JsonException("The event body deserialized to null."), Transport.Create(args));
+        => new(JsonSerializer.Deserialize<TEvent>(args.Body.Span, BusSerializer.Options) ?? throw new JsonException("The event body deserialized to null."), Transport.Create(args));
 
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)

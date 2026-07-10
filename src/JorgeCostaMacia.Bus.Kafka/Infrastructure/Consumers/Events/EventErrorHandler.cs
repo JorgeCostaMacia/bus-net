@@ -170,12 +170,12 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     {
         EventError<TEvent> error = EventError<TEvent>.Create(context, _groupId);
 
-        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error), Headers = ErrorHeaders(context) }, cancellationToken);
+        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error, BusSerializer.Options), Headers = ErrorHeaders(context) }, cancellationToken);
     }
 
     /// <summary>The retry's body — the typed event re-serialized.</summary>
     private static byte[] Body(EventErrorContext<TEvent> context)
-        => JsonSerializer.SerializeToUtf8Bytes(context.Message);
+        => JsonSerializer.SerializeToUtf8Bytes(context.Message, BusSerializer.Options);
 
     /// <summary>The retry's headers — the envelope cloned, <c>RetryCount</c> incremented and the retry re-targeted to this group only.</summary>
     private Headers RetryHeaders(EventErrorContext<TEvent> context)

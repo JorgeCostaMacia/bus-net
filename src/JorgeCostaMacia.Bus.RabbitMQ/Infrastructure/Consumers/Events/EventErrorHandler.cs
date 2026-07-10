@@ -107,11 +107,11 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
 
     /// <summary>Re-publishes the retry to the event's exchange, envelope cloned and retry count incremented.</summary>
     private Task Requeue(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
-        => _producer.Produce(_exchange, string.Empty, JsonSerializer.SerializeToUtf8Bytes(context.Message), RetryHeaders(context), cancellationToken);
+        => _producer.Produce(_exchange, string.Empty, JsonSerializer.SerializeToUtf8Bytes(context.Message, BusSerializer.Options), RetryHeaders(context), cancellationToken);
 
     /// <summary>Parks the subscriber failure to the error queue: an <see cref="EventError{TEvent}"/> built from the context, published via the default exchange to <c>{queue}.error</c>.</summary>
     private Task ParkError(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
-        => _producer.Produce(string.Empty, _queue + ERROR_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(EventError<TEvent>.Create(context, _queue)), ErrorHeaders(context), cancellationToken);
+        => _producer.Produce(string.Empty, _queue + ERROR_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(EventError<TEvent>.Create(context, _queue), BusSerializer.Options), ErrorHeaders(context), cancellationToken);
 
     /// <summary>
     /// The retry's headers — the envelope cloned with <c>RetryCount</c> incremented and the retry

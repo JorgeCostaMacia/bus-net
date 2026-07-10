@@ -11,10 +11,10 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 /// first use from the shared <see cref="Domain.IConnection"/> and reuses for the scope's lifetime,
 /// disposing it when the scope ends. Scoped — not a singleton — because a channel is not safe for
 /// concurrent publish; one producer per scope is used single-threaded. Being the one place every
-/// outbound byte flows through, it stamps the producing host's <c>jcm_host_*</c> headers on each
+/// outbound byte flows through, it stamps the producing host's <c>jcm-host-*</c> headers on each
 /// message (so retries and error/fault parking carry them too), and mirrors the envelope's key ids
 /// onto the native AMQP <see cref="BasicProperties"/> (message id, correlation, type, timestamp, app,
-/// content type) so RabbitMQ tooling and other clients see them without decoding the <c>jcm_*</c>
+/// content type) so RabbitMQ tooling and other clients see them without decoding the <c>jcm-*</c>
 /// headers — which stay the source of truth the contexts read.
 /// </summary>
 internal sealed class Producer : Domain.IProducer, IAsyncDisposable
@@ -51,7 +51,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     }
 
     /// <summary>
-    /// Mirrors the envelope's key ids from the <c>jcm_*</c> headers onto the native AMQP properties, so
+    /// Mirrors the envelope's key ids from the <c>jcm-*</c> headers onto the native AMQP properties, so
     /// RabbitMQ tooling and other clients read them without decoding headers. The headers stay the
     /// source of truth; this is a write-only convenience on produce. A missing/undecodable header just
     /// leaves its property unset.

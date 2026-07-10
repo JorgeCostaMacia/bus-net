@@ -36,7 +36,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(BasicDeliverEventArgs args)
-        => new(JsonSerializer.Deserialize<TCommand>(args.Body.Span) ?? throw new JsonException("The command body deserialized to null."), Transport.Create(args));
+        => new(JsonSerializer.Deserialize<TCommand>(args.Body.Span, BusSerializer.Options) ?? throw new JsonException("The command body deserialized to null."), Transport.Create(args));
 
     /// <inheritdoc />
     protected override Task Handle(TCommandHandler handler, CommandContext<TCommand> context, CancellationToken cancellationToken)

@@ -27,10 +27,10 @@ public class EventFaultHandlerTests
         Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
-        Assert.Equal(typeof(InvalidCastException).FullName, body.GetProperty("Error").GetProperty("Type").GetString());
-        Assert.Equal("bad header", body.GetProperty("Error").GetProperty("Message").GetString());
-        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("GroupId").GetString());
-        Assert.Equal("not json", body.GetProperty("Message").GetString());
+        Assert.Equal(typeof(InvalidCastException).FullName, body.GetProperty("error").GetProperty("type").GetString());
+        Assert.Equal("bad header", body.GetProperty("error").GetProperty("message").GetString());
+        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("groupId").GetString());
+        Assert.Equal("not json", body.GetProperty("message").GetString());
     }
 
     [Fact]
@@ -43,11 +43,11 @@ public class EventFaultHandlerTests
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Message.Value);
-        JsonElement error = body.GetProperty("Error");
-        Assert.Equal("the real cause", error.GetProperty("InnerError").GetProperty("Message").GetString());
-        Assert.Contains(nameof(FormatException), error.GetProperty("InnerError").GetProperty("Type").GetString());
-        Assert.Equal("required", error.GetProperty("Data").GetProperty("field").GetString());
-        Assert.Equal(Environment.MachineName, body.GetProperty("MachineName").GetString());
+        JsonElement error = body.GetProperty("error");
+        Assert.Equal("the real cause", error.GetProperty("innerError").GetProperty("message").GetString());
+        Assert.Contains(nameof(FormatException), error.GetProperty("innerError").GetProperty("type").GetString());
+        Assert.Equal("required", error.GetProperty("data").GetProperty("field").GetString());
+        Assert.Equal(Environment.MachineName, body.GetProperty("machineName").GetString());
     }
 
     [Fact]
