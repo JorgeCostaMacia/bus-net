@@ -19,6 +19,12 @@ internal sealed class ChannelFake : IChannel
     /// <summary>An exception to fail every publish with, or <see langword="null"/> to succeed.</summary>
     public Exception? PublishFailure { get; set; }
 
+    /// <summary>The exchanges declared through the channel, in order.</summary>
+    public List<(string Exchange, string Type, bool Durable, bool AutoDelete)> ExchangesDeclared { get; } = [];
+
+    /// <summary>Whether the channel was disposed.</summary>
+    public bool Disposed { get; private set; }
+
     // Explicit implementations — the generic constraint (incl. v7's `allows ref struct`) is inherited from the interface, not restated.
 
     ValueTask IChannel.BasicPublishAsync<TProperties>(string exchange, string routingKey, bool mandatory, TProperties basicProperties, ReadOnlyMemory<byte> body, CancellationToken cancellationToken)
@@ -39,7 +45,9 @@ internal sealed class ChannelFake : IChannel
     public ShutdownEventArgs? CloseReason => throw new NotSupportedException();
     public IAsyncBasicConsumer? DefaultConsumer { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
     public bool IsClosed => throw new NotSupportedException();
-    public bool IsOpen => throw new NotSupportedException();
+
+    /// <summary>Whether the channel is open — set it false to drive the producer's dead-channel replacement.</summary>
+    public bool IsOpen { get; set; } = true;
     public string? CurrentQueue => throw new NotSupportedException();
     public TimeSpan ContinuationTimeout { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
@@ -62,7 +70,12 @@ internal sealed class ChannelFake : IChannel
     public Task CloseAsync(ShutdownEventArgs reason, bool abort) => throw new NotSupportedException();
     public Task<uint> ConsumerCountAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task ExchangeBindAsync(string destination, string source, string routingKey, IDictionary<string, object?>? arguments, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task ExchangeDeclareAsync(string exchange, string type, bool durable, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task ExchangeDeclareAsync(string exchange, string type, bool durable, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default)
+    {
+        ExchangesDeclared.Add((exchange, type, durable, autoDelete));
+
+        return Task.CompletedTask;
+    }
     public Task ExchangeDeclarePassiveAsync(string exchange, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task ExchangeDeleteAsync(string exchange, bool ifUnused, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task ExchangeUnbindAsync(string destination, string source, string routingKey, IDictionary<string, object?>? arguments, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -78,6 +91,12 @@ internal sealed class ChannelFake : IChannel
     public Task TxRollbackAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task TxSelectAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    public void Dispose() { }
+    public ValueTask DisposeAsync()
+    {
+        Disposed = true;
+
+        return ValueTask.CompletedTask;
+    }
+
+    public void Dispose() => Disposed = true;
 }

@@ -85,6 +85,20 @@ public class BusContextTests
     }
 
     [Fact]
+    public void AddCommandAndEvent_SharingAnExchange_Throws()
+    {
+        // an exchange cannot be direct (commands) and fanout (events) at once — the broker would
+        // reject the second declare, so the misconfiguration must surface at registration.
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddBusContext(Configuration(),
+            producer => producer
+                .AddCommand<TestCommand>("orders")
+                .AddEvent<TestEvent>("orders"),
+            _ => { }));
+
+        Assert.Contains("orders", exception.Message);
+    }
+
+    [Fact]
     public void AddCommandHandler_WithoutTheCommandMapped_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
@@ -106,7 +120,7 @@ public class BusContextTests
 
         ServiceDescriptor handler = Assert.Single(services, e => e.ServiceType == typeof(TestCommandHandler));
         Assert.Equal(ServiceLifetime.Scoped, handler.Lifetime);
-        Assert.Single(services, e => e.ServiceType == typeof(IHostedService));
+        Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));   // the consumer worker + the producer topology declarer
 
         ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Commands.Errors.CommandErrorHandler<TestCommand, TestCommandHandler>));
         Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
@@ -124,7 +138,7 @@ public class BusContextTests
             consumer => consumer.AddEventSubscriber<TestEvent, TestEventSubscriber>("billing.on.orders.created.subscriber"));
 
         Assert.Single(services, e => e.ServiceType == typeof(TestEventSubscriber));
-        Assert.Single(services, e => e.ServiceType == typeof(IHostedService));
+        Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));   // the consumer worker + the producer topology declarer
 
         ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Events.Errors.EventErrorHandler<TestEvent, TestEventSubscriber>));
         Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);

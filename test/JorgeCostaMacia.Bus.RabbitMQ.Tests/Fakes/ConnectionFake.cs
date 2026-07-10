@@ -11,8 +11,16 @@ internal sealed class ConnectionFake : Domain.IConnection
     /// <param name="channel">The channel every <see cref="CreateChannelAsync"/> returns.</param>
     public ConnectionFake(ChannelFake channel) => _channel = channel;
 
+    /// <summary>How many channels were requested from the connection.</summary>
+    public int Created { get; private set; }
+
     /// <inheritdoc />
-    public Task<IChannel> CreateChannelAsync(CancellationToken cancellationToken = default) => Task.FromResult<IChannel>(_channel);
+    public Task<IChannel> CreateChannelAsync(CancellationToken cancellationToken = default)
+    {
+        Created++;
+
+        return Task.FromResult<IChannel>(_channel);
+    }
 
     /// <inheritdoc />
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
