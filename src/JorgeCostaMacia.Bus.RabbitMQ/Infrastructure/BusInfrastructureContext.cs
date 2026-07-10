@@ -39,6 +39,10 @@ internal static class BusInfrastructureContext
         services.AddScoped<IProducer, Producer>();
         services.AddScoped<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 
+        // registered before the consumers so the producer's exchanges exist before anything binds
+        // to them — and a send-only service creates its own topology with no consumer involved.
+        services.AddHostedService(provider => new TopologyWorker(provider.GetRequiredService<IConnection>(), producerConfigurator.Exchanges));
+
         if (consumer is not null)
         {
             ConsumerConfigurator consumerConfigurator = new(services, producerConfigurator.Messages);

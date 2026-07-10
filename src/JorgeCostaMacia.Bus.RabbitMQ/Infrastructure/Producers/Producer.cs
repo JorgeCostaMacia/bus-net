@@ -78,9 +78,20 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     private static string? GuidText(IReadOnlyDictionary<string, object?> headers, string key)
         => headers.TryGetValue(key, out object? value) && value is byte[] bytes && bytes.Length == 16 ? new Guid(bytes).ToString() : null;
 
-    /// <summary>The scope's channel — opened once on first publish, reused thereafter.</summary>
+    /// <summary>
+    /// The scope's channel — opened on first publish and reused thereafter; a channel the broker has
+    /// closed mid-scope (e.g. an async publish error) is replaced instead of handed out dead.
+    /// </summary>
     private async Task<IChannel> ChannelAsync(CancellationToken cancellationToken)
-        => _channel ??= await _connection.CreateChannelAsync(cancellationToken);
+    {
+        if (_channel is { IsOpen: true }) return _channel;
+
+        if (_channel is not null) await _channel.DisposeAsync();
+
+        _channel = await _connection.CreateChannelAsync(cancellationToken);
+
+        return _channel;
+    }
 
     /// <summary>The producing host's identity, captured once as ready-to-stamp header bytes.</summary>
     private static IReadOnlyList<KeyValuePair<string, object?>> Host()

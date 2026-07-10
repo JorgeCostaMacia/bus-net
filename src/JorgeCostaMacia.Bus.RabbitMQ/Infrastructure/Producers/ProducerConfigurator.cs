@@ -1,5 +1,6 @@
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
+using RabbitMQ.Client;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 
@@ -13,12 +14,16 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 public sealed class ProducerConfigurator
 {
     private readonly Dictionary<Type, string> _messages = [];
+    private readonly Dictionary<string, string> _exchanges = [];
 
     /// <summary>Creates an empty configurator.</summary>
     internal ProducerConfigurator() { }
 
     /// <summary>The type → exchange routing map the bus publishes through and the consumers bind from.</summary>
     internal IReadOnlyDictionary<Type, string> Messages => _messages;
+
+    /// <summary>The exchange → kind (direct/fanout) map the startup topology declarer creates.</summary>
+    internal IReadOnlyDictionary<string, string> Exchanges => _exchanges;
 
     /// <summary>Maps a command this service sends to its exchange.</summary>
     /// <typeparam name="TCommand">The command type.</typeparam>
@@ -28,6 +33,8 @@ public sealed class ProducerConfigurator
         where TCommand : Command
     {
         if (!_messages.TryAdd(typeof(TCommand), exchange)) throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is already mapped to an exchange.");
+
+        RegisterExchange(exchange, ExchangeType.Direct);
 
         return this;
     }
@@ -41,6 +48,23 @@ public sealed class ProducerConfigurator
     {
         if (!_messages.TryAdd(typeof(TEvent), exchange)) throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is already mapped to an exchange.");
 
+        RegisterExchange(exchange, ExchangeType.Fanout);
+
         return this;
+    }
+
+    /// <summary>
+    /// Records the exchange's kind for the startup declarer — an exchange cannot be a command's
+    /// (direct) and an event's (fanout) at once: the broker would reject the second declare, so the
+    /// misconfiguration surfaces here, at registration, with a readable message.
+    /// </summary>
+    private void RegisterExchange(string exchange, string exchangeType)
+    {
+        if (_exchanges.TryGetValue(exchange, out string? registered) && registered != exchangeType)
+        {
+            throw new InvalidOperationException($"'{exchange}' is already mapped as a '{registered}' exchange; commands (direct) and events (fanout) cannot share one.");
+        }
+
+        _exchanges[exchange] = exchangeType;
     }
 }

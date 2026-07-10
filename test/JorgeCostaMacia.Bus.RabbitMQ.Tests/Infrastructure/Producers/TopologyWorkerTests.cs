@@ -1,0 +1,35 @@
+using JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
+using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
+using RabbitMQ.Client;
+
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+
+public class TopologyWorkerTests
+{
+    [Fact]
+    public async Task StartAsync_DeclaresEveryMappedExchange_MatchingTheConsumersOptions()
+    {
+        // the producer's exchanges are born at startup, idempotently, with exactly the options the
+        // consumers declare with (durable, not auto-delete) — a mismatch would fail their declare.
+        ChannelFake channel = new();
+        ConnectionFake connection = new(channel);
+        Dictionary<string, string> exchanges = new() { ["orders"] = ExchangeType.Direct, ["orders.created"] = ExchangeType.Fanout };
+
+        await new TopologyWorker(connection, exchanges).StartAsync(TestContext.Current.CancellationToken);
+
+        Assert.Contains(("orders", ExchangeType.Direct, true, false), channel.ExchangesDeclared);
+        Assert.Contains(("orders.created", ExchangeType.Fanout, true, false), channel.ExchangesDeclared);
+        Assert.True(channel.Disposed);
+    }
+
+    [Fact]
+    public async Task StartAsync_NoExchanges_OpensNoChannel()
+    {
+        ChannelFake channel = new();
+        ConnectionFake connection = new(channel);
+
+        await new TopologyWorker(connection, new Dictionary<string, string>()).StartAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, connection.Created);
+    }
+}

@@ -36,6 +36,21 @@ public class ProducerTests
     }
 
     [Fact]
+    public async Task Produce_ChannelDied_ReopensInsteadOfReusingTheDeadOne()
+    {
+        // an async publish error closes the channel broker-side: the next produce must replace it
+        // instead of handing out the dead cached one until the scope ends.
+        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _connection.Created);
+
+        _channel.IsOpen = false;
+        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _connection.Created);
+    }
+
+    [Fact]
     public async Task Produce_Failure_Rethrows()
     {
         _channel.PublishFailure = new InvalidOperationException("broker down");
