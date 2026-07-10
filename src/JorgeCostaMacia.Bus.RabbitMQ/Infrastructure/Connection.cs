@@ -19,6 +19,7 @@ internal sealed class Connection : Domain.IConnection
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private global::RabbitMQ.Client.IConnection? _connection;
+    private bool _disposed;
 
     /// <summary>Creates the connection wrapper over the configured factory.</summary>
     /// <param name="factory">The RabbitMQ connection factory (host, credentials, vhost, recovery).</param>
@@ -50,6 +51,8 @@ internal sealed class Connection : Domain.IConnection
 
         try
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
             if (_connection is { IsOpen: true }) return _connection;
 
             if (_connection is not null) await _connection.DisposeAsync();
@@ -98,11 +101,27 @@ internal sealed class Connection : Domain.IConnection
         };
     }
 
-    /// <summary>Closes the shared connection.</summary>
+    /// <summary>
+    /// Closes the shared connection — under the gate, so it cannot race a concurrent open, and a
+    /// late caller is rejected as disposed instead of resurrecting the connection. The gate itself
+    /// is not disposed: a waiter may still hold it, and an undisposed <see cref="SemaphoreSlim"/>
+    /// leaks nothing.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_connection is not null) await _connection.DisposeAsync();
+        await _gate.WaitAsync();
 
-        _gate.Dispose();
+        try
+        {
+            _disposed = true;
+
+            if (_connection is not null) await _connection.DisposeAsync();
+
+            _connection = null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 }
