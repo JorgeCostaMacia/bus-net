@@ -22,6 +22,7 @@ public class CommandWorkerTests
     private CommandWorker<TestCommand, RecordingCommandHandler> Worker(
         ConsumerChannelFake channel,
         ImmutableList<TimeSpan>? intervals = null,
+        RetrySchedulerFake? scheduler = null,
         ErrorHandlerBase? errorHandler = null,
         FaultHandlerBase? faultHandler = null,
         ILogger<CommandWorker<TestCommand, RecordingCommandHandler>>? logger = null)
@@ -29,7 +30,7 @@ public class CommandWorkerTests
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<ErrorHandlerBase>(_ =>
-                errorHandler ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
+                errorHandler ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, scheduler, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
             .AddScoped<FaultHandlerBase>(_ =>
                 faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.QUEUE))
             .BuildServiceProvider();
@@ -166,6 +167,23 @@ public class CommandWorkerTests
         Assert.Equal(Deliveries.EXCHANGE, exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
+    }
+
+    [Fact]
+    public async Task HandlerThrows_PositiveInterval_SchedulesTheRetry_AndAcks()
+    {
+        // the delayed retry is parked through the scheduler, not published: the delivery is done —
+        // acked like a requeue or a park.
+        _handler.Failure = new InvalidOperationException("boom");
+        RetrySchedulerFake scheduler = new();
+        ConsumerChannelFake channel = new();
+
+        await Deliver(channel, Worker(channel, [TimeSpan.FromMinutes(5)], scheduler), Deliveries.Delivery(new TestCommand("pepe")));
+
+        Assert.Single(scheduler.Scheduled);
+        Assert.Empty(_producer.Produced);
+        Assert.Equal(10ul, Assert.Single(channel.Acked));
+        Assert.Empty(channel.Nacked);
     }
 
     [Fact]

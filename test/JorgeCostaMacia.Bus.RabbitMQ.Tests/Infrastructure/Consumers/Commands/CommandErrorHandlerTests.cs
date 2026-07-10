@@ -18,9 +18,10 @@ public class CommandErrorHandlerTests
     private sealed class BrokerFailure() : RabbitMQClientException("broker down");
 
     private readonly ProducerFake _producer = new();
+    private readonly RetrySchedulerFake _scheduler = new();
 
-    private ErrorHandler CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null)
-        => new(_producer, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], excludes ?? []);
+    private ErrorHandler CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
+        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], excludes ?? []);
 
     [Fact]
     public async Task NoLadder_ParksToErrorQueue()
@@ -90,12 +91,28 @@ public class CommandErrorHandlerTests
         Assert.Equal(Deliveries.EXCHANGE, exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal("1", Deliveries.Header(headers, TransportHeaders.RetryCount));
+        Assert.Empty(_scheduler.Scheduled);
     }
 
     [Fact]
-    public async Task PositiveInterval_ParksAsTerminal_WithNoScheduler()
+    public async Task PositiveInterval_ParksThroughScheduler()
     {
         ErrorHandler sut = CommandError([TimeSpan.FromMinutes(5)]);
+
+        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorResult.Scheduled, sut.Result);
+        Assert.Empty(_producer.Produced);
+        (string exchange, string queue, _, IReadOnlyDictionary<string, object?> headers, _) = Assert.Single(_scheduler.Scheduled);
+        Assert.Equal(Deliveries.EXCHANGE, exchange);
+        Assert.Equal(Deliveries.QUEUE, queue);
+        Assert.Equal("1", Deliveries.Header(headers, TransportHeaders.RetryCount));
+    }
+
+    [Fact]
+    public async Task PositiveInterval_WithoutScheduler_ParksAsTerminal()
+    {
+        ErrorHandler sut = CommandError([TimeSpan.FromMinutes(5)], scheduler: false);
 
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -103,6 +120,19 @@ public class CommandErrorHandlerTests
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
         Assert.Equal($"{Deliveries.QUEUE}.error", routingKey);
+        Assert.Empty(_scheduler.Scheduled);
+    }
+
+    [Fact]
+    public async Task SchedulerFails_LeavesUnhandled()
+    {
+        _scheduler.Failure = new InvalidOperationException("scheduler down");
+        ErrorHandler sut = CommandError([TimeSpan.FromMinutes(5)]);
+
+        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorResult.Unhandled, sut.Result);
+        Assert.Empty(_producer.Produced);
     }
 
     [Fact]
