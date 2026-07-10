@@ -6,9 +6,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 /// The consume side's inbound gate — the seam over a RabbitMQ channel a <c>ConsumerWorker</c> drives
 /// through, the mirror of the <see cref="IProducer"/> gate on the send side. One per worker (a channel
 /// is not shared), it exposes only what the worker needs: declare its topology, subscribe a push
-/// callback, and ack/nack a delivery — so the delivery flow can be driven over a fake without a live
-/// broker. Unlike Kafka's pull loop, delivery is push: the broker invokes the callback registered by
-/// <see cref="ConsumeAsync"/>.
+/// callback (with an observer for the channel's death), and ack/nack a delivery — so the delivery flow
+/// can be driven over a fake without a live broker. Unlike Kafka's pull loop, delivery is push: the
+/// broker invokes the callback registered by <see cref="ConsumeAsync"/>.
 /// </summary>
 internal interface IConsumerChannel : IAsyncDisposable
 {
@@ -21,11 +21,12 @@ internal interface IConsumerChannel : IAsyncDisposable
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task DeclareAsync(string exchange, string exchangeType, string queue, IEnumerable<string> parkQueues, ushort prefetchCount, CancellationToken cancellationToken = default);
 
-    /// <summary>Subscribes a push consumer on the queue — the broker invokes <paramref name="onReceived"/> per delivery.</summary>
+    /// <summary>Subscribes a push consumer on the queue — the broker invokes <paramref name="onReceived"/> per delivery, and <paramref name="onClosed"/> when the channel or the consumer dies.</summary>
     /// <param name="queue">The queue to consume from.</param>
     /// <param name="onReceived">The per-delivery callback.</param>
+    /// <param name="onClosed">The death observer — invoked with the shutdown reason when the channel shuts down, or with <see langword="null"/> when the broker cancels the consumer.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task ConsumeAsync(string queue, Func<BasicDeliverEventArgs, Task> onReceived, CancellationToken cancellationToken = default);
+    Task ConsumeAsync(string queue, Func<BasicDeliverEventArgs, Task> onReceived, Func<ShutdownEventArgs?, Task> onClosed, CancellationToken cancellationToken = default);
 
     /// <summary>Acks a delivery — it was dealt with.</summary>
     /// <param name="deliveryTag">The delivery tag to ack.</param>

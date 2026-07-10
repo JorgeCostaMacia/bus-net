@@ -2,7 +2,9 @@ using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 
@@ -19,7 +21,8 @@ public class CommandWorkerTests
         ConsumerChannelFake channel,
         ImmutableList<TimeSpan>? intervals = null,
         Domain.Commands.Errors.CommandErrorHandler<TestCommand, RecordingCommandHandler>? errorHandler = null,
-        Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>? faultHandler = null)
+        Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>? faultHandler = null,
+        ILogger<CommandWorker<TestCommand, RecordingCommandHandler>>? logger = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
@@ -32,7 +35,7 @@ public class CommandWorkerTests
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
             channel,
             provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
+            logger ?? NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
             Deliveries.EXCHANGE,
             Deliveries.QUEUE,
             prefetchCount: 10);
@@ -224,6 +227,44 @@ public class CommandWorkerTests
 
         Assert.Equal("pepe", _handler.Received?.Name);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
+    }
+
+    [Fact]
+    public async Task ChannelDies_LogsTheDeath_WithoutTearingDown_AndStillStopsCleanly()
+    {
+        // the broker closes the channel under the worker: visibility only — the death is logged as a
+        // warning with the shutdown reason, nothing is torn down, and the worker still stops cleanly.
+        ConsumerChannelFake channel = new();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Peer, 541, "INTERNAL_ERROR"));
+
+        Assert.Equal((LogLevel.Warning, "Channel closed."), Assert.Single(logger.Logged));
+        Assert.False(channel.Disposed);
+
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(channel.Disposed);
+        Assert.Empty(channel.Acked);
+        Assert.Empty(channel.Nacked);
+    }
+
+    [Fact]
+    public async Task ChannelClosesOnCleanStop_StaysSilent()
+    {
+        // the channel's own dispose raises the shutdown event on a clean stop: not a death — the
+        // worker is already stopping and logs no warning.
+        ConsumerChannelFake channel = new();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+        await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Application, 200, "Goodbye"));
+
+        Assert.DoesNotContain(logger.Logged, log => log.Message == "Channel closed.");
     }
 
     [Fact]

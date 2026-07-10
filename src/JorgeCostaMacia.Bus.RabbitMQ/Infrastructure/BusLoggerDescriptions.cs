@@ -16,4 +16,5 @@ internal static class BusLoggerDescriptions
     public const string HandedToFaultHandler = "The envelope is unreadable; handed to the fault handler.";
     public const string RetrySchedulerMissing = "No retry scheduler is registered; parked to the error queue as terminal.";
     public const string WorkerStopped = "The worker stopped.";
+    public const string ConsumerChannelClosed = "The consumer channel closed; automatic recovery restores it, or the worker stays deaf until restart.";
 }

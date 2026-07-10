@@ -13,6 +13,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFactory
 {
     private Func<BasicDeliverEventArgs, Task>? _onReceived;
+    private Func<ShutdownEventArgs?, Task>? _onClosed;
 
     /// <summary>Whether the worker declared its topology on start.</summary>
     public bool Declared { get; private set; }
@@ -41,10 +42,11 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     }
 
     /// <inheritdoc />
-    public Task ConsumeAsync(string queue, Func<BasicDeliverEventArgs, Task> onReceived, CancellationToken cancellationToken = default)
+    public Task ConsumeAsync(string queue, Func<BasicDeliverEventArgs, Task> onReceived, Func<ShutdownEventArgs?, Task> onClosed, CancellationToken cancellationToken = default)
     {
         ConsumedQueue = queue;
         _onReceived = onReceived;
+        _onClosed = onClosed;
 
         return Task.CompletedTask;
     }
@@ -81,4 +83,8 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     /// <summary>Drives a delivery into the worker's registered push callback, as the broker would, and awaits its full processing.</summary>
     /// <param name="args">The delivery to push.</param>
     public Task DeliverAsync(BasicDeliverEventArgs args) => _onReceived?.Invoke(args) ?? Task.CompletedTask;
+
+    /// <summary>Kills the channel under the worker, as the broker would, driving its registered death observer.</summary>
+    /// <param name="reason">The shutdown reason, or <see langword="null"/> for a consumer cancellation without one.</param>
+    public Task CloseAsync(ShutdownEventArgs? reason = null) => _onClosed?.Invoke(reason) ?? Task.CompletedTask;
 }
