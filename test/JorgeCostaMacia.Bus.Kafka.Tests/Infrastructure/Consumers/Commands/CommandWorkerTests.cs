@@ -14,14 +14,14 @@ public class CommandWorkerTests
     private readonly LifetimeFake _lifetime = new();
     private readonly RecordingCommandHandler _handler = new();
 
-    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null)
+    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>? faultHandler = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<Domain.Commands.Errors.CommandErrorHandler<TestCommand, RecordingCommandHandler>>(_ =>
                 new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], []))
             .AddScoped<Domain.Commands.Faults.CommandFaultHandler<TestCommand, RecordingCommandHandler>>(_ =>
-                new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
+                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
             .BuildServiceProvider();
 
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
@@ -136,6 +136,42 @@ public class CommandWorkerTests
         (string topic, _) = Assert.Single(_producer.Produced);
         Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+    }
+
+    [Fact]
+    public async Task BothLanesDown_LeavesTheDeliveryUnacked_AndKeepsConsuming()
+    {
+        // the handler fails and BOTH parking lanes are down (the retry requeue and the .fault park):
+        // the delivery cannot be parked anywhere — it must stay unacked (the Critical log is the
+        // recovery signal) and the loop must survive to keep processing the partition.
+        _handler.Failure = new InvalidOperationException("boom");
+        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
+        _producer.FailingTopics.Add(Deliveries.TOPIC);
+        _producer.FailingTopics.Add($"{Deliveries.TOPIC}.fault");
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
+
+        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+
+        Assert.Equal("second", _handler.Received?.Name);   // the loop survived the first delivery's double failure
+        Assert.Empty(consumer.Stored);                     // nothing acked — no delivery was parked
+        Assert.Empty(_producer.Produced);                  // and nothing landed on any lane
+    }
+
+    [Fact]
+    public async Task FaultHandlerThrows_LeavesTheDeliveryUnacked_WithoutTearingDownTheLoop()
+    {
+        // the last-resort catch: even the fault handler blowing up must not ack the delivery nor
+        // kill the consume loop — the Critical log carries the coordinates for manual recovery.
+        _handler.Failure = new InvalidOperationException("boom");
+        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
+        _producer.FailingTopics.Add(Deliveries.TOPIC);
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
+
+        await Drive(Worker(consumer, [TimeSpan.Zero], new ThrowingCommandFaultHandler()), consumer);
+
+        Assert.Equal("second", _handler.Received?.Name);
+        Assert.Empty(consumer.Stored);
+        Assert.Empty(_producer.Produced);
     }
 
     [Fact]
