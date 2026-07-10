@@ -99,7 +99,24 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _channel = await _channelFactory.CreateAsync(cancellationToken);
 
         await _channel.DeclareAsync(_exchange, _exchangeType, _queue, [_queue + ERROR_QUEUE_SUFFIX, _queue + FAULT_QUEUE_SUFFIX], _prefetchCount, cancellationToken);
-        await _channel.ConsumeAsync(_queue, OnReceivedAsync, cancellationToken);
+        await _channel.ConsumeAsync(_queue, OnReceivedAsync, OnClosedAsync, cancellationToken);
+    }
+
+    /// <summary>
+    /// The channel (or its consumer) died under the worker: visibility only — the death is logged with
+    /// the shutdown reason in the context (the client's automatic recovery restores the channel, or the
+    /// worker stays deaf until restart), nothing is torn down, and a clean stop stays silent.
+    /// </summary>
+    /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer without one.</param>
+    private Task OnClosedAsync(ShutdownEventArgs? reason)
+    {
+        if (_stopping.IsCancellationRequested) return Task.CompletedTask;
+
+        using (BusLogger.WorkerContext(_exchange, _queue))
+        using (BusLogger.ShutdownContext(reason))
+        using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelClosed)) _logger.LogWarning("Channel closed.");
+
+        return Task.CompletedTask;
     }
 
     /// <summary>

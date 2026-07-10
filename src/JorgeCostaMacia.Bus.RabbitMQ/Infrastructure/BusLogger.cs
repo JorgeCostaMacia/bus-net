@@ -62,6 +62,17 @@ internal static class BusLogger
         return LogContext.Push(context.ToArray());
     }
 
+    /// <summary>
+    /// Opens the logging context carrying the channel's shutdown reason — the broker's reply code and
+    /// text when the close carried them.
+    /// </summary>
+    /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer without one.</param>
+    /// <returns>The context to dispose after logging the outcome.</returns>
+    public static IDisposable ShutdownContext(ShutdownEventArgs? reason)
+        => LogContext.Push(
+            new PropertyEnricher("ReplyCode", reason?.ReplyCode),
+            new PropertyEnricher("ReplyText", reason?.ReplyText));
+
     /// <summary>Logs a failed handling republished to retry, with the retry number in the context.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The handling failure.</param>

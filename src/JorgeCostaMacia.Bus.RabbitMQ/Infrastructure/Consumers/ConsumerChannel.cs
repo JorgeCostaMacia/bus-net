@@ -31,10 +31,13 @@ internal sealed class ConsumerChannel : IConsumerChannel
     }
 
     /// <inheritdoc />
-    public async Task ConsumeAsync(string queue, Func<BasicDeliverEventArgs, Task> onReceived, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(string queue, Func<BasicDeliverEventArgs, Task> onReceived, Func<ShutdownEventArgs?, Task> onClosed, CancellationToken cancellationToken = default)
     {
         AsyncEventingBasicConsumer consumer = new(_channel);
         consumer.ReceivedAsync += (_, args) => onReceived(args);
+        consumer.UnregisteredAsync += (_, _) => onClosed(null);
+
+        _channel.ChannelShutdownAsync += (_, args) => onClosed(args);
 
         await _channel.BasicConsumeAsync(queue, autoAck: false, consumer, cancellationToken);
     }
