@@ -7,7 +7,10 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 /// The container-owned singleton wrapping the RabbitMQ connection: opens it lazily on first use from
 /// the configured <see cref="ConnectionFactory"/> (with automatic recovery), guards the open with a
 /// gate so concurrent callers share one connection, and re-opens it if it has dropped. Hands out a
-/// fresh channel per request — the connection is shared and thread-safe, the channels are not.
+/// fresh channel per request — the connection is shared and thread-safe, the channels are not. Every
+/// channel is opened with <b>publisher confirmations</b> on: a publish completes only when the broker
+/// has accepted the message, which is what lets the consumers ack an original only after its parked
+/// copy truly exists.
 /// </summary>
 internal sealed class Connection : Domain.IConnection
 {
@@ -31,7 +34,11 @@ internal sealed class Connection : Domain.IConnection
     {
         global::RabbitMQ.Client.IConnection connection = await OpenAsync(cancellationToken);
 
-        return await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+        // confirmations on: BasicPublishAsync completes when the broker accepts the message, not
+        // when the frame hits the socket — the ack protocol of the failure lanes depends on it.
+        CreateChannelOptions options = new CreateChannelOptions(publisherConfirmationsEnabled: true, publisherConfirmationTrackingEnabled: true);
+
+        return await connection.CreateChannelAsync(options, cancellationToken);
     }
 
     /// <summary>Returns the open connection, opening (or re-opening) it under the gate when needed.</summary>

@@ -9,7 +9,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 /// </summary>
 internal interface IProducer
 {
-    /// <summary>Publishes a message to an exchange with a routing key. A completed task means the broker accepted it; a failure throws.</summary>
+    /// <summary>Publishes a message to an exchange with a routing key. A completed task means the broker accepted it (the channel publishes with confirmations); a failure throws.</summary>
     /// <param name="exchange">The exchange to publish to.</param>
     /// <param name="routingKey">The routing key (empty for fanout exchanges).</param>
     /// <param name="body">The raw message body.</param>
