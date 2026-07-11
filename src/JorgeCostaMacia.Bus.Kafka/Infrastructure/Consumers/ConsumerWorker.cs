@@ -178,7 +178,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// other handling failure goes to the error handler, and to the fault handler when it reports
     /// <see cref="ErrorResult.Faulted"/> or fails itself (<see cref="ErrorResult.Unhandled"/>). A
     /// dealt-with delivery is acked; one that not even the fault handler could park is logged
-    /// critical with its coordinates — the recovery signal.
+    /// error with its coordinates — the recovery signal.
     /// </summary>
     private async Task Consume(CancellationToken cancellationToken)
     {
