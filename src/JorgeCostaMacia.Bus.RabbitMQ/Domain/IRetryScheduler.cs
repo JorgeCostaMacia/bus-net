@@ -15,8 +15,8 @@ public interface IRetryScheduler
     /// <param name="exchange">The original exchange to produce back to (published with an empty routing key).</param>
     /// <param name="queue">The failing consumer queue — carried for traceability (e.g. the parked retry's description).</param>
     /// <param name="body">The raw message body.</param>
-    /// <param name="headers">The envelope to travel with the retry — retry count and targeting already stamped.</param>
+    /// <param name="headers">The envelope to travel with the retry, as canonical <c>string → string</c> text — retry count and targeting already stamped.</param>
     /// <param name="scheduledAt">The UTC time to produce the retry at.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Schedule(string exchange, string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, DateTime scheduledAt, CancellationToken cancellationToken);
+    Task Schedule(string exchange, string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, DateTime scheduledAt, CancellationToken cancellationToken);
 }

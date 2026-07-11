@@ -58,7 +58,7 @@ public class EventFaultHandlerTests
 
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
-        IReadOnlyDictionary<string, object?> headers = Assert.Single(_producer.Produced).Headers;
+        IReadOnlyDictionary<string, string> headers = Assert.Single(_producer.Produced).Headers;
         Assert.Equal(typeof(InvalidCastException).FullName, Deliveries.Header(headers, TransportHeaders.ErrorType));
         Assert.Equal("bad header", Deliveries.Header(headers, TransportHeaders.ErrorMessage));
         Assert.Equal(Deliveries.QUEUE, Deliveries.Header(headers, TransportHeaders.ErrorGroupId));

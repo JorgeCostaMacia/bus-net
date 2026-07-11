@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
@@ -28,13 +29,13 @@ public class RetrySchedulerTests
             ["quartz.threadPool.threadCount"] = "1"
         });
 
-    private static Dictionary<string, object?> Headers(Guid? messageId = null, int? retryCount = null, params (string Key, object? Value)[] extra)
+    private static Dictionary<string, string> Headers(Guid? messageId = null, int? retryCount = null, params (string Key, string Value)[] extra)
     {
-        Dictionary<string, object?> headers = [];
+        Dictionary<string, string> headers = [];
 
-        if (messageId is Guid id) headers[TransportHeaders.MessageId] = id.ToByteArray();
-        if (retryCount is int count) headers[TransportHeaders.RetryCount] = Encoding.UTF8.GetBytes(count.ToString());
-        foreach ((string key, object? value) in extra) headers[key] = value;
+        if (messageId is Guid id) headers[TransportHeaders.MessageId] = id.ToString();
+        if (retryCount is int count) headers[TransportHeaders.RetryCount] = count.ToString(CultureInfo.InvariantCulture);
+        foreach ((string key, string value) in extra) headers[key] = value;
 
         return headers;
     }
@@ -136,26 +137,24 @@ public class RetrySchedulerTests
     }
 
     [Fact]
-    public async Task Schedule_RoundTripsHeaders_PreservingNull_AndNormalizingTypedValues()
+    public async Task Schedule_RoundTripsHeadersAsText()
     {
-        // a foreign publisher's AMQP field table can carry typed values: a non-byte value travels
-        // as the UTF-8 bytes of its invariant text — the same philosophy the transport decodes with.
+        // the wire carries a string → string table, so the parked envelope round-trips as canonical
+        // text — the reading boundary materializes the types back on the produce.
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
 
         await new RetryScheduler(factory).Schedule(
             EXCHANGE, QUEUE, "body"u8.ToArray(),
-            Headers(messageId, 0, ("k", "v"u8.ToArray()), ("n", null), ("s", "text"), ("i", 7)),
+            Headers(messageId, 0, ("k", "v"), ("s", "text")),
             SCHEDULED_AT, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
         IJobDetail job = (await scheduler.GetJobDetail(new JobKey($"{messageId}:0", EXCHANGE), TestContext.Current.CancellationToken))!;
-        List<KeyValuePair<string, byte[]?>> decoded = JsonSerializer.Deserialize<List<KeyValuePair<string, byte[]?>>>(job.JobDataMap.GetString(RetryJob.HEADERS_KEY)!)!;
+        List<KeyValuePair<string, string>> decoded = JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(job.JobDataMap.GetString(RetryJob.HEADERS_KEY)!)!;
 
-        Assert.Contains(decoded, header => header.Key == "k" && header.Value!.SequenceEqual("v"u8.ToArray()));
-        Assert.Contains(decoded, header => header.Key == "n" && header.Value is null);
-        Assert.Contains(decoded, header => header.Key == "s" && header.Value!.SequenceEqual("text"u8.ToArray()));
-        Assert.Contains(decoded, header => header.Key == "i" && header.Value!.SequenceEqual("7"u8.ToArray()));
+        Assert.Contains(decoded, header => header.Key == "k" && header.Value == "v");
+        Assert.Contains(decoded, header => header.Key == "s" && header.Value == "text");
     }
 
     [Fact]

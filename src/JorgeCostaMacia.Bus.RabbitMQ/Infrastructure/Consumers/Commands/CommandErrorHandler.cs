@@ -154,9 +154,9 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
         => JsonSerializer.SerializeToUtf8Bytes(context.Message, BusSerializer.Options);
 
     /// <summary>The retry's headers — the envelope cloned with <c>RetryCount</c> incremented.</summary>
-    private static Dictionary<string, object?> RetryHeaders(CommandErrorContext<TCommand> context)
+    private static Dictionary<string, string> RetryHeaders(CommandErrorContext<TCommand> context)
     {
-        Dictionary<string, object?> headers = context.Transport.CloneHeaders();
+        Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(context.RetryCount + 1));
 
@@ -164,11 +164,11 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     }
 
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing queue, the UTC time).</summary>
-    private Dictionary<string, object?> ErrorHeaders(CommandErrorContext<TCommand> context)
+    private Dictionary<string, string> ErrorHeaders(CommandErrorContext<TCommand> context)
     {
         Type type = context.Error.GetType();
 
-        Dictionary<string, object?> headers = context.Transport.CloneHeaders();
+        Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
         TransportHeaders.Restamp(headers, TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));

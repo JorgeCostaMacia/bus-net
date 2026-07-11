@@ -1,15 +1,15 @@
 using System.Collections.Immutable;
 using System.Globalization;
-using System.Text;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 
 /// <summary>
 /// The header hub — the <c>jcm-</c>-prefixed header keys that carry the message envelope, which keys
-/// travel as Guids/ints, how a value is encoded to header bytes (<see cref="ToHeader(string)"/> and
-/// overloads), and how a key is re-stamped (<see cref="Restamp"/>). Values travel as raw bytes in the
-/// AMQP field table (RabbitMQ returns string headers as bytes anyway), matching the Kafka encoding.
-/// Reading the bytes back lives on <see cref="Transport"/>.
+/// travel as Guids/ints, how a value is rendered to its canonical header text (<see cref="ToHeader(string)"/>
+/// and overloads), and how a key is re-stamped (<see cref="Restamp"/>). The RabbitMQ wire carries a
+/// <c>string → string</c> table: every header travels as canonical text — Guids in their dashed "D"
+/// form, ints as invariant digits, dates as ISO round-trip — so the whole envelope is human-readable in
+/// the management UI, and the typed materialization happens at the reading boundary on <see cref="Transport"/>.
 /// </summary>
 internal static class TransportHeaders
 {
@@ -41,7 +41,7 @@ internal static class TransportHeaders
     public const string HostBusVersion = Prefix + "host-bus-version";
     public const string HostOperatingSystemVersion = Prefix + "host-operating-system-version";
 
-    /// <summary>The keys whose values travel as 16 raw <see cref="Guid"/> bytes.</summary>
+    /// <summary>The keys whose canonical text is a dashed <see cref="Guid"/> — the reader materializes them back with <c>Guid.TryParse</c>.</summary>
     public static readonly ImmutableList<string> GuidHeaders =
     [
         MessageId,
@@ -50,27 +50,27 @@ internal static class TransportHeaders
         AggregateCorrelationId
     ];
 
-    /// <summary>The keys whose values travel as integer digits (the resilience counter).</summary>
+    /// <summary>The keys whose canonical text is invariant integer digits (the resilience counter).</summary>
     public static readonly ImmutableList<string> IntHeaders =
     [
         RetryCount
     ];
 
-    /// <summary>Encodes a text value to header bytes (UTF-8).</summary>
-    public static byte[] ToHeader(string value) => Encoding.UTF8.GetBytes(value);
+    /// <summary>Renders a text value to its header text (itself).</summary>
+    public static string ToHeader(string value) => value;
 
-    /// <summary>Encodes a <see cref="Guid"/> to header bytes (16 raw bytes).</summary>
-    public static byte[] ToHeader(Guid value) => value.ToByteArray();
+    /// <summary>Renders a <see cref="Guid"/> to its header text (the canonical dashed "D" form).</summary>
+    public static string ToHeader(Guid value) => value.ToString();
 
-    /// <summary>Encodes an integer to header bytes (its decimal digits).</summary>
-    public static byte[] ToHeader(int value) => Encoding.UTF8.GetBytes(value.ToString(CultureInfo.InvariantCulture));
+    /// <summary>Renders an integer to its header text (invariant decimal digits).</summary>
+    public static string ToHeader(int value) => value.ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>Encodes a string list to header bytes (comma-joined, UTF-8).</summary>
-    public static byte[] ToHeader(IEnumerable<string> values) => Encoding.UTF8.GetBytes(string.Join(',', values));
+    /// <summary>Renders a string list to its header text (comma-joined).</summary>
+    public static string ToHeader(IEnumerable<string> values) => string.Join(',', values);
 
-    /// <summary>Sets a header key to the given value on an outbound header table (replacing any existing entry).</summary>
+    /// <summary>Sets a header key to the given text on an outbound header table (replacing any existing entry).</summary>
     /// <param name="headers">The outbound header table.</param>
     /// <param name="key">The header key.</param>
-    /// <param name="value">The value bytes.</param>
-    public static void Restamp(IDictionary<string, object?> headers, string key, byte[] value) => headers[key] = value;
+    /// <param name="value">The canonical header text.</param>
+    public static void Restamp(IDictionary<string, string> headers, string key, string value) => headers[key] = value;
 }

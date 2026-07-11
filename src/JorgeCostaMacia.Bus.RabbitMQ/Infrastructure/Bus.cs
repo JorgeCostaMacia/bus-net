@@ -115,14 +115,14 @@ internal sealed class Bus : IBus
     /// here (its id/address/time mirror this message), no origin, the retry counter at zero. The domain
     /// trace comes from the message itself.
     /// </summary>
-    private static Dictionary<string, object?> Prepare<TMessage>(string exchange, TMessage message)
+    private static Dictionary<string, string> Prepare<TMessage>(string exchange, TMessage message)
         where TMessage : ITracedMessage, IFilteredMessage
     {
         Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         string occurredAt = DateTime.UtcNow.ToString("O");
         Type type = message.GetType();
 
-        return new Dictionary<string, object?>
+        return new Dictionary<string, string>
         {
             [TransportHeaders.MessageId] = TransportHeaders.ToHeader(messageId),
             [TransportHeaders.MessageType] = TransportHeaders.ToHeader(type.FullName ?? type.Name),
@@ -147,7 +147,7 @@ internal sealed class Bus : IBus
     /// trace from the message), and the conversation is carried over unchanged; the retry counter is
     /// re-stamped to zero — a continuation is a new message with its own retry budget.
     /// </summary>
-    private static Dictionary<string, object?> Prepare<TMessage>(string exchange, TMessage message, ITransport transport)
+    private static Dictionary<string, string> Prepare<TMessage>(string exchange, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage
     {
         if (transport is not Transport inbound) throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the RabbitMQ transport; the RabbitMQ bus can only continue a delivery received over RabbitMQ.");
@@ -155,7 +155,7 @@ internal sealed class Bus : IBus
         Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         Type type = message.GetType();
 
-        Dictionary<string, object?> headers = inbound.CloneHeaders();
+        Dictionary<string, string> headers = inbound.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name));

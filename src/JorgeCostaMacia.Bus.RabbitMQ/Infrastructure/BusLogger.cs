@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using Microsoft.Extensions.Logging;
@@ -119,13 +120,15 @@ internal static class BusLogger
                 continue;
             }
 
+            string text = Encoding.UTF8.GetString(value);
+
             context.Add(new PropertyEnricher(
                 key,
-                TransportHeaders.GuidHeaders.Contains(key) && value.Length == 16
-                    ? new Guid(value)
-                    : TransportHeaders.IntHeaders.Contains(key) && int.TryParse(Encoding.UTF8.GetString(value), out int count)
+                TransportHeaders.GuidHeaders.Contains(key) && Guid.TryParse(text, out Guid id)
+                    ? id
+                    : TransportHeaders.IntHeaders.Contains(key) && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
                         ? count
-                        : Encoding.UTF8.GetString(value)));
+                        : text));
         }
     }
 }

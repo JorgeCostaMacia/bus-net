@@ -14,9 +14,9 @@ internal interface IProducer
     /// <param name="exchange">The exchange to publish to.</param>
     /// <param name="routingKey">The routing key (empty for fanout exchanges).</param>
     /// <param name="body">The raw message body.</param>
-    /// <param name="headers">The envelope headers to travel with the message.</param>
+    /// <param name="headers">The envelope headers to travel with the message, as canonical <c>string → string</c> text.</param>
     /// <param name="cancellationToken">A token to cancel the publish.</param>
-    Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default);
+    Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Parks a message to a park queue (<c>.error</c> / <c>.fault</c>) — the loss-proof publish: the
@@ -26,7 +26,7 @@ internal interface IProducer
     /// </summary>
     /// <param name="queue">The park queue, reached by name through the default exchange.</param>
     /// <param name="body">The parked body.</param>
-    /// <param name="headers">The envelope headers to travel with the parked message.</param>
+    /// <param name="headers">The envelope headers to travel with the parked message, as canonical <c>string → string</c> text.</param>
     /// <param name="cancellationToken">A token to cancel the park.</param>
-    Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default);
+    Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default);
 }

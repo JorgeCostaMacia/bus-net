@@ -62,11 +62,11 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
     }
 
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing queue, the UTC time) — filterable and reinjectable header-side.</summary>
-    private Dictionary<string, object?> FaultHeaders(EventFaultContext context)
+    private Dictionary<string, string> FaultHeaders(EventFaultContext context)
     {
         Type type = context.Error.GetType();
 
-        Dictionary<string, object?> headers = context.Transport.CloneHeaders();
+        Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
         TransportHeaders.Restamp(headers, TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));

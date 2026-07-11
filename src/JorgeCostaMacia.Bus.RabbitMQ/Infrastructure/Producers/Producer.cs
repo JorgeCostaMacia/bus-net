@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
-using System.Text;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using RabbitMQ.Client;
 
@@ -22,7 +21,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 /// </summary>
 internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 {
-    private static readonly IReadOnlyList<KeyValuePair<string, object?>> HOST = Host();
+    private static readonly IReadOnlyList<KeyValuePair<string, string>> HOST = Host();
 
     private readonly Domain.IConnection _connection;
     private readonly SemaphoreSlim _gate = new(1, 1);
@@ -33,7 +32,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     public Producer(Domain.IConnection connection) => _connection = connection;
 
     /// <inheritdoc />
-    public async Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default)
+    public async Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
         IChannel channel = await ChannelAsync(exchange, cancellationToken);
 
@@ -41,7 +40,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default)
+    public async Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
         IChannel channel = await ChannelAsync(string.Empty, cancellationToken);
 
@@ -52,18 +51,27 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
         await channel.BasicPublishAsync(string.Empty, queue, mandatory: true, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
     }
 
-    /// <summary>The publish properties — persistent, JSON, the host stamped over the envelope, the key ids mirrored natively.</summary>
-    private static BasicProperties Properties(IReadOnlyDictionary<string, object?> headers)
+    /// <summary>
+    /// The publish properties — persistent, JSON, the host stamped over the envelope, the key ids
+    /// mirrored natively. The <c>string → string</c> envelope is copied straight into the client's
+    /// <c>object?</c>-typed header table only at the <see cref="BasicProperties.Headers"/> assignment
+    /// (the client encodes a string as an AMQP longstr, so it renders legibly in the management UI).
+    /// </summary>
+    private static BasicProperties Properties(IReadOnlyDictionary<string, string> headers)
     {
-        Dictionary<string, object?> stamped = new(headers);
+        Dictionary<string, string> stamped = new(headers);
 
-        foreach (KeyValuePair<string, object?> host in HOST) stamped[host.Key] = host.Value;
+        foreach (KeyValuePair<string, string> host in HOST) stamped[host.Key] = host.Value;
+
+        Dictionary<string, object?> table = new(stamped.Count);
+
+        foreach (KeyValuePair<string, string> header in stamped) table[header.Key] = header.Value;
 
         BasicProperties properties = new()
         {
             Persistent = true,
             ContentType = "application/json",
-            Headers = stamped
+            Headers = table
         };
 
         Native(properties, stamped);
@@ -77,7 +85,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     /// source of truth; this is a write-only convenience on produce. A missing/undecodable header just
     /// leaves its property unset.
     /// </summary>
-    private static void Native(BasicProperties properties, IReadOnlyDictionary<string, object?> headers)
+    private static void Native(BasicProperties properties, IReadOnlyDictionary<string, string> headers)
     {
         if (GuidText(headers, TransportHeaders.MessageId) is { } messageId) properties.MessageId = messageId;
         if (GuidText(headers, TransportHeaders.ConversationId) is { } correlationId) properties.CorrelationId = correlationId;
@@ -91,13 +99,13 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
         }
     }
 
-    /// <summary>Reads a header as UTF-8 text, or <see langword="null"/> when absent (or not byte-valued).</summary>
-    private static string? Text(IReadOnlyDictionary<string, object?> headers, string key)
-        => headers.TryGetValue(key, out object? value) && value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : null;
+    /// <summary>Reads a header's text, or <see langword="null"/> when absent.</summary>
+    private static string? Text(IReadOnlyDictionary<string, string> headers, string key)
+        => headers.TryGetValue(key, out string? value) ? value : null;
 
-    /// <summary>Reads a 16-byte GUID header as its canonical text, or <see langword="null"/> when absent (or not a 16-byte value).</summary>
-    private static string? GuidText(IReadOnlyDictionary<string, object?> headers, string key)
-        => headers.TryGetValue(key, out object? value) && value is byte[] bytes && bytes.Length == 16 ? new Guid(bytes).ToString() : null;
+    /// <summary>Reads a GUID header as its canonical text, or <see langword="null"/> when absent (or not valid GUID text).</summary>
+    private static string? GuidText(IReadOnlyDictionary<string, string> headers, string key)
+        => headers.TryGetValue(key, out string? value) && Guid.TryParse(value, out Guid id) ? id.ToString() : null;
 
     /// <summary>
     /// The destination's channel — opened on the first publish to the exchange and reused for the
@@ -128,8 +136,8 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
         }
     }
 
-    /// <summary>The producing host's identity, captured once as ready-to-stamp header bytes.</summary>
-    private static IReadOnlyList<KeyValuePair<string, object?>> Host()
+    /// <summary>The producing host's identity, captured once as ready-to-stamp header text.</summary>
+    private static IReadOnlyList<KeyValuePair<string, string>> Host()
     {
         AssemblyName? entry = Assembly.GetEntryAssembly()?.GetName();
 
