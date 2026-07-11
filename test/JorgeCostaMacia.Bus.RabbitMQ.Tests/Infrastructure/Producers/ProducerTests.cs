@@ -36,18 +36,55 @@ public class ProducerTests
     }
 
     [Fact]
+    public async Task Produce_SameExchangeTwice_ReusesTheDestinationChannel()
+    {
+        // one long-lived channel per destination: the second publish to the same exchange rides the
+        // cached channel instead of opening another.
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _connection.Created);
+    }
+
+    [Fact]
+    public async Task Produce_DifferentExchanges_OpenOneChannelEach()
+    {
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.Produce("orders.created", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _connection.Created);
+    }
+
+    [Fact]
     public async Task Produce_ChannelDied_ReopensInsteadOfReusingTheDeadOne()
     {
-        // an async publish error closes the channel broker-side: the next produce must replace it
-        // instead of handing out the dead cached one until the scope ends.
-        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        // an async publish error closes the channel broker-side: the next produce to that exchange
+        // must replace it instead of handing out the dead cached one for the application's lifetime.
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, _connection.Created);
 
         _channel.IsOpen = false;
-        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, _connection.Created);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_ClosesEveryDestinationChannel()
+    {
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.DisposeAsync();
+
+        Assert.True(_channel.Disposed);
     }
 
     [Fact]

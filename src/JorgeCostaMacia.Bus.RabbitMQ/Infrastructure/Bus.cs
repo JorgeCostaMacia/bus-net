@@ -90,19 +90,15 @@ internal sealed class Bus : IBus
         return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message, transport), cancellationToken);
     }
 
-    /// <summary>Publishes a batch, each with a fresh envelope, to their exchanges — sequentially, as a channel is not safe for concurrent publish.</summary>
-    private async Task Produce<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
+    /// <summary>Publishes a batch, each with a fresh envelope, to their exchanges — concurrently: the destination channels pipeline the publishes and track each confirmation; awaited together, the first failure throws while the rest still publish.</summary>
+    private Task Produce<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
         where TMessage : ITracedMessage, IFilteredMessage
-    {
-        foreach (TMessage message in messages) await Produce(message, cancellationToken);
-    }
+        => Task.WhenAll(messages.Select(message => Produce(message, cancellationToken)));
 
-    /// <summary>Publishes a batch continuing an inbound flow to their exchanges — sequentially, as a channel is not safe for concurrent publish.</summary>
-    private async Task Produce<TMessage>(IEnumerable<TMessage> messages, ITransport transport, CancellationToken cancellationToken)
+    /// <summary>Publishes a batch continuing an inbound flow to their exchanges — concurrently: the destination channels pipeline the publishes and track each confirmation; awaited together, the first failure throws while the rest still publish.</summary>
+    private Task Produce<TMessage>(IEnumerable<TMessage> messages, ITransport transport, CancellationToken cancellationToken)
         where TMessage : ITracedMessage, IFilteredMessage
-    {
-        foreach (TMessage message in messages) await Produce(message, transport, cancellationToken);
-    }
+        => Task.WhenAll(messages.Select(message => Produce(message, transport, cancellationToken)));
 
     /// <summary>Resolves the exchange a message is routed to from the routing map.</summary>
     private string Exchange<TMessage>(TMessage message)

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
@@ -7,32 +8,34 @@ using RabbitMQ.Client;
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 
 /// <summary>
-/// The scoped outbound gate: publishes through a single <see cref="IChannel"/> it opens lazily on
-/// first use from the shared <see cref="Domain.IConnection"/> and reuses for the scope's lifetime,
-/// disposing it when the scope ends. Scoped — not a singleton — because a channel is not safe for
-/// concurrent publish; one producer per scope is used single-threaded. Being the one place every
-/// outbound byte flows through, it stamps the producing host's <c>jcm-host-*</c> headers on each
-/// message (so retries and error/fault parking carry them too), and mirrors the envelope's key ids
-/// onto the native AMQP <see cref="BasicProperties"/> (message id, correlation, type, timestamp, app,
-/// content type) so RabbitMQ tooling and other clients see them without decoding the <c>jcm-*</c>
-/// headers — which stay the source of truth the contexts read.
+/// The container-owned outbound gate: publishes through one long-lived, confirmation-enabled
+/// <see cref="IChannel"/> <b>per destination exchange</b> — opened lazily on the first publish to
+/// that exchange from the shared <see cref="Domain.IConnection"/>, reused for the application's
+/// lifetime, and replaced under the gate when the broker closes it. Concurrent publishes share the
+/// destination's channel safely: the client pipelines them and tracks each confirmation, throttling
+/// the outstanding ones on its own — so the channel count is bounded by the routing map, never by
+/// the load. Being the one place every outbound byte flows through, it stamps the producing host's
+/// <c>jcm-host-*</c> headers on each message (so retries and error/fault parking carry them too),
+/// and mirrors the envelope's key ids onto the native AMQP <see cref="BasicProperties"/> (message
+/// id, correlation, type, timestamp, app, content type) so RabbitMQ tooling and other clients see
+/// them without decoding the <c>jcm-*</c> headers — which stay the source of truth the contexts read.
 /// </summary>
 internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 {
     private static readonly IReadOnlyList<KeyValuePair<string, object?>> HOST = Host();
 
     private readonly Domain.IConnection _connection;
-
-    private IChannel? _channel;
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly ConcurrentDictionary<string, IChannel> _channels = new();
 
     /// <summary>Creates the producer over the shared connection.</summary>
-    /// <param name="connection">The shared RabbitMQ connection the channel is opened on.</param>
+    /// <param name="connection">The shared RabbitMQ connection the destination channels are opened on.</param>
     public Producer(Domain.IConnection connection) => _connection = connection;
 
     /// <inheritdoc />
     public async Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default)
     {
-        IChannel channel = await ChannelAsync(cancellationToken);
+        IChannel channel = await ChannelAsync(exchange, cancellationToken);
 
         Dictionary<string, object?> stamped = new(headers);
 
@@ -79,18 +82,32 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
         => headers.TryGetValue(key, out object? value) && value is byte[] bytes && bytes.Length == 16 ? new Guid(bytes).ToString() : null;
 
     /// <summary>
-    /// The scope's channel — opened on first publish and reused thereafter; a channel the broker has
-    /// closed mid-scope (e.g. an async publish error) is replaced instead of handed out dead.
+    /// The destination's channel — opened on the first publish to the exchange and reused for the
+    /// application's lifetime; a channel the broker has closed (e.g. an async publish error) is
+    /// replaced under the gate instead of handed out dead.
     /// </summary>
-    private async Task<IChannel> ChannelAsync(CancellationToken cancellationToken)
+    private async Task<IChannel> ChannelAsync(string exchange, CancellationToken cancellationToken)
     {
-        if (_channel is { IsOpen: true }) return _channel;
+        if (_channels.TryGetValue(exchange, out IChannel? channel) && channel.IsOpen) return channel;
 
-        if (_channel is not null) await _channel.DisposeAsync();
+        await _gate.WaitAsync(cancellationToken);
 
-        _channel = await _connection.CreateChannelAsync(cancellationToken);
+        try
+        {
+            if (_channels.TryGetValue(exchange, out channel) && channel.IsOpen) return channel;
 
-        return _channel;
+            if (channel is not null) await channel.DisposeAsync();
+
+            channel = await _connection.CreateChannelAsync(cancellationToken);
+
+            _channels[exchange] = channel;
+
+            return channel;
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     /// <summary>The producing host's identity, captured once as ready-to-stamp header bytes.</summary>
@@ -109,9 +126,9 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
         ];
     }
 
-    /// <summary>Closes the scope's channel.</summary>
+    /// <summary>Closes every destination channel — the container disposes the singleton at shutdown.</summary>
     public async ValueTask DisposeAsync()
     {
-        if (_channel is not null) await _channel.DisposeAsync();
+        foreach (IChannel channel in _channels.Values) await channel.DisposeAsync();
     }
 }

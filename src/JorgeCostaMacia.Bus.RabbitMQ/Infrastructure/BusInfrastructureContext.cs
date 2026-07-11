@@ -10,9 +10,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 
 /// <summary>
 /// The package's wiring: the single RabbitMQ connection is a container-owned singleton built from the
-/// <c>Bus:Connection</c> section; the outbound gate (<see cref="IProducer"/>) and the bus
-/// (<see cref="IBus"/>) are <b>scoped</b> — a channel is not concurrency-safe, so each scope gets its
-/// own producer over its own channel. The send side maps messages to exchanges through the
+/// <c>Bus:Connection</c> section; the outbound gate (<see cref="IProducer"/>) is a singleton holding
+/// one confirmation-enabled channel per destination exchange (concurrent publishes pipeline on it),
+/// and the bus (<see cref="IBus"/>) stays scoped. The send side maps messages to exchanges through the
 /// <see cref="ProducerConfigurator"/>; the optional consume side registers its handlers and their
 /// hosted consumers through the <see cref="ConsumerConfigurator"/> (omit it for a send-only service).
 /// </summary>
@@ -36,7 +36,7 @@ internal static class BusInfrastructureContext
 
         services.AddSingleton<IConnection>(provider => new Connection(connectionConfiguration.ConnectionFactory, provider.GetRequiredService<ILoggerFactory>().CreateLogger(RabbitLogger.Category)));
         services.AddSingleton<IConsumerChannelFactory>(provider => new Consumers.ConsumerChannelFactory(provider.GetRequiredService<IConnection>()));
-        services.AddScoped<IProducer, Producer>();
+        services.AddSingleton<IProducer, Producer>();
         services.AddScoped<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 
         // registered before the consumers so the producer's exchanges exist before anything binds
