@@ -71,7 +71,7 @@ public class BusContextTests
         services.AddBusContext(Configuration(), _ => { });
 
         Assert.Contains(services, e => e.ServiceType == typeof(IConnection));
-        Assert.Contains(services, e => e.ServiceType == typeof(IProducer));
+        Assert.Equal(ServiceLifetime.Singleton, Assert.Single(services, e => e.ServiceType == typeof(IProducer)).Lifetime);   // one channel per destination, shared by every scope
         Assert.Contains(services, e => e.ServiceType == typeof(IBus));
         Assert.DoesNotContain(services, e => e.ServiceType == typeof(TestCommandHandler));
     }

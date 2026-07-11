@@ -2,10 +2,11 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 
 /// <summary>
 /// The bus's single outbound gate: publishes an already-built message (body + envelope headers) to an
-/// exchange with a routing key. It is <b>scoped</b>, not a singleton — a RabbitMQ channel is not safe
-/// for concurrent publish, so each service scope gets its own producer over its own channel, used
-/// single-threaded within that scope. The bus facade and the consumers' error/fault handlers all
-/// publish through it, so every outbound byte goes through one place.
+/// exchange with a routing key. It is a <b>singleton</b> holding one long-lived, confirmation-enabled
+/// channel per destination exchange — concurrent publishes share the destination's channel safely
+/// (the client pipelines them, tracking each confirmation), so the channel count is bounded by the
+/// routing map, never by the load. The bus facade and the consumers' error/fault handlers all publish
+/// through it, so every outbound byte goes through one place.
 /// </summary>
 internal interface IProducer
 {
