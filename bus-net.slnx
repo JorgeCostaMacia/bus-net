@@ -12,6 +12,7 @@
   <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.Tests/JorgeCostaMacia.Bus.RabbitMQ.Tests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests/JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.IntegrationTests/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.IntegrationTests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.Tests/JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.Tests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.Kafka.HealthChecks.Tests/JorgeCostaMacia.Bus.Kafka.HealthChecks.Tests.csproj" />
