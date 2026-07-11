@@ -175,7 +175,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                     await channel.DeclareAsync(_exchange, _exchangeType, _queue, _prefetchCount, _stopping.Token);
                     await channel.ConsumeAsync(_queue, OnReceivedAsync, OnClosedAsync, _stopping.Token);
 
-                    IConsumerChannel dead = _channel;
+                    IConsumerChannel dead = _channel!;
                     _channel = channel;
 
                     await dead.DisposeAsync();
