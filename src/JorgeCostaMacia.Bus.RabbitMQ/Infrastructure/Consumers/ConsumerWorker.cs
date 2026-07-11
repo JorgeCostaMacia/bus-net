@@ -129,7 +129,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         using (BusLogger.ShutdownContext(reason))
         using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelClosed)) _logger.LogWarning("Channel closed.");
 
-        if (Interlocked.CompareExchange(ref _resurrecting, 1, 0) == 0) _ = ResurrectAsync();
+        if (Interlocked.CompareExchange(ref _resurrecting, 1, 0) == 0) _ = ResurrectAsync(consumerCancelled: reason is null);
 
         return Task.CompletedTask;
     }
@@ -139,12 +139,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// restores channels and consumers after a connection-level drop (the same channel comes back open
     /// with its consumer re-registered), but not a channel closed by a channel-level exception nor a
     /// consumer the broker cancelled — and resurrecting blindly would double-subscribe when recovery
-    /// also acts. So each pass waits out a backoff step first, then: a stop ends the loop; a channel
-    /// recovery reopened is left alone; only a channel still dead is replaced — a new one from the
-    /// factory, same topology, same handler, the old one disposed. A failed attempt just waits for the
-    /// next step, silently: the death already logged its warning, and per-attempt noise groups nothing.
+    /// also acts. So each pass waits out a backoff step first, then: a stop ends the loop; after a
+    /// channel shutdown, a channel recovery reopened is left alone; a <b>cancelled consumer</b>
+    /// (e.g. its queue deleted) leaves the channel open but deaf, so it always rebuilds — the open
+    /// channel proves nothing there. The rebuild is a new channel from the factory, same topology,
+    /// same handler, the old one disposed. A failed attempt just waits for the next step, silently:
+    /// the death already logged its warning, and per-attempt noise groups nothing.
     /// </summary>
-    private async Task ResurrectAsync()
+    /// <param name="consumerCancelled">Whether the death was the broker cancelling the consumer (no shutdown reason) — the channel stays open, so the recovery check is skipped.</param>
+    private async Task ResurrectAsync(bool consumerCancelled)
     {
         try
         {
@@ -160,7 +163,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                 }
 
                 if (_stopping.IsCancellationRequested) return;
-                if (_channel!.IsOpen) return;
+                if (!consumerCancelled && _channel!.IsOpen) return;
 
                 try
                 {

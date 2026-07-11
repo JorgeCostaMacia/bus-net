@@ -329,6 +329,34 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task BrokerCancelsTheConsumer_ChannelStillOpen_ResurrectsAnyway()
+    {
+        // the broker cancelling the consumer (e.g. its queue deleted) leaves the channel OPEN but
+        // deaf — the open channel proves nothing, so the resurrection must rebuild regardless.
+        // Pinned live against the real broker: the open-channel check used to swallow this death.
+        ConsumerChannelFake replacement = new();
+        ConsumerChannelFake channel = new() { Next = replacement };
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
+        worker.ResurrectionBackoff = [TimeSpan.FromMilliseconds(1)];
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await channel.CloseAsync(null);
+        await WaitUntil(() => channel.Disposed);
+
+        Assert.True(channel.IsOpen);   // the deaf channel really was open the whole time
+        Assert.Equal(2, channel.Created);
+        Assert.True(replacement.Declared);
+        Assert.Equal(Deliveries.QUEUE, replacement.ConsumedQueue);
+
+        await replacement.DeliverAsync(Deliveries.Delivery(new TestCommand("pepe")));
+
+        Assert.Equal("pepe", _handler.Received?.Name);
+
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task ChannelDies_ButRecoveryRevivesIt_DoesNotResurrect()
     {
         // a connection-level drop: the client's automatic recovery brings the SAME channel back open

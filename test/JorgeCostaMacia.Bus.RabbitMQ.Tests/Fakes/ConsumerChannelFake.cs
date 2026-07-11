@@ -99,11 +99,15 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     /// <param name="args">The delivery to push.</param>
     public Task DeliverAsync(BasicDeliverEventArgs args) => _onReceived?.Invoke(args) ?? Task.CompletedTask;
 
-    /// <summary>Kills the channel under the worker, as the broker would: the channel reports closed and its registered death observer is driven.</summary>
+    /// <summary>
+    /// Kills the consumer under the worker, as the broker would, driving the registered death
+    /// observer. A shutdown reason closes the channel too; a consumer cancellation (<see langword="null"/>,
+    /// e.g. its queue deleted) leaves the channel open but deaf — the real broker semantics.
+    /// </summary>
     /// <param name="reason">The shutdown reason, or <see langword="null"/> for a consumer cancellation without one.</param>
     public Task CloseAsync(ShutdownEventArgs? reason = null)
     {
-        IsOpen = false;
+        if (reason is not null) IsOpen = false;
 
         return _onClosed?.Invoke(reason) ?? Task.CompletedTask;
     }
