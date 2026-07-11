@@ -37,6 +37,24 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     {
         IChannel channel = await ChannelAsync(exchange, cancellationToken);
 
+        await channel.BasicPublishAsync(exchange, routingKey, mandatory: false, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default)
+    {
+        IChannel channel = await ChannelAsync(string.Empty, cancellationToken);
+
+        // self-healing: the idempotent declare recreates a park queue deleted at runtime, with the
+        // consumers' exact options; mandatory is the tripwire — an unroutable park throws instead of
+        // being dropped (and confirmed) silently, so the failure lane can never lose a message here.
+        await channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
+        await channel.BasicPublishAsync(string.Empty, queue, mandatory: true, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>The publish properties — persistent, JSON, the host stamped over the envelope, the key ids mirrored natively.</summary>
+    private static BasicProperties Properties(IReadOnlyDictionary<string, object?> headers)
+    {
         Dictionary<string, object?> stamped = new(headers);
 
         foreach (KeyValuePair<string, object?> host in HOST) stamped[host.Key] = host.Value;
@@ -50,7 +68,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 
         Native(properties, stamped);
 
-        await channel.BasicPublishAsync(exchange, routingKey, mandatory: false, basicProperties: properties, body: body, cancellationToken: cancellationToken);
+        return properties;
     }
 
     /// <summary>

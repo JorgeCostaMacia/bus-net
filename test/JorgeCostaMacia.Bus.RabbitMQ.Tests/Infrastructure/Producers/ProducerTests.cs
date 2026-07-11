@@ -88,6 +88,35 @@ public class ProducerTests
     }
 
     [Fact]
+    public async Task Park_RedeclaresTheDurableQueue_AndPublishesMandatoryThroughTheDefaultExchange()
+    {
+        // the loss-proof park: the idempotent declare recreates a park queue deleted at runtime
+        // (the consumers' exact options), and mandatory makes an unroutable park throw instead of
+        // being dropped — and confirmed — silently.
+        await Sut().Park("orders.handler.error", "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        (string queue, bool durable, bool exclusive, bool autoDelete) = Assert.Single(_channel.QueuesDeclared);
+        Assert.Equal("orders.handler.error", queue);
+        Assert.True(durable);
+        Assert.False(exclusive);
+        Assert.False(autoDelete);
+
+        ChannelFake.Publish publish = Assert.Single(_channel.Published);
+        Assert.Equal(string.Empty, publish.Exchange);
+        Assert.Equal("orders.handler.error", publish.RoutingKey);
+        Assert.True(publish.Mandatory);
+    }
+
+    [Fact]
+    public async Task Produce_PublishesWithoutMandatory()
+    {
+        // an unroutable normal publish is legitimate (a fanout with no subscribers) — only parks trip.
+        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.False(Assert.Single(_channel.Published).Mandatory);
+    }
+
+    [Fact]
     public async Task Produce_Failure_Rethrows()
     {
         _channel.PublishFailure = new InvalidOperationException("broker down");

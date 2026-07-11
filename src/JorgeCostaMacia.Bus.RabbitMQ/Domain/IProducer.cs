@@ -17,4 +17,16 @@ internal interface IProducer
     /// <param name="headers">The envelope headers to travel with the message.</param>
     /// <param name="cancellationToken">A token to cancel the publish.</param>
     Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Parks a message to a park queue (<c>.error</c> / <c>.fault</c>) — the loss-proof publish: the
+    /// durable queue is redeclared first (idempotent — a queue deleted at runtime is recreated on the
+    /// spot), and the publish travels <c>mandatory</c> through the default exchange, so an unroutable
+    /// park throws instead of being dropped silently. A completed task means the park truly exists.
+    /// </summary>
+    /// <param name="queue">The park queue, reached by name through the default exchange.</param>
+    /// <param name="body">The parked body.</param>
+    /// <param name="headers">The envelope headers to travel with the parked message.</param>
+    /// <param name="cancellationToken">A token to cancel the park.</param>
+    Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default);
 }

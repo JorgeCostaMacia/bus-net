@@ -11,7 +11,10 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 internal sealed class ChannelFake : IChannel
 {
     /// <summary>A captured publish.</summary>
-    public sealed record Publish(string Exchange, string RoutingKey, bool Persistent, string? MessageId, string? CorrelationId, string? Type, string? AppId, string? ContentType, long Timestamp, IReadOnlyDictionary<string, object?>? Headers, ReadOnlyMemory<byte> Body);
+    public sealed record Publish(string Exchange, string RoutingKey, bool Persistent, string? MessageId, string? CorrelationId, string? Type, string? AppId, string? ContentType, long Timestamp, IReadOnlyDictionary<string, object?>? Headers, ReadOnlyMemory<byte> Body, bool Mandatory);
+
+    /// <summary>The queues declared through the channel, in order.</summary>
+    public List<(string Queue, bool Durable, bool Exclusive, bool AutoDelete)> QueuesDeclared { get; } = [];
 
     /// <summary>The publishes handed to the channel, in order.</summary>
     public List<Publish> Published { get; } = [];
@@ -31,7 +34,7 @@ internal sealed class ChannelFake : IChannel
     {
         if (PublishFailure is not null) return ValueTask.FromException(PublishFailure);
 
-        Published.Add(new Publish(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body));
+        Published.Add(new Publish(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body, mandatory));
 
         return ValueTask.CompletedTask;
     }
@@ -82,7 +85,12 @@ internal sealed class ChannelFake : IChannel
     public ValueTask<ulong> GetNextPublishSequenceNumberAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<uint> MessageCountAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task QueueBindAsync(string queue, string exchange, string routingKey, IDictionary<string, object?>? arguments, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<QueueDeclareOk> QueueDeclareAsync(string queue, bool durable, bool exclusive, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<QueueDeclareOk> QueueDeclareAsync(string queue, bool durable, bool exclusive, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default)
+    {
+        QueuesDeclared.Add((queue, durable, exclusive, autoDelete));
+
+        return Task.FromResult(new QueueDeclareOk(queue, 0, 0));
+    }
     public Task<QueueDeclareOk> QueueDeclarePassiveAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<uint> QueueDeleteAsync(string queue, bool ifUnused, bool ifEmpty, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<uint> QueuePurgeAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
