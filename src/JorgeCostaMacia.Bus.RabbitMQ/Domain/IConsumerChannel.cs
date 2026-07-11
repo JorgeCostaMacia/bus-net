@@ -15,7 +15,7 @@ internal interface IConsumerChannel : IAsyncDisposable
     /// <summary>Whether the channel is open — the resurrection's recovery probe: an open channel after a death means the client's automatic recovery already revived it.</summary>
     bool IsOpen { get; }
 
-    /// <summary>Declares the worker's topology: the message exchange, the durable queue bound straight to it, the durable park queues, and the prefetch.</summary>
+    /// <summary>Declares the worker's topology: the message exchange, the durable queue bound straight to it, and the prefetch — the <c>.error</c> / <c>.fault</c> park queues are not declared here; they are born lazily on the first park.</summary>
     /// <param name="exchange">The message exchange the queue binds to.</param>
     /// <param name="exchangeType">The exchange type — <c>direct</c> for commands, <c>fanout</c> for events.</param>
     /// <param name="queue">The queue this worker consumes, bound to the exchange with an empty routing key.</param>

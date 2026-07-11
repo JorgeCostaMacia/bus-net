@@ -5,7 +5,7 @@
 		<VersionPrefix>1.2.0</VersionPrefix>
 		<Authors>JorgeCostaMacia</Authors>
 		<Company>$(Authors)</Company>
-		<Copyright>2023 Jorge Costa Maciá</Copyright>
+		<Copyright>2023-2026 Jorge Costa Maciá</Copyright>
 		<RepositoryUrl>https://github.com/JorgeCostaMacia/bus-net</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 	</PropertyGroup>

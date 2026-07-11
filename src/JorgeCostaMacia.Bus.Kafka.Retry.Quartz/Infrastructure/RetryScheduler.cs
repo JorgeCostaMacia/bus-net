@@ -76,6 +76,7 @@ internal sealed class RetryScheduler : IRetryScheduler
 
     private static int RetryCount(Headers headers)
         => headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry)
-            ? int.Parse(Encoding.UTF8.GetString(retry), CultureInfo.InvariantCulture)
+            && int.TryParse(Encoding.UTF8.GetString(retry), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+            ? value
             : 0;
 }

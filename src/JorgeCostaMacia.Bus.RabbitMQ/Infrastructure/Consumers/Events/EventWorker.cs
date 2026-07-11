@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
@@ -45,10 +44,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <returns>Whether the delivery is skipped.</returns>
     protected override bool Filtered(BasicDeliverEventArgs args)
     {
-        if (args.BasicProperties.Headers is not { } headers) return false;
-        if (!headers.TryGetValue(TransportHeaders.AggregateConsumers, out object? value) || value is not byte[] bytes) return false;
-
-        string consumers = Encoding.UTF8.GetString(bytes);
+        string? consumers = Transport.Create(args).GetHeaderStringOrDefault(TransportHeaders.AggregateConsumers);
 
         if (string.IsNullOrWhiteSpace(consumers)) return false;
 

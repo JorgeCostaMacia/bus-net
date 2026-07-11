@@ -13,8 +13,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 /// (<see cref="AddCommandHandler{TCommand, TCommandHandler}"/> /
 /// <see cref="AddEventSubscriber{TEvent, TEventSubscriber}"/>) — each with its own hosted consumer and
 /// the framework's error and fault handlers wired in. The consumer binds its queue to the message's
-/// exchange (a command's <c>direct</c>, an event's <c>fanout</c>) and declares its <c>.error</c> /
-/// <c>.fault</c> park queues. It reads (never writes) the routing map the
+/// exchange (a command's <c>direct</c>, an event's <c>fanout</c>); its <c>.error</c> / <c>.fault</c>
+/// park queues are not declared up front — they are born lazily on the first park. It reads (never writes) the routing map the
 /// <see cref="Producers.ProducerConfigurator"/> owns to resolve each handler's exchange by type. The
 /// shared connection is bound once elsewhere.
 /// </summary>
