@@ -31,16 +31,16 @@ public class TransportTests
     }
 
     [Fact]
-    public void GetGuid_SixteenRawBytes_RoundTrips()
+    public void GetGuid_CanonicalText_RoundTrips()
     {
         Guid value = Guid.NewGuid();
 
-        Assert.Equal(value, CreateSut(("id", value.ToByteArray())).GetHeaderGuid("id"));
+        Assert.Equal(value, CreateSut(("id", Encoding.UTF8.GetBytes(value.ToString()))).GetHeaderGuid("id"));
     }
 
     [Fact]
-    public void GetGuid_WrongLength_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut(("id", [1, 2, 3])).GetHeaderGuid("id"));
+    public void GetGuid_NonGuidText_Throws()
+        => Assert.Throws<InvalidCastException>(() => CreateSut(("id", "not-a-guid"u8.ToArray())).GetHeaderGuid("id"));
 
     [Fact]
     public void GetHeader_Missing_Throws()
@@ -107,7 +107,7 @@ public class TransportTests
     {
         Guid id = Guid.NewGuid();
         Transport transport = CreateSut(
-            (TransportHeaders.AggregateId, id.ToByteArray()),
+            (TransportHeaders.AggregateId, Encoding.UTF8.GetBytes(id.ToString())),
             ("custom", "value"u8.ToArray()));
 
         ImmutableList<KeyValuePair<string, string>> decoded = transport.DecodeHeaders();
@@ -118,15 +118,16 @@ public class TransportTests
     }
 
     [Fact]
-    public void CloneHeaders_DeepCopiesTheValues()
+    public void CloneHeaders_DecodesEveryValueToText_AndIsIndependent()
     {
-        byte[] original = "value"u8.ToArray();
-        Transport transport = CreateSut(("key", original));
+        Transport transport = CreateSut(("key", "value"u8.ToArray()));
 
-        Dictionary<string, object?> cloned = transport.CloneHeaders();
-        ((byte[])cloned["key"]!)[0] = 0;
+        Dictionary<string, string> cloned = transport.CloneHeaders();
 
-        Assert.Equal("value"u8.ToArray(), original);
+        Assert.Equal("value", cloned["key"]);
+
+        cloned["key"] = "mutated";
+
         Assert.Equal("value", transport.GetHeaderString("key"));
     }
 }

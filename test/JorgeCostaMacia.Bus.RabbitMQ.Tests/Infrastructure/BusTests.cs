@@ -16,14 +16,14 @@ public class BusTests
     private RabbitBus CreateSut(params (Type Type, string Exchange)[] messages)
         => new(_producer, messages.ToDictionary(e => e.Type, e => e.Exchange));
 
-    private static string? Header(IReadOnlyDictionary<string, object?> headers, string key)
-        => headers.TryGetValue(key, out object? value) && value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : null;
+    private static string? Header(IReadOnlyDictionary<string, string> headers, string key)
+        => headers.TryGetValue(key, out string? value) ? value : null;
 
-    private static Guid GuidHeader(IReadOnlyDictionary<string, object?> headers, string key)
+    private static Guid GuidHeader(IReadOnlyDictionary<string, string> headers, string key)
     {
-        Assert.True(headers.TryGetValue(key, out object? value) && value is byte[]);
+        Assert.True(headers.TryGetValue(key, out string? value) && value is not null);
 
-        return new Guid((byte[])value!);
+        return Guid.Parse(value!);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class BusTests
 
         await CreateSut((typeof(TestCommand), "orders")).Send(command, TestContext.Current.CancellationToken);
 
-        (string exchange, string routingKey, byte[] body, IReadOnlyDictionary<string, object?> headers) = Assert.Single(_producer.Produced);
+        (string exchange, string routingKey, byte[] body, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
         Assert.Equal("orders", exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal(typeof(TestCommand).FullName, Header(headers, TransportHeaders.MessageType));
@@ -66,16 +66,16 @@ public class BusTests
 
         Dictionary<string, object?> inbound = new()
         {
-            [TransportHeaders.MessageId] = inboundMessageId.ToByteArray(),
+            [TransportHeaders.MessageId] = Encoding.UTF8.GetBytes(inboundMessageId.ToString()),
             [TransportHeaders.MessageType] = "Inbound"u8.ToArray(),
             [TransportHeaders.MessageTypeUrn] = "urn:message:Inbound"u8.ToArray(),
             [TransportHeaders.MessageDestinationAddress] = "orders"u8.ToArray(),
             [TransportHeaders.MessageOccurredAt] = Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")),
-            [TransportHeaders.ConversationId] = conversationId.ToByteArray(),
+            [TransportHeaders.ConversationId] = Encoding.UTF8.GetBytes(conversationId.ToString()),
             [TransportHeaders.ConversationAddress] = "orders"u8.ToArray(),
             [TransportHeaders.ConversationOccurredAt] = Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")),
-            [TransportHeaders.AggregateId] = Guid.NewGuid().ToByteArray(),
-            [TransportHeaders.AggregateCorrelationId] = Guid.NewGuid().ToByteArray(),
+            [TransportHeaders.AggregateId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
+            [TransportHeaders.AggregateCorrelationId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
             [TransportHeaders.AggregateOccurredAt] = Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")),
             [TransportHeaders.AggregateConsumers] = "old"u8.ToArray(),
             [TransportHeaders.RetryCount] = "2"u8.ToArray()
@@ -86,7 +86,7 @@ public class BusTests
 
         await CreateSut((typeof(TestEvent), "payments")).Publish(message, transport, TestContext.Current.CancellationToken);
 
-        (string exchange, _, _, IReadOnlyDictionary<string, object?> headers) = Assert.Single(_producer.Produced);
+        (string exchange, _, _, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
         Assert.Equal("payments", exchange);
         Assert.Equal(conversationId, GuidHeader(headers, TransportHeaders.ConversationId));
         Assert.Equal("orders", Header(headers, TransportHeaders.ConversationAddress));
@@ -107,7 +107,7 @@ public class BusTests
         Dictionary<string, object?> inbound = new()
         {
             [TransportHeaders.MessageDestinationAddress] = "orders"u8.ToArray(),
-            [TransportHeaders.ConversationId] = Guid.NewGuid().ToByteArray(),
+            [TransportHeaders.ConversationId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
             [TransportHeaders.AggregateConsumers] = "old"u8.ToArray(),
             [TransportHeaders.RetryCount] = "2"u8.ToArray()
         };
@@ -181,13 +181,13 @@ public class BusTests
 
         Dictionary<string, object?> inbound = new()
         {
-            [TransportHeaders.MessageId] = Guid.NewGuid().ToByteArray(),
+            [TransportHeaders.MessageId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
             [TransportHeaders.MessageDestinationAddress] = "orders"u8.ToArray(),
-            [TransportHeaders.ConversationId] = conversationId.ToByteArray(),
+            [TransportHeaders.ConversationId] = Encoding.UTF8.GetBytes(conversationId.ToString()),
             [TransportHeaders.ConversationAddress] = "orders"u8.ToArray(),
             [TransportHeaders.ConversationOccurredAt] = Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")),
-            [TransportHeaders.AggregateId] = Guid.NewGuid().ToByteArray(),
-            [TransportHeaders.AggregateCorrelationId] = Guid.NewGuid().ToByteArray(),
+            [TransportHeaders.AggregateId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
+            [TransportHeaders.AggregateCorrelationId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
             [TransportHeaders.AggregateOccurredAt] = Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")),
             [TransportHeaders.AggregateConsumers] = "old"u8.ToArray(),
             [TransportHeaders.RetryCount] = "3"u8.ToArray()

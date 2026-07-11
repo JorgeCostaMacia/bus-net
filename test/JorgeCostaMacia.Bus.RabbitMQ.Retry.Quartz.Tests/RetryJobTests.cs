@@ -12,8 +12,8 @@ public class RetryJobTests
 {
     private readonly ProducerFake _producer = new();
 
-    private static string EncodeHeaders(params (string Key, byte[]? Value)[] headers)
-        => JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.Value)));
+    private static string EncodeHeaders(params (string Key, string Value)[] headers)
+        => JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Value)));
 
     private static JobDataMap Data(string exchange = "orders", byte[]? body = null, string? headers = null)
         => new()
@@ -35,24 +35,24 @@ public class RetryJobTests
     }
 
     [Fact]
-    public async Task Execute_DecodesHeaders_PreservingNull()
+    public async Task Execute_DecodesHeadersAsText()
     {
-        await Execute(Data(headers: EncodeHeaders(("k", "v"u8.ToArray()), ("n", null))));
+        await Execute(Data(headers: EncodeHeaders(("k", "v"), ("s", "text"))));
 
-        IReadOnlyDictionary<string, object?> headers = Assert.Single(_producer.Produced).Headers;
-        Assert.Equal("v", Encoding.UTF8.GetString((byte[])headers["k"]!));
-        Assert.True(headers.TryGetValue("n", out object? value) && value is null);
+        IReadOnlyDictionary<string, string> headers = Assert.Single(_producer.Produced).Headers;
+        Assert.Equal("v", headers["k"]);
+        Assert.Equal("text", headers["s"]);
     }
 
     [Fact]
     public async Task Execute_DuplicatedHeaderKey_KeepsTheLastValue()
     {
-        // the AMQP field table is a dictionary — a duplicated key in the parked list (never written
+        // the header table is a dictionary — a duplicated key in the parked list (never written
         // by the scheduler, which serializes a dictionary) collapses to its last value.
-        await Execute(Data(headers: EncodeHeaders(("dup", "1"u8.ToArray()), ("dup", "2"u8.ToArray()))));
+        await Execute(Data(headers: EncodeHeaders(("dup", "1"), ("dup", "2"))));
 
-        IReadOnlyDictionary<string, object?> headers = Assert.Single(_producer.Produced).Headers;
-        Assert.Equal("2", Encoding.UTF8.GetString((byte[])headers["dup"]!));
+        IReadOnlyDictionary<string, string> headers = Assert.Single(_producer.Produced).Headers;
+        Assert.Equal("2", headers["dup"]);
     }
 
     [Fact]

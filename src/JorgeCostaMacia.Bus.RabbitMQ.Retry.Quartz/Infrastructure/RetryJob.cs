@@ -35,7 +35,7 @@ internal sealed class RetryJob : IJob
     {
         string exchange = Exchange(context.MergedJobDataMap);
         byte[] body = Body(context.MergedJobDataMap);
-        Dictionary<string, object?> headers = Headers(context.MergedJobDataMap);
+        Dictionary<string, string> headers = Headers(context.MergedJobDataMap);
 
         // a failed produce just throws: Quartz wraps it and hands it to the job listeners, and the
         // trigger repeats the produce on its own until the attempts run out — nothing to do here.
@@ -64,15 +64,15 @@ internal sealed class RetryJob : IJob
         return Convert.FromBase64String(value);
     }
 
-    private static Dictionary<string, object?> Headers(JobDataMap data)
+    private static Dictionary<string, string> Headers(JobDataMap data)
     {
         string? value = data.GetString(HEADERS_KEY);
 
         if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{HEADERS_KEY}'.");
 
-        Dictionary<string, object?> headers = [];
+        Dictionary<string, string> headers = [];
 
-        foreach (KeyValuePair<string, byte[]?> header in JsonSerializer.Deserialize<List<KeyValuePair<string, byte[]?>>>(value) ?? [])
+        foreach (KeyValuePair<string, string> header in JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(value) ?? [])
         {
             headers[header.Key] = header.Value;
         }

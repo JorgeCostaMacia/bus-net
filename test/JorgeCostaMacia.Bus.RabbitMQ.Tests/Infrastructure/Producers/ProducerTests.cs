@@ -14,7 +14,7 @@ public class ProducerTests
 
     private RabbitProducer Sut() => new(_connection);
 
-    private static Dictionary<string, object?> Headers() => [];
+    private static Dictionary<string, string> Headers() => [];
 
     [Fact]
     public async Task Produce_PublishesToTheExchangeWithTheRoutingKey()
@@ -139,9 +139,9 @@ public class ProducerTests
     [Fact]
     public async Task Produce_ReStampsTheHost_OverGivenHeaders()
     {
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, string> headers = new()
         {
-            [TransportHeaders.HostMachineName] = "another-host"u8.ToArray()
+            [TransportHeaders.HostMachineName] = "another-host"
         };
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
@@ -153,14 +153,14 @@ public class ProducerTests
     public async Task Produce_CarriesTheGivenEnvelopeHeaders()
     {
         Guid messageId = Guid.NewGuid();
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, string> headers = new()
         {
-            [TransportHeaders.MessageId] = messageId.ToByteArray()
+            [TransportHeaders.MessageId] = messageId.ToString()
         };
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
 
-        Assert.Equal(messageId, new Guid((byte[])Assert.Single(_channel.Published).Headers![TransportHeaders.MessageId]!));
+        Assert.Equal(messageId.ToString(), (string)Assert.Single(_channel.Published).Headers![TransportHeaders.MessageId]!);
     }
 
     [Fact]
@@ -170,12 +170,12 @@ public class ProducerTests
         Guid conversationId = Guid.NewGuid();
         DateTime occurredAt = new(2026, 7, 7, 12, 30, 45, DateTimeKind.Utc);
 
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, string> headers = new()
         {
-            [TransportHeaders.MessageId] = messageId.ToByteArray(),
-            [TransportHeaders.ConversationId] = conversationId.ToByteArray(),
-            [TransportHeaders.MessageType] = "Orders.PlaceOrder"u8.ToArray(),
-            [TransportHeaders.MessageOccurredAt] = Encoding.UTF8.GetBytes(occurredAt.ToString("O"))
+            [TransportHeaders.MessageId] = messageId.ToString(),
+            [TransportHeaders.ConversationId] = conversationId.ToString(),
+            [TransportHeaders.MessageType] = "Orders.PlaceOrder",
+            [TransportHeaders.MessageOccurredAt] = occurredAt.ToString("O")
         };
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
@@ -189,6 +189,8 @@ public class ProducerTests
         Assert.False(string.IsNullOrWhiteSpace(publish.AppId)); // the host assembly, stamped by the producer
     }
 
+    // the client's header table is object?-typed at the AMQP edge, but the producer copies the
+    // envelope's canonical text straight in, so each value arrives as a string (encoded longstr).
     private static string? Header(IReadOnlyDictionary<string, object?> headers, string key)
-        => headers.TryGetValue(key, out object? value) && value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : null;
+        => headers.TryGetValue(key, out object? value) && value is string text ? text : null;
 }

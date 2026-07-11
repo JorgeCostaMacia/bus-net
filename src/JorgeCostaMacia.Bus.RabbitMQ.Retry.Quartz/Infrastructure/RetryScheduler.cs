@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using Quartz;
@@ -39,7 +38,7 @@ internal sealed class RetryScheduler : IRetryScheduler
     public RetryScheduler(ISchedulerFactory schedulerFactory) => _schedulerFactory = schedulerFactory;
 
     /// <inheritdoc />
-    public async Task Schedule(string exchange, string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, DateTime scheduledAt, CancellationToken cancellationToken)
+    public async Task Schedule(string exchange, string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, DateTime scheduledAt, CancellationToken cancellationToken)
     {
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
 
@@ -50,7 +49,7 @@ internal sealed class RetryScheduler : IRetryScheduler
             .WithDescription(queue)
             .UsingJobData(RetryJob.EXCHANGE_KEY, exchange)
             .UsingJobData(RetryJob.BODY_KEY, Convert.ToBase64String(body.Span))
-            .UsingJobData(RetryJob.HEADERS_KEY, JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, ToBytes(header.Value)))))
+            .UsingJobData(RetryJob.HEADERS_KEY, JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Value))))
             .StoreDurably()
             .RequestRecovery()
             .Build();
@@ -68,23 +67,13 @@ internal sealed class RetryScheduler : IRetryScheduler
         await scheduler.ScheduleJob(job, [trigger], replace: true, cancellationToken);
     }
 
-    private static Guid MessageId(IReadOnlyDictionary<string, object?> headers)
-        => headers.TryGetValue(TransportHeaders.MessageId, out object? id) && id is byte[] { Length: 16 } bytes
-            ? new Guid(bytes)
+    private static Guid MessageId(IReadOnlyDictionary<string, string> headers)
+        => headers.TryGetValue(TransportHeaders.MessageId, out string? id) && Guid.TryParse(id, out Guid value)
+            ? value
             : GuidFactory.Domain.GuidFactory.Create();
 
-    private static int RetryCount(IReadOnlyDictionary<string, object?> headers)
-        => headers.TryGetValue(TransportHeaders.RetryCount, out object? retry) && retry is byte[] bytes
-            ? int.Parse(Encoding.UTF8.GetString(bytes), CultureInfo.InvariantCulture)
+    private static int RetryCount(IReadOnlyDictionary<string, string> headers)
+        => headers.TryGetValue(TransportHeaders.RetryCount, out string? retry) && int.TryParse(retry, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+            ? value
             : 0;
-
-    /// <summary>Normalizes a header value to bytes: raw bytes as-is, a string as its UTF-8 bytes, any other primitive through its invariant text — the same philosophy the transport decodes with.</summary>
-    private static byte[]? ToBytes(object? value)
-        => value switch
-        {
-            null => null,
-            byte[] bytes => bytes,
-            string text => Encoding.UTF8.GetBytes(text),
-            _ => Encoding.UTF8.GetBytes(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty)
-        };
 }

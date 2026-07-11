@@ -159,9 +159,9 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     /// re-targeted to this queue only (<c>AggregateConsumers</c>), so the fanout re-publish is skipped
     /// by every other subscriber instead of being reprocessed by all of them.
     /// </summary>
-    private Dictionary<string, object?> RetryHeaders(EventErrorContext<TEvent> context)
+    private Dictionary<string, string> RetryHeaders(EventErrorContext<TEvent> context)
     {
-        Dictionary<string, object?> headers = context.Transport.CloneHeaders();
+        Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(context.RetryCount + 1));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(_queue));
@@ -170,11 +170,11 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     }
 
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing queue, the UTC time).</summary>
-    private Dictionary<string, object?> ErrorHeaders(EventErrorContext<TEvent> context)
+    private Dictionary<string, string> ErrorHeaders(EventErrorContext<TEvent> context)
     {
         Type type = context.Error.GetType();
 
-        Dictionary<string, object?> headers = context.Transport.CloneHeaders();
+        Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
         TransportHeaders.Restamp(headers, TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));

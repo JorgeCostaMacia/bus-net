@@ -91,6 +91,8 @@ The producer declares its own topology: a hosted worker creates every mapped exc
 
 Message bodies are JSON serialized with .NET's Web defaults — **camelCase** property names, case-insensitive reads. The envelope travels in **`jcm-`-prefixed headers** (`jcm-message-id`, `jcm-retry-count`, …), hyphenated like the header conventions of HTTP and AMQP (the broker's own `x-*` headers included); dictionary keys in bodies are user data and travel untouched.
 
+Envelope headers travel as a **`string → string`** table of canonical text: the ids in their dashed GUID form (`jcm-message-id`, `jcm-conversation-id`, `jcm-aggregate-id`, `jcm-aggregate-correlation-id`), the counter (`jcm-retry-count`) as invariant digits, the dates as ISO round-trip. The RabbitMQ .NET client encodes each string value as an AMQP longstr, so the whole envelope is **human-readable in the management UI** — no base64 GUID blobs. The typed materialization (GUID, `int`, date) happens at the reading boundary on the incoming delivery, whose field table hands its values back as bytes. On Kafka the headers stay **raw bytes**, since its header API is natively binary — each transport is idiomatic to its broker.
+
 ## Logging
 
 Log messages are fixed, low-cardinality grouping keys; every variable detail — exchange, queue, body, the decoded envelope headers, the `BusDescription` outcome expansion — travels as structured properties through Serilog's `LogContext`. Wire `.Enrich.FromLogContext()` into the host's Serilog pipeline (the usual default) so those properties reach the sinks.

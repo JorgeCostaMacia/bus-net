@@ -32,7 +32,7 @@ public class EventErrorHandlerTests
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
-        (string exchange, string routingKey, byte[] body, IReadOnlyDictionary<string, object?> headers) = Assert.Single(_producer.Produced);
+        (string exchange, string routingKey, byte[] body, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
         Assert.Equal($"{Deliveries.QUEUE}.error", routingKey);
 
@@ -57,9 +57,9 @@ public class EventErrorHandlerTests
 
         await EventError().Handle(context, TestContext.Current.CancellationToken);
 
-        IReadOnlyDictionary<string, object?> headers = Assert.Single(_producer.Produced).Headers;
-        Assert.Equal(aggregateId, new Guid((byte[])headers[TransportHeaders.AggregateId]!));
-        Assert.Equal(aggregateCorrelationId, new Guid((byte[])headers[TransportHeaders.AggregateCorrelationId]!));
+        IReadOnlyDictionary<string, string> headers = Assert.Single(_producer.Produced).Headers;
+        Assert.Equal(aggregateId.ToString(), headers[TransportHeaders.AggregateId]);
+        Assert.Equal(aggregateCorrelationId.ToString(), headers[TransportHeaders.AggregateCorrelationId]);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class EventErrorHandlerTests
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
-        (string exchange, string routingKey, _, IReadOnlyDictionary<string, object?> headers) = Assert.Single(_producer.Produced);
+        (string exchange, string routingKey, _, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
         Assert.Equal(Deliveries.EXCHANGE, exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal("1", Deliveries.Header(headers, TransportHeaders.RetryCount));
@@ -104,7 +104,7 @@ public class EventErrorHandlerTests
 
         Assert.Equal(ErrorResult.Scheduled, sut.Result);
         Assert.Empty(_producer.Produced);
-        (string exchange, string queue, _, IReadOnlyDictionary<string, object?> headers, _) = Assert.Single(_scheduler.Scheduled);
+        (string exchange, string queue, _, IReadOnlyDictionary<string, string> headers, _) = Assert.Single(_scheduler.Scheduled);
         Assert.Equal(Deliveries.EXCHANGE, exchange);
         Assert.Equal(Deliveries.QUEUE, queue);
         Assert.Equal("1", Deliveries.Header(headers, TransportHeaders.RetryCount));

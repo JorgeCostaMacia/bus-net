@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
@@ -41,9 +42,9 @@ internal static class Deliveries
     /// <summary>A delivery whose body deserializes to <see langword="null"/> — drives the null-body/fault path.</summary>
     public static BasicDeliverEventArgs NullBody(ulong deliveryTag = 10) => Args("null"u8.ToArray(), [], deliveryTag);
 
-    /// <summary>Reads a published message's header as UTF-8 text, or <see langword="null"/> when absent (or not byte-valued).</summary>
-    public static string? Header(IReadOnlyDictionary<string, object?> headers, string key)
-        => headers.TryGetValue(key, out object? value) && value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : null;
+    /// <summary>Reads a published message's canonical header text, or <see langword="null"/> when absent.</summary>
+    public static string? Header(IReadOnlyDictionary<string, string> headers, string key)
+        => headers.TryGetValue(key, out string? value) ? value : null;
 
     /// <summary>Builds the delivery args from a body, its headers and a delivery tag — the AMQP shape the worker receives.</summary>
     public static BasicDeliverEventArgs Args(byte[] body, Dictionary<string, object?> headers, ulong deliveryTag = 10)
@@ -56,11 +57,13 @@ internal static class Deliveries
             properties: new BasicProperties { Headers = headers! },
             body: body);
 
+    // the incoming AMQP field table hands values back as bytes (the client decodes a longstr to byte[]),
+    // so the envelope's canonical text arrives as its UTF-8 bytes — GUIDs included, as dashed text now.
     private static Dictionary<string, object?> TraceHeaders(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
         => new()
         {
-            [TransportHeaders.RetryCount] = Encoding.UTF8.GetBytes(retryCount.ToString()),
-            [TransportHeaders.AggregateId] = (aggregateId ?? Guid.NewGuid()).ToByteArray(),
-            [TransportHeaders.AggregateCorrelationId] = (aggregateCorrelationId ?? Guid.NewGuid()).ToByteArray()
+            [TransportHeaders.RetryCount] = Encoding.UTF8.GetBytes(retryCount.ToString(CultureInfo.InvariantCulture)),
+            [TransportHeaders.AggregateId] = Encoding.UTF8.GetBytes((aggregateId ?? Guid.NewGuid()).ToString()),
+            [TransportHeaders.AggregateCorrelationId] = Encoding.UTF8.GetBytes((aggregateCorrelationId ?? Guid.NewGuid()).ToString())
         };
 }
