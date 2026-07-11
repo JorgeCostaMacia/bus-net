@@ -170,7 +170,7 @@ internal static class BusLogger
         }
     }
 
-    /// <summary>Decodes every envelope header into the context — Guids and counters typed, the rest as text, a duplicated key keeping its last value. A message with no headers (never set) contributes nothing rather than throwing — logging must never fault, least of all in a catch about to rethrow.</summary>
+    /// <summary>Decodes every envelope header into the context — Guids and counters typed, the rest as text, a duplicated key keeping its last value. A message with no headers (never set) contributes nothing, and a null-valued header contributes its key with a null value, rather than throwing — logging must never fault, least of all in a catch about to rethrow.</summary>
     /// <param name="context">The enricher list to fill.</param>
     /// <param name="headers">The delivery's headers, or <see langword="null"/> when the message carries none.</param>
     private static void Decode(List<ILogEventEnricher> context, Headers? headers)
@@ -181,13 +181,15 @@ internal static class BusLogger
 
         foreach (IHeader header in headers)
         {
-            byte[] value = header.GetValueBytes();
+            byte[]? value = header.GetValueBytes();
 
-            decoded[header.Key] = TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
+            decoded[header.Key] = value is not null && TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
                 ? new Guid(value)
-                : TransportHeaders.IntHeaders.Contains(header.Key) && int.TryParse(Encoding.UTF8.GetString(value), NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
+                : value is not null && TransportHeaders.IntHeaders.Contains(header.Key) && int.TryParse(Encoding.UTF8.GetString(value), NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
                     ? count
-                    : Encoding.UTF8.GetString(value);
+                    : value is not null
+                        ? Encoding.UTF8.GetString(value)
+                        : null;
         }
 
         context.AddRange(decoded.Select(entry => new PropertyEnricher(entry.Key, entry.Value)));

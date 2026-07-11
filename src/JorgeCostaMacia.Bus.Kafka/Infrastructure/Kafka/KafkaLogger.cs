@@ -35,7 +35,13 @@ internal static class KafkaLogger
         }
     }
 
-    /// <summary>Logs an internal (librdkafka) message with its source and text in the context, mapped to its severity.</summary>
+    /// <summary>
+    /// Logs an internal (librdkafka) message with its source and text in the context, mapped to its
+    /// severity but capped at <see cref="LogLevel.Error"/> — the client's crit/alert/emerg facilities
+    /// are not a fatal host state (the client recovers), so the passthrough never emits
+    /// <see cref="LogLevel.Critical"/>. That level is reserved for a dying host, and the separate error
+    /// handler (<see cref="LogError"/>) owns the fatal → <c>StopApplication</c> path.
+    /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="log">The Kafka log message.</param>
     public static void Log(ILogger logger, LogMessage log)
@@ -45,7 +51,14 @@ internal static class KafkaLogger
             new PropertyEnricher("KafkaFacility", log.Facility),
             new PropertyEnricher("KafkaMessage", log.Message)))
         {
-            logger.Log((LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging), "Kafka log.");
+            LogLevel level = (LogLevel)log.LevelAs(LogLevelType.MicrosoftExtensionsLogging);
+
+            // crit-facility internal logs are informational, not fatal (ordering is
+            // Trace < Debug < Information < Warning < Error < Critical): cap them at Error so Critical
+            // stays reserved for the host dying, while leaving the None sentinel untouched.
+            if (level > LogLevel.Error && level != LogLevel.None) level = LogLevel.Error;
+
+            logger.Log(level, "Kafka log.");
         }
     }
 
