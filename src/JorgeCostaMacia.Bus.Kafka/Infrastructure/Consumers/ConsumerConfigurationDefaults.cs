@@ -39,8 +39,13 @@ public static class ConsumerConfigurationDefaults
     /// </summary>
     public const bool ALLOW_AUTO_CREATE_TOPICS = true;
 
-    /// <summary>Where to start when no offset is stored. Default: <c>Latest</c>.</summary>
-    public const AutoOffsetReset AUTO_OFFSET_RESET = AutoOffsetReset.Latest;
+    /// <summary>
+    /// Where to start when no offset is stored (a group's very first start, or expired offsets).
+    /// Default: <c>Earliest</c> — the at-least-once bias: a duplicate is absorbed by the idempotent
+    /// handling, a silently skipped message is invisible loss; and it matches the RabbitMQ queue
+    /// semantics, where everything published since the queue existed waits for its consumer.
+    /// </summary>
+    public const AutoOffsetReset AUTO_OFFSET_RESET = AutoOffsetReset.Earliest;
 
     /// <summary>
     /// Partition assignment strategy. Default: <c>CooperativeSticky</c> — incremental rebalancing:
