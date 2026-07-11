@@ -3,6 +3,7 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
@@ -124,6 +125,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private Task OnClosedAsync(ShutdownEventArgs? reason)
     {
         if (_stopping.IsCancellationRequested) return Task.CompletedTask;
+
+        // our own close, not a death: disposing the dead channel after a resurrection raises its
+        // shutdown event one last time — logging it would stamp a spurious warning per resurrection.
+        if (reason?.Initiator == ShutdownInitiator.Application) return Task.CompletedTask;
 
         using (BusLogger.WorkerContext(_exchange, _queue))
         using (BusLogger.ShutdownContext(reason))
