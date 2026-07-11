@@ -128,7 +128,6 @@ internal sealed class Bus : IBus
         {
             { TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId) },
             { TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name) },
-            { TransportHeaders.MessageTypeUrn, TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)) },
             { TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(topic) },
             { TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(occurredAt) },
             { TransportHeaders.ConversationId, TransportHeaders.ToHeader(messageId) },
@@ -147,7 +146,7 @@ internal sealed class Bus : IBus
     /// <summary>
     /// Builds the message continuing an inbound flow: the inbound envelope is cloned from the
     /// <paramref name="transport"/>, the message-level fields are re-stamped for this hop (new id/type/
-    /// urn/occurred-at, origin = the inbound destination, destination = this message's topic, domain
+    /// occurred-at, origin = the inbound destination, destination = this message's topic, domain
     /// trace from the message), and the conversation is carried over unchanged; the retry counter is
     /// re-stamped to zero — a continuation is a new message with its own retry budget.
     /// </summary>
@@ -163,7 +162,6 @@ internal sealed class Bus : IBus
 
         TransportHeaders.Restamp(headers, TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        TransportHeaders.Restamp(headers, TransportHeaders.MessageTypeUrn, TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageOriginAddress, TransportHeaders.ToHeader(inbound.GetHeaderString(TransportHeaders.MessageDestinationAddress)));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(topic));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));

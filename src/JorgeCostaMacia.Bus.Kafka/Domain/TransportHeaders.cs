@@ -18,7 +18,6 @@ internal static class TransportHeaders
 
     public const string MessageId = Prefix + "message-id";
     public const string MessageType = Prefix + "message-type";
-    public const string MessageTypeUrn = Prefix + "message-type-urn";
     public const string MessageDestinationAddress = Prefix + "message-destination-address";
     public const string MessageOriginAddress = Prefix + "message-origin-address";
     public const string MessageOccurredAt = Prefix + "message-occurred-at";
