@@ -18,7 +18,10 @@ public sealed record ConnectionConfiguration
     /// <summary>The password. Required.</summary>
     public required string Password { get; init; }
 
-    /// <summary>The AMQP port, or <see langword="null"/> for the default (5672).</summary>
+    /// <summary>Whether TLS wraps the connection, or <see langword="null"/> for the default (true — secure by default).</summary>
+    public bool? Ssl { get; init; }
+
+    /// <summary>The port, or <see langword="null"/> for the default of the scheme (5671 with TLS, 5672 without).</summary>
     public int? Port { get; init; }
 
     /// <summary>The virtual host, or <see langword="null"/> for the default (<c>/</c>).</summary>
@@ -30,15 +33,24 @@ public sealed record ConnectionConfiguration
     /// <summary>Automatic recovery, or <see langword="null"/> for the default (true).</summary>
     public bool? AutomaticRecoveryEnabled { get; init; }
 
-    /// <summary>The RabbitMQ connection factory — supplied values, defaults for the rest.</summary>
-    public ConnectionFactory ConnectionFactory => new()
+    /// <summary>The RabbitMQ connection factory — supplied values, defaults for the rest; TLS carries the host name for the certificate match.</summary>
+    public ConnectionFactory ConnectionFactory
     {
-        HostName = HostName,
-        UserName = UserName,
-        Password = Password,
-        Port = Port ?? ConnectionConfigurationDefaults.PORT,
-        VirtualHost = VirtualHost ?? ConnectionConfigurationDefaults.VIRTUAL_HOST,
-        ClientProvidedName = ClientProvidedName ?? ConnectionConfigurationDefaults.CLIENT_PROVIDED_NAME,
-        AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? ConnectionConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED
-    };
+        get
+        {
+            bool ssl = Ssl ?? ConnectionConfigurationDefaults.SSL;
+
+            return new ConnectionFactory
+            {
+                HostName = HostName,
+                UserName = UserName,
+                Password = Password,
+                Ssl = new SslOption { Enabled = ssl, ServerName = HostName },
+                Port = Port ?? (ssl ? ConnectionConfigurationDefaults.SSL_PORT : ConnectionConfigurationDefaults.PORT),
+                VirtualHost = VirtualHost ?? ConnectionConfigurationDefaults.VIRTUAL_HOST,
+                ClientProvidedName = ClientProvidedName ?? ConnectionConfigurationDefaults.CLIENT_PROVIDED_NAME,
+                AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? ConnectionConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED
+            };
+        }
+    }
 }

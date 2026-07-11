@@ -59,7 +59,7 @@ public sealed class OrdersService(IBus bus)
 
 ### Configuration
 
-The `Bus:Connection` section configures the single RabbitMQ connection both sides share. `HostName`, `UserName` and `Password` are required (startup fails fast without them); the rest default to: `Port` `5672`, `VirtualHost` `/`, `ClientProvidedName` the machine name, `AutomaticRecoveryEnabled` `true`.
+The `Bus:Connection` section configures the single RabbitMQ connection both sides share. `HostName`, `UserName` and `Password` are required (startup fails fast without them); the rest default to: `Ssl` `true` (secure by default — TLS with the host name as the certificate match), `Port` `5671` with TLS / `5672` without, `VirtualHost` `/`, `ClientProvidedName` the machine name, `AutomaticRecoveryEnabled` `true`.
 
 ```json
 {
@@ -68,7 +68,7 @@ The `Bus:Connection` section configures the single RabbitMQ connection both side
       "HostName": "rabbit",
       "UserName": "user",
       "Password": "pass",
-      "Port": 5672,
+      "Port": 5671,
       "VirtualHost": "/",
       "ClientProvidedName": "orders-api",
       "AutomaticRecoveryEnabled": true
