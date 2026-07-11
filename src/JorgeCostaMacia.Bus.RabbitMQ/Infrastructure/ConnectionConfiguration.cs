@@ -21,7 +21,7 @@ public sealed record ConnectionConfiguration
     /// <summary>Whether TLS wraps the connection, or <see langword="null"/> for the default (true — secure by default).</summary>
     public bool? Ssl { get; init; }
 
-    /// <summary>The port, or <see langword="null"/> for the default of the scheme (5671 with TLS, 5672 without).</summary>
+    /// <summary>The port, or <see langword="null"/> for the default (5671, AMQPS — going plain requires an explicit port).</summary>
     public int? Port { get; init; }
 
     /// <summary>The virtual host, or <see langword="null"/> for the default (<c>/</c>).</summary>
@@ -46,7 +46,7 @@ public sealed record ConnectionConfiguration
                 UserName = UserName,
                 Password = Password,
                 Ssl = new SslOption { Enabled = ssl, ServerName = HostName },
-                Port = Port ?? (ssl ? ConnectionConfigurationDefaults.SSL_PORT : ConnectionConfigurationDefaults.PORT),
+                Port = Port ?? ConnectionConfigurationDefaults.PORT,
                 VirtualHost = VirtualHost ?? ConnectionConfigurationDefaults.VIRTUAL_HOST,
                 ClientProvidedName = ClientProvidedName ?? ConnectionConfigurationDefaults.CLIENT_PROVIDED_NAME,
                 AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? ConnectionConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED

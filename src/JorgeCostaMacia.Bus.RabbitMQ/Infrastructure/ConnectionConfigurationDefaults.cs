@@ -8,15 +8,15 @@ public static class ConnectionConfigurationDefaults
 {
     /// <summary>
     /// Whether TLS wraps the connection. Default: <c>true</c> — secure by default, matching the
-    /// Kafka transport's SaslSsl default; the AMQPS port follows unless one is supplied.
+    /// Kafka transport's SaslSsl default.
     /// </summary>
     public const bool SSL = true;
 
-    /// <summary>AMQP port used when TLS is off and no port is supplied. Default: <c>5672</c>.</summary>
-    public const int PORT = 5672;
-
-    /// <summary>AMQPS port used when TLS is on and no port is supplied. Default: <c>5671</c>.</summary>
-    public const int SSL_PORT = 5671;
+    /// <summary>
+    /// The AMQPS port. Default: <c>5671</c> — the only default port: the plain 5672 is never a
+    /// fallback, so turning TLS off also requires supplying the port explicitly.
+    /// </summary>
+    public const int PORT = 5671;
 
     /// <summary>Virtual host. Default: <c>/</c>.</summary>
     public const string VIRTUAL_HOST = "/";
