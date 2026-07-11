@@ -15,7 +15,7 @@ public class ConsumerConfigurationTests
         Assert.True(config.EnableAutoCommit);
         Assert.False(config.EnableAutoOffsetStore);
         Assert.Equal(5_000, config.AutoCommitIntervalMs);
-        Assert.Equal(AutoOffsetReset.Latest, config.AutoOffsetReset);
+        Assert.Equal(AutoOffsetReset.Earliest, config.AutoOffsetReset);
         Assert.Equal(PartitionAssignmentStrategy.CooperativeSticky, config.PartitionAssignmentStrategy);
         Assert.Equal(Environment.MachineName, config.GroupInstanceId);
     }
@@ -29,12 +29,12 @@ public class ConsumerConfigurationTests
             SaslUsername = "user",
             SaslPassword = "pass",
             EnableAutoCommit = false,
-            AutoOffsetReset = AutoOffsetReset.Earliest,
+            AutoOffsetReset = AutoOffsetReset.Latest,
             GroupInstanceId = "instance-1"
         }.ConsumerConfig("orders.handler");
 
         Assert.False(config.EnableAutoCommit);
-        Assert.Equal(AutoOffsetReset.Earliest, config.AutoOffsetReset);
+        Assert.Equal(AutoOffsetReset.Latest, config.AutoOffsetReset);
         Assert.Equal("instance-1", config.GroupInstanceId);
     }
 }
