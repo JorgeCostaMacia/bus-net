@@ -350,6 +350,39 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task DeliveryAcksOnTheChannelItArrivedOn_NotTheResurrectedField()
+    {
+        // the concurrency bug: a channel dies and is resurrected, swapping the worker's _channel field
+        // to a fresh channel — but a delivery that arrived on the dead channel must ack on THAT channel
+        // (the one captured in its consume closure), never on the field. Acking the fresh channel with
+        // the dead channel's delivery tag is a mis-ack: silent message loss, or a 406 that kills the
+        // fresh channel. The swap and the delivery use different channel instances, so a per-instance
+        // ack assertion pins the target: the field is 'resurrected', the delivery arrived on 'delivering'.
+        ConsumerChannelFake resurrected = new();
+        ConsumerChannelFake delivering = new() { Next = resurrected };
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(delivering);
+        worker.ResurrectionBackoff = [TimeSpan.FromMilliseconds(1)];
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+
+        // the delivering channel dies and the worker resurrects onto the fresh channel: the _channel
+        // field now points at 'resurrected', while 'delivering' still holds the in-flight delivery's
+        // captured callback — exactly the state a slow handler sees when its channel is swapped mid-flight.
+        await delivering.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Peer, 406, "PRECONDITION_FAILED"));
+        await WaitUntil(() => delivering.Disposed && resurrected.Declared);
+
+        await delivering.DeliverAsync(Deliveries.Delivery(new TestCommand("pepe")));
+
+        Assert.Equal("pepe", _handler.Received?.Name);
+        Assert.Equal(10ul, Assert.Single(delivering.Acked)); // acked on the channel that DELIVERED it
+        Assert.Empty(resurrected.Acked);                     // never cross-acked the resurrected channel
+        Assert.Empty(delivering.Nacked);
+        Assert.Empty(resurrected.Nacked);
+
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task BrokerCancelsTheConsumer_ChannelStillOpen_ResurrectsAnyway()
     {
         // the broker cancelling the consumer (e.g. its queue deleted) leaves the channel OPEN but

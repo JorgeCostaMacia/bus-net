@@ -108,10 +108,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>Opens the channel, declares the topology (message exchange + queue + <c>.error</c> / <c>.fault</c> park queues), and starts consuming.</summary>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _channel = await _channelFactory.CreateAsync(cancellationToken);
+        IConsumerChannel channel = await _channelFactory.CreateAsync(cancellationToken);
+        _channel = channel;
 
-        await _channel.DeclareAsync(_exchange, _exchangeType, _queue, _prefetchCount, cancellationToken);
-        await _channel.ConsumeAsync(_queue, OnReceivedAsync, OnClosedAsync, cancellationToken);
+        await channel.DeclareAsync(_exchange, _exchangeType, _queue, _prefetchCount, cancellationToken);
+        await channel.ConsumeAsync(_queue, args => OnReceivedAsync(channel, args), OnClosedAsync, cancellationToken);
     }
 
     /// <summary>
@@ -173,7 +174,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                     IConsumerChannel channel = await _channelFactory.CreateAsync(_stopping.Token);
 
                     await channel.DeclareAsync(_exchange, _exchangeType, _queue, _prefetchCount, _stopping.Token);
-                    await channel.ConsumeAsync(_queue, OnReceivedAsync, OnClosedAsync, _stopping.Token);
+                    await channel.ConsumeAsync(_queue, args => OnReceivedAsync(channel, args), OnClosedAsync, _stopping.Token);
 
                     IConsumerChannel dead = _channel!;
                     _channel = channel;
@@ -207,9 +208,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// malformed delivery and goes to the fault handler, while any exception thrown by the handler
     /// itself (whatever its type) goes to the error handler and its retry ladder (which still relays to
     /// the fault handler on <see cref="ErrorResult.Faulted"/>). A shutdown cancellation leaves the
-    /// delivery unacked for the broker to requeue.
+    /// delivery unacked for the broker to requeue. Ack/nack target <paramref name="channel"/> — the
+    /// channel that delivered this message, captured in the consume closure — so a resurrection swapping
+    /// the field mid-flight can never cross-ack the fresh channel with this channel's delivery tag.
     /// </summary>
-    private async Task OnReceivedAsync(BasicDeliverEventArgs args)
+    /// <param name="channel">The channel that delivered this message — the one every ack/nack targets.</param>
+    /// <param name="args">The delivered message.</param>
+    private async Task OnReceivedAsync(IConsumerChannel channel, BasicDeliverEventArgs args)
     {
         using IDisposable workerScope = BusLogger.WorkerContext(_exchange, _queue);
         using IDisposable deliveryScope = BusLogger.ConsumerContext(args);
@@ -218,7 +223,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         if (Filtered(args))
         {
-            await AckQuietly(args);
+            await AckQuietly(channel, args);
 
             return;
         }
@@ -236,7 +241,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception exception)
         {
-            await Fault(scope.ServiceProvider, args, exception);
+            await Fault(channel, scope.ServiceProvider, args, exception);
 
             return;
         }
@@ -252,12 +257,12 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception exception)
         {
-            await Error(scope.ServiceProvider, args, context, exception);
+            await Error(channel, scope.ServiceProvider, args, context, exception);
 
             return;
         }
 
-        await AckQuietly(args);
+        await AckQuietly(channel, args);
     }
 
     /// <summary>
@@ -265,12 +270,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// reach the error lane — its re-publish would duplicate the work — so it is only logged: left
     /// unacked, the broker redelivers on channel recovery and the idempotent handler absorbs it.
     /// </summary>
+    /// <param name="channel">The channel that delivered the message — the ack targets it, never the field.</param>
     /// <param name="args">The delivery to ack.</param>
-    private async Task AckQuietly(BasicDeliverEventArgs args)
+    private async Task AckQuietly(IConsumerChannel channel, BasicDeliverEventArgs args)
     {
         try
         {
-            await Ack(args);
+            await Ack(channel, args);
         }
         catch (Exception exception)
         {
@@ -283,8 +289,14 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// schedule or park acks it; a report of <see cref="ErrorResult.Faulted"/> (or a context that never
     /// built) relays to the fault handler; anything else nacks with requeue to redeliver. An error
     /// handler that itself throws leaves the delivery nacked-with-requeue rather than tearing down.
+    /// Ack/nack target <paramref name="channel"/> — the channel that delivered the message.
     /// </summary>
-    private async Task Error(IServiceProvider services, BasicDeliverEventArgs args, TContext? context, Exception exception)
+    /// <param name="channel">The channel that delivered the message — every ack/nack here targets it.</param>
+    /// <param name="services"></param>
+    /// <param name="args"></param>
+    /// <param name="context"></param>
+    /// <param name="exception"></param>
+    private async Task Error(IConsumerChannel channel, IServiceProvider services, BasicDeliverEventArgs args, TContext? context, Exception exception)
     {
         ErrorResult outcome;
 
@@ -303,7 +315,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         {
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Error handler failed.");
 
-            await Nack(args);
+            await Nack(channel, args);
 
             return;
         }
@@ -313,15 +325,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             // the retry/park is already published: an ack failure here must not undo that work —
             // quietly logged, the broker redelivers and the idempotent handling absorbs it.
             case ErrorResult.Retried or ErrorResult.Scheduled or ErrorResult.Parked:
-                await AckQuietly(args);
+                await AckQuietly(channel, args);
                 break;
 
             case ErrorResult.Faulted:
-                await Fault(services, args, exception);
+                await Fault(channel, services, args, exception);
                 break;
 
             default:
-                await Nack(args);
+                await Nack(channel, args);
                 break;
         }
     }
@@ -330,8 +342,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// A broken (or relayed) delivery: hands it to the fault handler and acks it when the handler parks
     /// it; an unparked delivery is nacked with requeue to redeliver. Never throws for control flow — a
     /// fault handler that itself fails leaves the delivery nacked-with-requeue rather than tearing down.
+    /// Ack/nack target <paramref name="channel"/> — the channel that delivered the message.
     /// </summary>
-    private async Task Fault(IServiceProvider services, BasicDeliverEventArgs args, Exception exception)
+    /// <param name="channel">The channel that delivered the message — every ack/nack here targets it.</param>
+    /// <param name="services"></param>
+    /// <param name="args"></param>
+    /// <param name="exception"></param>
+    private async Task Fault(IConsumerChannel channel, IServiceProvider services, BasicDeliverEventArgs args, Exception exception)
     {
         FaultResult outcome;
 
@@ -348,32 +365,50 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         {
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Fault handler failed.");
 
-            await Nack(args);
+            await Nack(channel, args);
 
             return;
         }
 
         // the fault is already parked: an ack failure here must not undo that work (a nack would
         // redeliver and park a duplicate) — quietly logged, the broker redelivers on recovery.
-        if (outcome is FaultResult.Parked) await AckQuietly(args);
-        else await Nack(args);
+        if (outcome is FaultResult.Parked) await AckQuietly(channel, args);
+        else await Nack(channel, args);
     }
 
-    /// <summary>Acks the delivery — it was dealt with.</summary>
-    private async Task Ack(BasicDeliverEventArgs args)
-        => await _channel!.AckAsync(args.DeliveryTag, _stopping.Token);
+    /// <summary>Acks the delivery on the channel that delivered it — it was dealt with; the delivering channel is targeted so a resurrection swap can't cross-ack.</summary>
+    /// <param name="channel">The channel that delivered the message.</param>
+    /// <param name="args">The delivery to ack.</param>
+    private async Task Ack(IConsumerChannel channel, BasicDeliverEventArgs args)
+        => await channel.AckAsync(args.DeliveryTag, _stopping.Token);
 
     /// <summary>
-    /// Nacks the delivery with requeue — it was not dealt with and redelivers. A requeued delivery
-    /// comes back immediately, so a persistent failure would spin hot (× prefetch): the nack waits a
-    /// second first (like the Kafka worker's consume backoff), skipped when stopping so shutdown
-    /// doesn't linger.
+    /// Nacks the delivery with requeue on the channel that delivered it — it was not dealt with and
+    /// redelivers. A requeued delivery comes back immediately, so a persistent failure would spin hot
+    /// (× prefetch): the nack waits a second first (like the Kafka worker's consume backoff), skipped
+    /// when stopping so shutdown doesn't linger. Targeting the delivering channel keeps a resurrection
+    /// swap from nacking the fresh channel with this channel's tag. A nack failure is tolerated like an
+    /// ack failure: if that channel already died the nack throws, but the unacked delivery redelivers on
+    /// recovery anyway — so it is swallowed and logged rather than surfaced as a client callback fault.
     /// </summary>
-    private async Task Nack(BasicDeliverEventArgs args)
+    /// <param name="channel">The channel that delivered the message.</param>
+    /// <param name="args">The delivery to nack.</param>
+    private async Task Nack(IConsumerChannel channel, BasicDeliverEventArgs args)
     {
         if (!_stopping.IsCancellationRequested) await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
 
-        await _channel!.NackAsync(args.DeliveryTag, requeue: true, _stopping.Token);
+        try
+        {
+            await channel.NackAsync(args.DeliveryTag, requeue: true, _stopping.Token);
+        }
+        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
+        {
+            // shutting down — leave the delivery unacked for the broker to requeue on channel close.
+        }
+        catch (Exception exception)
+        {
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredOnRecovery)) _logger.LogWarning(exception, "Nack failed.");
+        }
     }
 
     /// <summary>
