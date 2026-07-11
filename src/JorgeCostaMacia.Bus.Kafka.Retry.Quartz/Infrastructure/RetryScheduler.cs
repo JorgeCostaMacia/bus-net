@@ -44,7 +44,7 @@ internal sealed class RetryScheduler : IRetryScheduler
     {
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
 
-        string identity = $"{MessageId(headers):N}:{RetryCount(headers)}";
+        string identity = $"{MessageId(headers)}:{RetryCount(headers)}";
 
         IJobDetail job = JobBuilder.Create<RetryJob>()
             .WithIdentity(identity, topic)
