@@ -280,6 +280,27 @@ public class CommandWorkerTests
     }
 
     [Fact]
+    public async Task ApplicationInitiatedClose_MidRun_StaysSilent_AndDoesNotResurrect()
+    {
+        // the worker's own dispose of a replaced channel raises the shutdown event with the
+        // Application initiator: not a death — no warning, no resurrection. Observed live: every
+        // resurrection used to log its own funeral as a spurious "Channel closed." warning.
+        ConsumerChannelFake channel = new();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
+        worker.ResurrectionBackoff = [TimeSpan.FromMilliseconds(1)];
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Application, 200, "Goodbye"));
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(logger.Logged, log => log.Message == "Channel closed.");
+        Assert.Equal(1, channel.Created);
+
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task ChannelClosesOnCleanStop_StaysSilent()
     {
         // the channel's own dispose raises the shutdown event on a clean stop: not a death — the
