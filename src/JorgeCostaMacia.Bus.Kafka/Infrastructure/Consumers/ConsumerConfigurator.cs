@@ -174,13 +174,6 @@ public sealed class ConsumerConfigurator
     }
 
     /// <summary>
-    /// Binds the <c>Bus:Consumer</c> section onto a <see cref="ConsumerConfiguration"/> — mandatory,
-    /// since the configurator is only built when the app opts into consuming (a send-only service
-    /// omits the consumer lambda and never reaches here).
-    /// </summary>
-    /// <returns>The global consumer configuration.</returns>
-    /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
-    /// <summary>
     /// Tracks every registered consumer group id and rejects a duplicate — like the message → topic
     /// map, the registry is the single source the registrations check against. Two consumers sharing
     /// a group id would also share the default machine-name <c>group.instance.id</c> and fence each
@@ -193,6 +186,13 @@ public sealed class ConsumerConfigurator
         if (!_groupIds.Add(groupId)) throw new InvalidOperationException($"Consumer group id '{groupId}' is already registered; give each handler its own group id.");
     }
 
+    /// <summary>
+    /// Binds the <c>Bus:Consumer</c> section onto a <see cref="ConsumerConfiguration"/> — mandatory,
+    /// since the configurator is only built when the app opts into consuming (a send-only service
+    /// omits the consumer lambda and never reaches here).
+    /// </summary>
+    /// <returns>The global consumer configuration.</returns>
+    /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
     private static ConsumerConfiguration CreateConsumerConfiguration(IConfiguration configuration)
     {
         ConsumerConfiguration consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>()

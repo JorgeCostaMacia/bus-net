@@ -105,7 +105,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     protected abstract Task<FaultResult> HandleFault(IServiceProvider services, ReadOnlyMemory<byte> body, Transport transport, Exception exception, CancellationToken cancellationToken);
 
-    /// <summary>Opens the channel, declares the topology (message exchange + queue + <c>.error</c> / <c>.fault</c> park queues), and starts consuming.</summary>
+    /// <summary>Opens the channel, declares the topology (message exchange + queue bound to it), and starts consuming — the <c>.error</c> / <c>.fault</c> park queues are born lazily, on the first park.</summary>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         IConsumerChannel channel = await _channelFactory.CreateAsync(cancellationToken);

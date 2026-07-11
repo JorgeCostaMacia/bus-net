@@ -8,8 +8,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 /// Declares the producer's topology on startup: every exchange of the routing map is declared —
 /// idempotently, with exactly the consumers' declare options — before the app starts serving, so a
 /// send-only service does not depend on a consumer having been the first to create the exchange.
-/// Consumers keep declaring their own topology (exchange, queue, bindings, park queues): each side
-/// is self-sufficient, whoever arrives first creates it, and the other's declare is a no-op.
+/// Consumers keep declaring their own topology (exchange, queue, bindings): each side
+/// is self-sufficient, whoever arrives first creates it, and the other's declare is a no-op. The
+/// <c>.error</c> / <c>.fault</c> park queues are no part of this — they are born lazily on the first park.
 /// </summary>
 internal sealed class TopologyWorker : IHostedService
 {
