@@ -10,8 +10,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 
 /// <summary>
 /// The base consumer hosting one handler over one queue: on start it opens its channel from the
-/// factory, declares its topology (the message exchange of the right kind, the durable queue bound
-/// straight to the exchange, and the durable <c>.error</c> / <c>.fault</c> park queues), sets the
+/// factory, declares its topology (the message exchange of the right kind and the durable queue bound
+/// straight to the exchange — the <c>.error</c> / <c>.fault</c> park queues are born lazily, on the
+/// first park), sets the
 /// prefetch, and subscribes with a push consumer. Each delivery runs in its own service scope with
 /// each failure in its own lane: a malformed delivery (undeserializable body, unreadable envelope)
 /// goes to the fault handler; every other handling failure goes to the error handler, and on to the
@@ -27,9 +28,6 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     where TContext : IContext
     where THandler : IHandler
 {
-    private const string ERROR_QUEUE_SUFFIX = ".error";
-    private const string FAULT_QUEUE_SUFFIX = ".fault";
-
     private static readonly TimeSpan[] DefaultResurrectionBackoff = [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)];
 
     private readonly IConsumerChannelFactory _channelFactory;
@@ -112,7 +110,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     {
         _channel = await _channelFactory.CreateAsync(cancellationToken);
 
-        await _channel.DeclareAsync(_exchange, _exchangeType, _queue, [_queue + ERROR_QUEUE_SUFFIX, _queue + FAULT_QUEUE_SUFFIX], _prefetchCount, cancellationToken);
+        await _channel.DeclareAsync(_exchange, _exchangeType, _queue, _prefetchCount, cancellationToken);
         await _channel.ConsumeAsync(_queue, OnReceivedAsync, OnClosedAsync, cancellationToken);
     }
 
@@ -174,7 +172,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                 {
                     IConsumerChannel channel = await _channelFactory.CreateAsync(_stopping.Token);
 
-                    await channel.DeclareAsync(_exchange, _exchangeType, _queue, [_queue + ERROR_QUEUE_SUFFIX, _queue + FAULT_QUEUE_SUFFIX], _prefetchCount, _stopping.Token);
+                    await channel.DeclareAsync(_exchange, _exchangeType, _queue, _prefetchCount, _stopping.Token);
                     await channel.ConsumeAsync(_queue, OnReceivedAsync, OnClosedAsync, _stopping.Token);
 
                     IConsumerChannel dead = _channel;

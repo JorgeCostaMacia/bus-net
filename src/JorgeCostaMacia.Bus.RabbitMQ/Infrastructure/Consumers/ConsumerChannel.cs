@@ -22,13 +22,12 @@ internal sealed class ConsumerChannel : IConsumerChannel
     public bool IsOpen => _channel.IsOpen;
 
     /// <inheritdoc />
-    public async Task DeclareAsync(string exchange, string exchangeType, string queue, IEnumerable<string> parkQueues, ushort prefetchCount, CancellationToken cancellationToken = default)
+    public async Task DeclareAsync(string exchange, string exchangeType, string queue, ushort prefetchCount, CancellationToken cancellationToken = default)
     {
         await _channel.ExchangeDeclareAsync(exchange, exchangeType, durable: true, autoDelete: false, cancellationToken: cancellationToken);
         await _channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
         await _channel.QueueBindAsync(queue, exchange, routingKey: string.Empty, cancellationToken: cancellationToken);
 
-        foreach (string parkQueue in parkQueues) await _channel.QueueDeclareAsync(parkQueue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
 
         await _channel.BasicQosAsync(prefetchSize: 0, prefetchCount: prefetchCount, global: false, cancellationToken: cancellationToken);
     }

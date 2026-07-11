@@ -19,10 +19,9 @@ internal interface IConsumerChannel : IAsyncDisposable
     /// <param name="exchange">The message exchange the queue binds to.</param>
     /// <param name="exchangeType">The exchange type — <c>direct</c> for commands, <c>fanout</c> for events.</param>
     /// <param name="queue">The queue this worker consumes, bound to the exchange with an empty routing key.</param>
-    /// <param name="parkQueues">The durable park queues to declare (the <c>.error</c> / <c>.fault</c> destinations), unbound — reached via the default exchange by name.</param>
     /// <param name="prefetchCount">The maximum unacked messages the broker delivers before waiting for acks.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task DeclareAsync(string exchange, string exchangeType, string queue, IEnumerable<string> parkQueues, ushort prefetchCount, CancellationToken cancellationToken = default);
+    Task DeclareAsync(string exchange, string exchangeType, string queue, ushort prefetchCount, CancellationToken cancellationToken = default);
 
     /// <summary>Subscribes a push consumer on the queue — the broker invokes <paramref name="onReceived"/> per delivery, and <paramref name="onClosed"/> when the channel or the consumer dies.</summary>
     /// <param name="queue">The queue to consume from.</param>
