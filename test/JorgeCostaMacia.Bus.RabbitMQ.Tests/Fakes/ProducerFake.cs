@@ -22,4 +22,7 @@ internal sealed class ProducerFake : IProducer
 
         return Task.CompletedTask;
     }
+
+    public Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, object?> headers, CancellationToken cancellationToken = default)
+        => Produce(string.Empty, queue, body, headers, cancellationToken);
 }
