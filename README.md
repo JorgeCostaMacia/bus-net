@@ -23,7 +23,6 @@ A MassTransit-free bus — one package per concern:
 | Package | What it does |
 | --- | --- |
 | `JorgeCostaMacia.Bus` | Core message + bus contracts (no request/response). |
-| `JorgeCostaMacia.Bus.UrnFactory` | `urn:message:{type}` lists for `MessageTypeUrn` — polymorphic routing. |
 | `JorgeCostaMacia.Bus.RabbitMQ` | Transport on the official `RabbitMQ.Client` — commands (`Send`) and events (`Publish`). |
 | `JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz` | Quartz-backed delayed retry for the RabbitMQ transport — parks a failed delivery and re-produces it at its time. |
 | `JorgeCostaMacia.Bus.RabbitMQ.HealthChecks` | Health check for the RabbitMQ transport — the shared connection's state on ASP.NET Core health endpoints. |

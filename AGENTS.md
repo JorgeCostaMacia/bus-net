@@ -13,7 +13,6 @@ Messaging building blocks — CQRS **command** and **event** buses and message a
 JorgeCostaMacia.Bus            root: transport- AND pattern-agnostic vocabulary — IMessage / ITracedMessage /
 │                              IFilteredMessage, ITransport, IContext + envelope facets, ISenderBus<T> /
 │                              IPublisherBus<T>, IHandler (NO requester / request-response, NO ICommand/IEvent)
-├─ Bus.UrnFactory             urn:message:{type} lists for MessageTypeUrn (polymorphic routing)
 ├─ Bus.RabbitMQ               own implementation on the official RabbitMQ.Client (NOT MassTransit)
 └─ Bus.Kafka                  own implementation on Confluent.Kafka
 ```
@@ -27,7 +26,7 @@ JorgeCostaMacia.Bus            root: transport- AND pattern-agnostic vocabulary 
 ## Dependencies
 
 - **Cross-repo, on shared-net**: the transports → `JorgeCostaMacia.DomainEvent` (their `Event` record implements `IDomainEvent`) — **`PackageReference`** to the published package, pinned in `Directory.Packages.props`. Never `ProjectReference` across repos.
-- **Intra-repo, between `Bus.*` packages** (`RabbitMQ`/`Kafka` → `Bus` + `Bus.UrnFactory`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
+- **Intra-repo, between `Bus.*` packages** (`RabbitMQ`/`Kafka` → `Bus`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
 - **Transport clients**: `RabbitMQ.Client`, `Confluent.Kafka` — third-party `PackageReference`, versioned in `Directory.Packages.props`.
 
 ## Dependencies — Central Package Management

@@ -55,7 +55,6 @@ public class BusTests
         Assert.Equal(command.AggregateCorrelationId, GuidHeader(message, TransportHeaders.AggregateCorrelationId));
         Assert.Equal("g1,g2", Header(message, TransportHeaders.AggregateConsumers));
         Assert.Equal("0", Header(message, TransportHeaders.RetryCount));
-        Assert.NotNull(Header(message, TransportHeaders.MessageTypeUrn));
         Assert.Contains("pepe", Encoding.UTF8.GetString(message.Value));
     }
 
@@ -69,7 +68,6 @@ public class BusTests
         {
             { TransportHeaders.MessageId, inboundMessageId.ToByteArray() },
             { TransportHeaders.MessageType, "Inbound"u8.ToArray() },
-            { TransportHeaders.MessageTypeUrn, "urn:message:Inbound"u8.ToArray() },
             { TransportHeaders.MessageDestinationAddress, "orders"u8.ToArray() },
             { TransportHeaders.MessageOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")) },
             { TransportHeaders.ConversationId, conversationId.ToByteArray() },

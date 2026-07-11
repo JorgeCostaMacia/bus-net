@@ -34,9 +34,6 @@ public record EventContext<TEvent> :
     /// <summary>Logical type name of the message.</summary>
     public string MessageType => Transport.GetHeaderString(TransportHeaders.MessageType);
 
-    /// <summary>Ordered URNs of the message type and its base types/interfaces (polymorphic routing / versioning).</summary>
-    public ImmutableList<string> MessageTypeUrn => Transport.GetHeaderStringList(TransportHeaders.MessageTypeUrn);
-
     /// <summary>Primary destination address (topic).</summary>
     public string MessageDestinationAddress => Transport.GetHeaderString(TransportHeaders.MessageDestinationAddress);
 

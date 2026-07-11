@@ -24,7 +24,7 @@ dotnet add package JorgeCostaMacia.Bus
 | `IFilteredMessage` | + `AggregateConsumers` (consumer-side filtering) |
 | `IContext` | marker for the read-only envelope a handler receives around a delivered message |
 | `ITransport` | marker for the transport a message arrived on (a Kafka/RabbitMQ transport object; one of the two real objects of a delivery, alongside the message) |
-| context facets (each carries only what it needs) | `IMessageContext<T>` (the message) · `ITransportContext<TTransport>` (the transport) · `ITracedContext` (messaging trace: id/type/URNs/addresses) · `IAggregateTracedContext` (domain trace) · `IAggregateFilteredContext` (addresses) · `IConversationContext` · `IResilientContext` · `IHostContext` (the handling host) · `IErrorContext<TError>` (a parked failure) — a concrete context (command/event) composes the ones it exposes |
+| context facets (each carries only what it needs) | `IMessageContext<T>` (the message) · `ITransportContext<TTransport>` (the transport) · `ITracedContext` (messaging trace: id/type/addresses) · `IAggregateTracedContext` (domain trace) · `IAggregateFilteredContext` (addresses) · `IConversationContext` · `IResilientContext` · `IHostContext` (the handling host) · `IErrorContext<TError>` (a parked failure) — a concrete context (command/event) composes the ones it exposes |
 | `IBus` | marker for a concrete bus — the single entry point a service resolves; the sender/publisher contracts below define it, they are not resolvable ports |
 | `ISenderBus<TMessage>` / `ISenderBatchBus<TMessage>` | `Send` point-to-point — one message, or a batch |
 | `IPublisherBus<TMessage>` / `IPublisherBatchBus<TMessage>` | `Publish` pub/sub — one message, or a batch |

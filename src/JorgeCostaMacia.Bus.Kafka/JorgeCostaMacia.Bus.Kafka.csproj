@@ -15,7 +15,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="../JorgeCostaMacia.Bus/JorgeCostaMacia.Bus.csproj" />
-		<ProjectReference Include="../JorgeCostaMacia.Bus.UrnFactory/JorgeCostaMacia.Bus.UrnFactory.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
