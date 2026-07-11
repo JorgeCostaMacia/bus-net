@@ -47,6 +47,23 @@ public class TransportTests
         => Assert.Throws<KeyNotFoundException>(() => CreateSut().GetHeaderString("missing"));
 
     [Fact]
+    public void GetString_PresentButNullValue_Throws()
+    {
+        // a present key whose value is null is treated as absent — the `value is null` branch throws.
+        Transport transport = new(new Dictionary<string, object?> { ["key"] = null }, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+
+        Assert.Throws<KeyNotFoundException>(() => transport.GetHeaderString("key"));
+    }
+
+    [Fact]
+    public void GetStringOrDefault_PresentButNullValue_ReturnsNull()
+    {
+        Transport transport = new(new Dictionary<string, object?> { ["key"] = null }, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+
+        Assert.Null(transport.GetHeaderStringOrDefault("key"));
+    }
+
+    [Fact]
     public void GetString_ForeignStringValue_ReadsItAsIs()
     {
         // an AMQP field table from a foreign publisher can carry a string instead of bytes.

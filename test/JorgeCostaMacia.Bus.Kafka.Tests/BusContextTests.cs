@@ -123,6 +123,18 @@ public class BusContextTests
     }
 
     [Fact]
+    public void AddEvent_DuplicateType_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddBusContext(Configuration(),
+            producer => producer
+                .AddEvent<TestEvent>("orders.created")
+                .AddEvent<TestEvent>("other"),
+            _ => { }));
+
+        Assert.Contains(nameof(TestEvent), exception.Message);
+    }
+
+    [Fact]
     public void AddCommandHandler_WithoutTheCommandMapped_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
