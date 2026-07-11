@@ -8,12 +8,22 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 /// worker registers on <see cref="ConsumeAsync"/> and, on <see cref="DeliverAsync"/>, invokes it as the
 /// broker would — so a test can push a delivery, await its full processing, and assert. Records the
 /// acks and nacks (the ack decision), the consumed queue and the dispose. Serves as its own
-/// <see cref="IConsumerChannelFactory"/>, handing itself to the worker.
+/// <see cref="IConsumerChannelFactory"/>, handing itself to the worker first and <see cref="Next"/>
+/// on the calls after — the resurrection's replacement.
 /// </summary>
 internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFactory
 {
     private Func<BasicDeliverEventArgs, Task>? _onReceived;
     private Func<ShutdownEventArgs?, Task>? _onClosed;
+
+    /// <summary>Whether the channel reports open — flips to false when <see cref="CloseAsync"/> kills it; a test flips it back to fake the client's automatic recovery reviving it.</summary>
+    public bool IsOpen { get; set; } = true;
+
+    /// <summary>The channel the factory hands out on the calls after the first — the resurrection's replacement. Unset, the factory keeps handing out this fake.</summary>
+    public ConsumerChannelFake? Next { get; set; }
+
+    /// <summary>How many channels the factory handed out.</summary>
+    public int Created { get; private set; }
 
     /// <summary>Whether the worker declared its topology on start.</summary>
     public bool Declared { get; private set; }
@@ -31,7 +41,12 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     public List<(ulong DeliveryTag, bool Requeue)> Nacked { get; } = [];
 
     /// <inheritdoc />
-    public Task<IConsumerChannel> CreateAsync(CancellationToken cancellationToken = default) => Task.FromResult<IConsumerChannel>(this);
+    public Task<IConsumerChannel> CreateAsync(CancellationToken cancellationToken = default)
+    {
+        Created++;
+
+        return Task.FromResult<IConsumerChannel>(Created is 1 || Next is null ? this : Next);
+    }
 
     /// <inheritdoc />
     public Task DeclareAsync(string exchange, string exchangeType, string queue, IEnumerable<string> parkQueues, ushort prefetchCount, CancellationToken cancellationToken = default)
@@ -84,7 +99,12 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     /// <param name="args">The delivery to push.</param>
     public Task DeliverAsync(BasicDeliverEventArgs args) => _onReceived?.Invoke(args) ?? Task.CompletedTask;
 
-    /// <summary>Kills the channel under the worker, as the broker would, driving its registered death observer.</summary>
+    /// <summary>Kills the channel under the worker, as the broker would: the channel reports closed and its registered death observer is driven.</summary>
     /// <param name="reason">The shutdown reason, or <see langword="null"/> for a consumer cancellation without one.</param>
-    public Task CloseAsync(ShutdownEventArgs? reason = null) => _onClosed?.Invoke(reason) ?? Task.CompletedTask;
+    public Task CloseAsync(ShutdownEventArgs? reason = null)
+    {
+        IsOpen = false;
+
+        return _onClosed?.Invoke(reason) ?? Task.CompletedTask;
+    }
 }

@@ -16,7 +16,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 /// goes to the fault handler; every other handling failure goes to the error handler, and on to the
 /// fault handler as the relay when it reports <see cref="ErrorResult.Faulted"/>. A dealt-with delivery
 /// is acked; an unresolved one is nacked with requeue to redeliver. The channel is not shared (one per
-/// worker), so the push loop is safe.
+/// worker), so the push loop is safe. A channel that dies outside a stop is resurrected: after a
+/// backoff the worker reopens it from the factory and redeclares — unless the client's automatic
+/// recovery already revived it.
 /// </summary>
 /// <typeparam name="TContext">The context type the handler receives.</typeparam>
 /// <typeparam name="THandler">The handler type resolved per delivery.</typeparam>
@@ -26,6 +28,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 {
     private const string ERROR_QUEUE_SUFFIX = ".error";
     private const string FAULT_QUEUE_SUFFIX = ".fault";
+
+    private static readonly TimeSpan[] DefaultResurrectionBackoff = [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60)];
 
     private readonly IConsumerChannelFactory _channelFactory;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -37,6 +41,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private readonly CancellationTokenSource _stopping = new();
 
     private IConsumerChannel? _channel;
+    private int _resurrecting;
 
     /// <summary>Creates the consumer over the channel factory, the scope factory, the logger and its topology.</summary>
     /// <param name="channelFactory">The factory the worker opens its channel from on start.</param>
@@ -59,6 +64,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>The queue this worker consumes — the consumer identity used for targeted retries and filtering.</summary>
     protected string Queue => _queue;
+
+    /// <summary>
+    /// The delays before each resurrection attempt, the last one repeating. An instance member rather
+    /// than the constant it defaults to only as the test seam: a test shrinks it to milliseconds so the
+    /// resurrection runs inside the test, without widening any constructor.
+    /// </summary>
+    internal IReadOnlyList<TimeSpan> ResurrectionBackoff { get; set; } = DefaultResurrectionBackoff;
 
     /// <summary>
     /// Consumer-side filtering hook: a filtered delivery is acked and skipped before deserializing the
@@ -104,9 +116,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     }
 
     /// <summary>
-    /// The channel (or its consumer) died under the worker: visibility only — the death is logged with
-    /// the shutdown reason in the context (the client's automatic recovery restores the channel, or the
-    /// worker stays deaf until restart), nothing is torn down, and a clean stop stays silent.
+    /// The channel (or its consumer) died under the worker: the death is logged with the shutdown
+    /// reason in the context, nothing is torn down, and a single resurrection is started — overlapping
+    /// death events fold into the one already running. A clean stop stays silent and resurrects nothing.
     /// </summary>
     /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer without one.</param>
     private Task OnClosedAsync(ShutdownEventArgs? reason)
@@ -117,7 +129,70 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         using (BusLogger.ShutdownContext(reason))
         using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelClosed)) _logger.LogWarning("Channel closed.");
 
+        if (Interlocked.CompareExchange(ref _resurrecting, 1, 0) == 0) _ = ResurrectAsync();
+
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Resurrects the dead channel — wait, check, then act. The client's automatic recovery already
+    /// restores channels and consumers after a connection-level drop (the same channel comes back open
+    /// with its consumer re-registered), but not a channel closed by a channel-level exception nor a
+    /// consumer the broker cancelled — and resurrecting blindly would double-subscribe when recovery
+    /// also acts. So each pass waits out a backoff step first, then: a stop ends the loop; a channel
+    /// recovery reopened is left alone; only a channel still dead is replaced — a new one from the
+    /// factory, same topology, same handler, the old one disposed. A failed attempt just waits for the
+    /// next step, silently: the death already logged its warning, and per-attempt noise groups nothing.
+    /// </summary>
+    private async Task ResurrectAsync()
+    {
+        try
+        {
+            for (int attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    await Task.Delay(ResurrectionBackoff[Math.Min(attempt, ResurrectionBackoff.Count - 1)], _stopping.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
+                if (_stopping.IsCancellationRequested) return;
+                if (_channel!.IsOpen) return;
+
+                try
+                {
+                    IConsumerChannel channel = await _channelFactory.CreateAsync(_stopping.Token);
+
+                    await channel.DeclareAsync(_exchange, _exchangeType, _queue, [_queue + ERROR_QUEUE_SUFFIX, _queue + FAULT_QUEUE_SUFFIX], _prefetchCount, _stopping.Token);
+                    await channel.ConsumeAsync(_queue, OnReceivedAsync, OnClosedAsync, _stopping.Token);
+
+                    IConsumerChannel dead = _channel;
+                    _channel = channel;
+
+                    await dead.DisposeAsync();
+
+                    using (BusLogger.WorkerContext(_exchange, _queue))
+                    using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelRestored)) _logger.LogInformation("Channel restored.");
+
+                    return;
+                }
+                catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception)
+                {
+                    // the attempt failed — the next backoff step retries; the death already logged.
+                }
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _resurrecting, 0);
+        }
     }
 
     /// <summary>
@@ -296,7 +371,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     }
 
     /// <summary>
-    /// Stops consuming and closes the channel. The stop is signalled and the channel disposed, but the
+    /// Stops consuming and closes the channel — whichever the field holds at that moment: a resurrection
+    /// still mid-flight exits on the stopping token. The stop is signalled and the channel disposed, but the
     /// token source is deliberately not disposed: a delivery still in flight reads it (its cancellation
     /// is what makes it leave the delivery unacked to redeliver), and disposing it under that read is a
     /// shutdown-time race for no gain — a worker is an app-lifetime singleton, so the token source holds

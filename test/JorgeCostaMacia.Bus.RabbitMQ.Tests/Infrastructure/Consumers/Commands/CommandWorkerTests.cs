@@ -44,6 +44,14 @@ public class CommandWorkerTests
             prefetchCount: 10);
     }
 
+    private static async Task WaitUntil(Func<bool> condition)
+    {
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+
+        while (!condition()) await Task.Delay(10, timeout.Token);
+    }
+
     private async Task Deliver(ConsumerChannelFake channel, CommandWorker<TestCommand, RecordingCommandHandler> worker, params BasicDeliverEventArgs[] deliveries)
     {
         await worker.StartAsync(TestContext.Current.CancellationToken);
@@ -285,6 +293,83 @@ public class CommandWorkerTests
         await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Application, 200, "Goodbye"));
 
         Assert.DoesNotContain(logger.Logged, log => log.Message == "Channel closed.");
+    }
+
+    [Fact]
+    public async Task ChannelDies_AndStaysClosed_ResurrectsOnANewChannel()
+    {
+        // a channel-level death automatic recovery never repairs (e.g. a 404/406): after the backoff
+        // the worker opens a new channel from the factory, redeclares the same topology, consumes with
+        // the same handler, and disposes the dead one.
+        ConsumerChannelFake replacement = new();
+        ConsumerChannelFake channel = new() { Next = replacement };
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
+        worker.ResurrectionBackoff = [TimeSpan.FromMilliseconds(1)];
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Peer, 404, "NOT_FOUND"));
+        await WaitUntil(() => channel.Disposed);
+        await WaitUntil(() => logger.Logged.Count >= 2);
+
+        Assert.Equal(2, channel.Created);
+        Assert.True(replacement.Declared);
+        Assert.Equal(Deliveries.QUEUE, replacement.ConsumedQueue);
+        Assert.Contains((LogLevel.Information, "Channel restored."), logger.Logged);
+        Assert.False(replacement.Disposed);
+
+        await replacement.DeliverAsync(Deliveries.Delivery(new TestCommand("pepe")));
+
+        Assert.Equal("pepe", _handler.Received?.Name);
+        Assert.Equal(10ul, Assert.Single(replacement.Acked));
+
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(replacement.Disposed);
+    }
+
+    [Fact]
+    public async Task ChannelDies_ButRecoveryRevivesIt_DoesNotResurrect()
+    {
+        // a connection-level drop: the client's automatic recovery brings the SAME channel back open
+        // with its consumer re-registered — the resurrection checks before acting and leaves it alone,
+        // where a blind reopen would double-subscribe.
+        ConsumerChannelFake channel = new();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
+        worker.ResurrectionBackoff = [TimeSpan.FromMilliseconds(50)];
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Library, 320, "CONNECTION_FORCED"));
+        channel.IsOpen = true; // automatic recovery revived it before the first backoff elapsed
+
+        await Task.Delay(TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, channel.Created);
+        Assert.False(channel.Disposed);
+        Assert.DoesNotContain(logger.Logged, log => log.Message == "Channel restored.");
+
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task ChannelDies_AfterStop_DoesNotResurrect()
+    {
+        // the shutdown event racing a stop: the worker is already stopping — no warning, and no
+        // resurrection either.
+        ConsumerChannelFake channel = new();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new();
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
+        worker.ResurrectionBackoff = [TimeSpan.FromMilliseconds(1)];
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+        await worker.StopAsync(TestContext.Current.CancellationToken);
+        await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Application, 200, "Goodbye"));
+
+        await Task.Delay(TimeSpan.FromMilliseconds(100), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, channel.Created);
+        Assert.DoesNotContain(logger.Logged, log => log.Message == "Channel restored.");
     }
 
     [Fact]
