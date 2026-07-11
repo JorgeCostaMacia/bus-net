@@ -49,7 +49,7 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     }
 
     /// <inheritdoc />
-    public Task DeclareAsync(string exchange, string exchangeType, string queue, IEnumerable<string> parkQueues, ushort prefetchCount, CancellationToken cancellationToken = default)
+    public Task DeclareAsync(string exchange, string exchangeType, string queue, ushort prefetchCount, CancellationToken cancellationToken = default)
     {
         Declared = true;
 
