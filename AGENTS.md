@@ -5,6 +5,7 @@ Messaging building blocks — CQRS **command** and **event** buses and message a
 ## Layout
 
 - `src/<Package>/` — one package per folder. `test/<Package>.Tests/` — its tests. `assets/` — icons + social preview.
+- **Internal visibility**: each project grants `InternalsVisibleTo` to its matching `.Tests`; the transports additionally grant it to their own satellite packages (`*.HealthChecks`, `*.Retry.Quartz`, and each satellite's `.Tests`) — deliberate, since those satellites extend the transport's internal seam and version in lockstep with it.
 - **3-tier `Directory.Build.props`**: **root** (repo identity + the single lockstep `VersionPrefix`; TFMs `net8.0;net9.0;net10.0`; ImplicitUsings, Nullable, AnalysisLevel, EnforceCodeStyleInBuild) → **`src/`** (package-output: icon / readme / license, SourceLink, symbols, `GenerateDocumentationFile`, pack of LICENSE/COPYRIGHT/icon/README) → **`test/`** (test settings). Each `src` csproj declares **only** `Description` / `PackageTags`; everything else is inherited.
 
 ## Architecture — concrete-first transports over agnostic contracts (locked)

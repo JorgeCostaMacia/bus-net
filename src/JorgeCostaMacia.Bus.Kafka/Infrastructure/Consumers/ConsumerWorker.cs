@@ -171,9 +171,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// The consumer loop — the delivery flow with each failure in its own lane: our shutdown exits
-    /// through the while condition; consume errors back off (the client reconnects on its own; a fatal
-    /// one stops the application); a malformed delivery goes to the fault handler; every other handling
-    /// failure goes to the error handler, and to the fault handler when it reports
+    /// through the while condition; a consume error backs off and retries (the client reconnects on its
+    /// own; a fatal one stops the application); any other unexpected failure in an iteration — such as a
+    /// post-handle scope disposal surfaced from the delivery — backs off too, logged distinctly as a
+    /// loop failure rather than a consume retry; a malformed delivery goes to the fault handler; every
+    /// other handling failure goes to the error handler, and to the fault handler when it reports
     /// <see cref="ErrorResult.Faulted"/> or fails itself (<see cref="ErrorResult.Unhandled"/>). A
     /// dealt-with delivery is acked; one that not even the fault handler could park is logged
     /// critical with its coordinates — the recovery signal.
@@ -218,9 +220,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
                 return;
             }
-            catch (Exception exception)
+            catch (ConsumeException exception)
             {
                 using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
+
+                await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumeLoopFailed)) _logger.LogError(exception, "Consume loop failed.");
 
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
