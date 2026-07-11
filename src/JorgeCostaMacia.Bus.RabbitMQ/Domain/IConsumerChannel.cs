@@ -12,6 +12,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 /// </summary>
 internal interface IConsumerChannel : IAsyncDisposable
 {
+    /// <summary>Whether the channel is open — the resurrection's recovery probe: an open channel after a death means the client's automatic recovery already revived it.</summary>
+    bool IsOpen { get; }
+
     /// <summary>Declares the worker's topology: the message exchange, the durable queue bound straight to it, the durable park queues, and the prefetch.</summary>
     /// <param name="exchange">The message exchange the queue binds to.</param>
     /// <param name="exchangeType">The exchange type — <c>direct</c> for commands, <c>fanout</c> for events.</param>

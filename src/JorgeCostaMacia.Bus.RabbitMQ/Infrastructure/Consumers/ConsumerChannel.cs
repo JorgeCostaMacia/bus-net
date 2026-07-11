@@ -19,6 +19,9 @@ internal sealed class ConsumerChannel : IConsumerChannel
     public ConsumerChannel(IChannel channel) => _channel = channel;
 
     /// <inheritdoc />
+    public bool IsOpen => _channel.IsOpen;
+
+    /// <inheritdoc />
     public async Task DeclareAsync(string exchange, string exchangeType, string queue, IEnumerable<string> parkQueues, ushort prefetchCount, CancellationToken cancellationToken = default)
     {
         await _channel.ExchangeDeclareAsync(exchange, exchangeType, durable: true, autoDelete: false, cancellationToken: cancellationToken);
