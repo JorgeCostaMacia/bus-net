@@ -16,8 +16,10 @@ internal sealed class ChannelFake : IChannel
     /// <summary>The queues declared through the channel, in order.</summary>
     public List<(string Queue, bool Durable, bool Exclusive, bool AutoDelete)> QueuesDeclared { get; } = [];
 
-    /// <summary>The publishes handed to the channel, in order.</summary>
+    /// <summary>The publishes handed to the channel, in order. Captured under a lock so concurrent produces record safely.</summary>
     public List<Publish> Published { get; } = [];
+
+    private readonly object _publishGate = new();
 
     /// <summary>An exception to fail every publish with, or <see langword="null"/> to succeed.</summary>
     public Exception? PublishFailure { get; set; }
@@ -34,7 +36,9 @@ internal sealed class ChannelFake : IChannel
     {
         if (PublishFailure is not null) return ValueTask.FromException(PublishFailure);
 
-        Published.Add(new Publish(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body, mandatory));
+        Publish publish = new(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body, mandatory);
+
+        lock (_publishGate) Published.Add(publish);
 
         return ValueTask.CompletedTask;
     }

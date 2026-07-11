@@ -189,6 +189,39 @@ public class ProducerTests
         Assert.False(string.IsNullOrWhiteSpace(publish.AppId)); // the host assembly, stamped by the producer
     }
 
+    [Fact]
+    public async Task Produce_NonGuidMessageId_LeavesTheNativeMessageIdUnset()
+    {
+        // the native mirroring is best-effort: an undecodable jcm-message-id leaves BasicProperties
+        // .MessageId unset rather than stamping garbage. The valid-guid case is covered by
+        // Produce_MapsTheEnvelopeToNativeAmqpProperties.
+        Dictionary<string, string> headers = new()
+        {
+            [TransportHeaders.MessageId] = "not-a-guid"
+        };
+
+        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
+
+        Assert.Null(Assert.Single(_channel.Published).MessageId);
+    }
+
+    [Fact]
+    public async Task Produce_ConcurrentAcrossExchanges_OpensExactlyOneChannelPerExchange()
+    {
+        // the singleton's per-exchange channel map + gate under real contention: many concurrent
+        // produces spread across several exchanges (several per exchange) open exactly one channel
+        // per distinct exchange and never double-open. Outcome asserted after WhenAll, not timing.
+        RabbitProducer sut = Sut();
+        string[] exchanges = ["orders", "orders.created", "billing", "shipping"];
+
+        Task[] produces = [.. Enumerable.Range(0, 200).Select(i =>
+            Task.Run(() => sut.Produce(exchanges[i % exchanges.Length], string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken), TestContext.Current.CancellationToken))];
+
+        await Task.WhenAll(produces);
+
+        Assert.Equal(exchanges.Length, _connection.Created);
+    }
+
     // the client's header table is object?-typed at the AMQP edge, but the producer copies the
     // envelope's canonical text straight in, so each value arrives as a string (encoded longstr).
     private static string? Header(IReadOnlyDictionary<string, object?> headers, string key)
