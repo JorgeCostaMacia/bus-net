@@ -1,0 +1,27 @@
+namespace JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
+
+/// <summary>
+/// The shared signal the two fanout subscribers and the test all hold: each subscriber completes its
+/// own task with the payload it received, so the test can await both independently and prove the one
+/// published event reached both consumer groups on the topic — the Kafka fanout (N consumer groups on
+/// one topic, not a fanout exchange).
+/// </summary>
+public sealed class FanoutProbe
+{
+    private readonly TaskCompletionSource<string> _first = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<string> _second = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completes with the payload the first subscriber group received.</summary>
+    public Task<string> First => _first.Task;
+
+    /// <summary>Completes with the payload the second subscriber group received.</summary>
+    public Task<string> Second => _second.Task;
+
+    /// <summary>Signals the first subscriber group's delivery.</summary>
+    /// <param name="payload">The payload it received.</param>
+    public void SignalFirst(string payload) => _first.TrySetResult(payload);
+
+    /// <summary>Signals the second subscriber group's delivery.</summary>
+    /// <param name="payload">The payload it received.</param>
+    public void SignalSecond(string payload) => _second.TrySetResult(payload);
+}
