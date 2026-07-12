@@ -1,7 +1,7 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Producers;
 
 public class ProducerConfigurationTests
 {

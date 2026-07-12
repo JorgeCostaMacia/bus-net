@@ -1,7 +1,7 @@
 using System.Reflection;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure;
 
 /// <summary>
 /// Pins the bus log descriptions to their exact text. They feed Loki/Grafana dashboards and alerts, so

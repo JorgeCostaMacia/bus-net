@@ -1,12 +1,14 @@
 using System.Collections.Immutable;
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandWorkerTests
 {
@@ -16,13 +18,13 @@ public class CommandWorkerTests
     private readonly BusHealth _health = new();
     private readonly RecordingCommandHandler _handler = new();
 
-    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, Domain.Commands.Faults.CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>? faultHandler = null)
+    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>? faultHandler = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
-            .AddScoped<Domain.Commands.Errors.CommandErrorHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
+            .AddScoped<CommandErrorHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
                 new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], []))
-            .AddScoped<Domain.Commands.Faults.CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
+            .AddScoped<CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
                 faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
             .BuildServiceProvider();
 

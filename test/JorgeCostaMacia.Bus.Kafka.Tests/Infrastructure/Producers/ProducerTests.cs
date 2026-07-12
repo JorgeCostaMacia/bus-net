@@ -6,7 +6,7 @@ using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 using KafkaProducer = JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers.Producer;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Producers;
 
 public class ProducerTests
 {

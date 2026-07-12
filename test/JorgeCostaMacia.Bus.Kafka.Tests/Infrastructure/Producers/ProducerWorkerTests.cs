@@ -2,7 +2,7 @@ using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Producers;
 
 public class ProducerWorkerTests
 {

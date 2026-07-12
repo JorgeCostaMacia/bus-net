@@ -3,7 +3,7 @@ using System.Text;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain;
 
 public class TransportTests
 {

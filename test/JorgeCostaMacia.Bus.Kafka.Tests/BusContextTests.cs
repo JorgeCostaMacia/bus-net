@@ -1,5 +1,9 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Configuration;
@@ -185,9 +189,9 @@ public class BusContextTests
         Assert.Equal(ServiceLifetime.Scoped, handler.Lifetime);
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
 
-        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Commands.Errors.CommandErrorHandlerBase<TestCommand, TestCommandHandler>));
+        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(CommandErrorHandlerBase<TestCommand, TestCommandHandler>));
         Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
-        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Commands.Faults.CommandFaultHandlerBase<TestCommand, TestCommandHandler>));
+        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(CommandFaultHandlerBase<TestCommand, TestCommandHandler>));
         Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
     }
 
@@ -203,9 +207,9 @@ public class BusContextTests
         Assert.Single(services, e => e.ServiceType == typeof(TestEventSubscriber));
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
 
-        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Events.Errors.EventErrorHandlerBase<TestEvent, TestEventSubscriber>));
+        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(EventErrorHandlerBase<TestEvent, TestEventSubscriber>));
         Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
-        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Events.Faults.EventFaultHandlerBase<TestEvent, TestEventSubscriber>));
+        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(EventFaultHandlerBase<TestEvent, TestEventSubscriber>));
         Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
     }
 }
