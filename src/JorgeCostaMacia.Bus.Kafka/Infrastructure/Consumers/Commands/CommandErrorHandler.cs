@@ -22,7 +22,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler manages the failures of.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler it is paired with — ties this error handler to its command and handler.</typeparam>
-internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>
+internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandErrorHandlerBase<TCommand, TCommandHandler>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
@@ -188,14 +188,9 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing group, the UTC time) — filterable and reinjectable header-side.</summary>
     private Headers ErrorHeaders(CommandErrorContext<TCommand> context)
     {
-        Type type = context.Error.GetType();
-
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Add(TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        headers.Add(TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
-        headers.Add(TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_groupId));
-        headers.Add(TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.StampError(headers, context.Error, _groupId);
 
         return headers;
     }

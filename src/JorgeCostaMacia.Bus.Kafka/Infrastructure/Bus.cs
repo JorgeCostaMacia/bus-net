@@ -124,7 +124,7 @@ internal sealed class Bus : IBus
         string occurredAt = DateTime.UtcNow.ToString("O");
         Type type = message.GetType();
 
-        Headers headers = new()
+        Headers headers = new Headers()
         {
             { TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId) },
             { TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name) },

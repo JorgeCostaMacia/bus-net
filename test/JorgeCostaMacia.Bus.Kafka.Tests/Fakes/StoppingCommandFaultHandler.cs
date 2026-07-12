@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 /// <see cref="OperationCanceledException"/> in the fault lane is rethrown for the loop to exit
 /// through, the delivery left unacked).
 /// </summary>
-internal sealed class StoppingCommandFaultHandler : CommandFaultHandler<TestCommand, RecordingCommandHandler>
+internal sealed class StoppingCommandFaultHandler : CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>
 {
     private readonly TaskCompletionSource<Task> _stopping = new(TaskCreationOptions.RunContinuationsAsynchronously);
 

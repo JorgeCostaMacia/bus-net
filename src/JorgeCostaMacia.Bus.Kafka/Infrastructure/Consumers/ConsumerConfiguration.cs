@@ -9,7 +9,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 /// <see cref="ConsumerConfig"/> — shared settings live here once; what varies per consumer (the group
 /// id) is supplied when composing.
 /// </summary>
-public sealed class ConsumerConfiguration
+public sealed record ConsumerConfiguration
 {
     /// <summary>Comma-separated list of Kafka brokers. Required when the service consumes.</summary>
     public required string BootstrapServers { get; init; }

@@ -2,7 +2,11 @@ using System.Collections.Immutable;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,7 +75,7 @@ public sealed class ConsumerConfigurator
 
         _services.AddScoped<TCommandHandler>();
 
-        _services.AddScoped<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>(provider =>
+        _services.AddScoped<CommandErrorHandlerBase<TCommand, TCommandHandler>>(provider =>
             new Commands.CommandErrorHandler<TCommand, TCommandHandler>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetService<IRetryScheduler>(),
@@ -81,7 +85,7 @@ public sealed class ConsumerConfigurator
                 intervals,
                 excludes));
 
-        _services.AddScoped<Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>>(provider =>
+        _services.AddScoped<CommandFaultHandlerBase<TCommand, TCommandHandler>>(provider =>
             new Commands.CommandFaultHandler<TCommand, TCommandHandler>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetRequiredService<ILogger<Commands.CommandFaultHandler<TCommand, TCommandHandler>>>(),
@@ -137,7 +141,7 @@ public sealed class ConsumerConfigurator
 
         _services.AddScoped<TEventSubscriber>();
 
-        _services.AddScoped<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>(provider =>
+        _services.AddScoped<EventErrorHandlerBase<TEvent, TEventSubscriber>>(provider =>
             new Events.EventErrorHandler<TEvent, TEventSubscriber>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetService<IRetryScheduler>(),
@@ -147,7 +151,7 @@ public sealed class ConsumerConfigurator
                 intervals,
                 excludes));
 
-        _services.AddScoped<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>(provider =>
+        _services.AddScoped<EventFaultHandlerBase<TEvent, TEventSubscriber>>(provider =>
             new Events.EventFaultHandler<TEvent, TEventSubscriber>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetRequiredService<ILogger<Events.EventFaultHandler<TEvent, TEventSubscriber>>>(),
@@ -216,15 +220,7 @@ public sealed class ConsumerConfigurator
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
 
         return new ConsumerBuilder<Ignore, byte[]>(configuration)
-            .SetErrorHandler((_, kafkaError) =>
-            {
-                KafkaLogger.LogError(kafkaLogger, kafkaError);
-
-                if (kafkaError.Code == ErrorCode.Local_AllBrokersDown) health.Down();
-                if (kafkaError.IsFatal) lifetime.StopApplication();
-            })
-            .SetLogHandler((_, log) => KafkaLogger.Log(kafkaLogger, log))
-            .SetStatisticsHandler((_, statistics) => KafkaLogger.LogStatistics(kafkaLogger, statistics))
+            .WithClientCallbacks(kafkaLogger, health, lifetime)
             .SetOffsetsCommittedHandler((_, committed) => BusLogger.LogCommit(logger, committed))
             .SetPartitionsAssignedHandler((_, partitions) => BusLogger.LogPartitionsAssigned(logger, partitions))
             .SetPartitionsRevokedHandler((_, partitions) => BusLogger.LogPartitionsRevoked(logger, partitions))
