@@ -21,7 +21,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Events;
 /// </summary>
 /// <typeparam name="TEvent">The event type this handler manages the failures of.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber it is paired with.</typeparam>
-internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>
+internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHandlerBase<TEvent, TEventSubscriber>
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
@@ -172,14 +172,9 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing queue, the UTC time).</summary>
     private Dictionary<string, string> ErrorHeaders(EventErrorContext<TEvent> context)
     {
-        Type type = context.Error.GetType();
-
         Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_queue));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.StampError(headers, context.Error, _queue);
 
         return headers;
     }

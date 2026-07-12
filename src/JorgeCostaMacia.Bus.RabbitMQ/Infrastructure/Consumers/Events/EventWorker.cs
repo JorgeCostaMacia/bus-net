@@ -65,7 +65,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber> handler = services.GetRequiredService<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>();
+        EventErrorHandlerBase<TEvent, TEventSubscriber> handler = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
 
         await handler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
 
@@ -75,7 +75,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<FaultResult> HandleFault(IServiceProvider services, ReadOnlyMemory<byte> body, Transport transport, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber> handler = services.GetRequiredService<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>();
+        EventFaultHandlerBase<TEvent, TEventSubscriber> handler = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
 
         await handler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
 

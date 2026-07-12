@@ -20,7 +20,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands;
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler manages the failures of.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler it is paired with.</typeparam>
-internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>
+internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandErrorHandlerBase<TCommand, TCommandHandler>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
@@ -166,14 +166,9 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : Domain.Co
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing queue, the UTC time).</summary>
     private Dictionary<string, string> ErrorHeaders(CommandErrorContext<TCommand> context)
     {
-        Type type = context.Error.GetType();
-
         Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_queue));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.StampError(headers, context.Error, _queue);
 
         return headers;
     }

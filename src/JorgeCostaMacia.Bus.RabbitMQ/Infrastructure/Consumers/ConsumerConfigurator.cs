@@ -1,7 +1,11 @@
 using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Faults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -56,7 +60,7 @@ public sealed class ConsumerConfigurator
 
         _services.AddScoped<TCommandHandler>();
 
-        _services.AddScoped<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>(provider =>
+        _services.AddScoped<CommandErrorHandlerBase<TCommand, TCommandHandler>>(provider =>
             new Commands.CommandErrorHandler<TCommand, TCommandHandler>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetService<IRetryScheduler>(),
@@ -66,7 +70,7 @@ public sealed class ConsumerConfigurator
                 intervals,
                 excludes));
 
-        _services.AddScoped<Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>>(provider =>
+        _services.AddScoped<CommandFaultHandlerBase<TCommand, TCommandHandler>>(provider =>
             new Commands.CommandFaultHandler<TCommand, TCommandHandler>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetRequiredService<ILogger<Commands.CommandFaultHandler<TCommand, TCommandHandler>>>(),
@@ -105,7 +109,7 @@ public sealed class ConsumerConfigurator
 
         _services.AddScoped<TEventSubscriber>();
 
-        _services.AddScoped<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>(provider =>
+        _services.AddScoped<EventErrorHandlerBase<TEvent, TEventSubscriber>>(provider =>
             new Events.EventErrorHandler<TEvent, TEventSubscriber>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetService<IRetryScheduler>(),
@@ -115,7 +119,7 @@ public sealed class ConsumerConfigurator
                 intervals,
                 excludes));
 
-        _services.AddScoped<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>(provider =>
+        _services.AddScoped<EventFaultHandlerBase<TEvent, TEventSubscriber>>(provider =>
             new Events.EventFaultHandler<TEvent, TEventSubscriber>(
                 provider.GetRequiredService<IProducer>(),
                 provider.GetRequiredService<ILogger<Events.EventFaultHandler<TEvent, TEventSubscriber>>>(),

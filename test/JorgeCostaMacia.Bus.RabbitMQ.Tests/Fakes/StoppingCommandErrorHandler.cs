@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 /// <see cref="OperationCanceledException"/> during error handling leaves the delivery unacked,
 /// without nack, for the broker to requeue).
 /// </summary>
-internal sealed class StoppingCommandErrorHandler : CommandErrorHandler<TestCommand, RecordingCommandHandler>
+internal sealed class StoppingCommandErrorHandler : CommandErrorHandlerBase<TestCommand, RecordingCommandHandler>
 {
     /// <summary>Initiates the worker's stop; its task completes when the stop does.</summary>
     public Func<Task>? Stop { get; set; }

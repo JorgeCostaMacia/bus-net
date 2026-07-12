@@ -72,4 +72,22 @@ internal static class TransportHeaders
     /// <param name="key">The header key.</param>
     /// <param name="value">The canonical header text.</param>
     public static void Restamp(IDictionary<string, string> headers, string key, string value) => headers[key] = value;
+
+    /// <summary>
+    /// Stamps a failure onto the (already cloned) envelope — the exception type and message, the
+    /// failing queue and the UTC time — so the parked delivery is filterable and reinjectable
+    /// header-side. Shared by every error and fault handler so the stamp stays identical across lanes.
+    /// </summary>
+    /// <param name="headers">The headers to stamp — typically a clone of the delivery's envelope.</param>
+    /// <param name="error">The failure whose type and message are stamped.</param>
+    /// <param name="groupId">The failing consumer queue.</param>
+    public static void StampError(IDictionary<string, string> headers, Exception error, string groupId)
+    {
+        Type type = error.GetType();
+
+        Restamp(headers, ErrorType, ToHeader(type.FullName ?? type.Name));
+        Restamp(headers, ErrorMessage, ToHeader(error.Message));
+        Restamp(headers, ErrorGroupId, ToHeader(groupId));
+        Restamp(headers, ErrorOccurredAt, ToHeader(DateTime.UtcNow.ToString("O")));
+    }
 }

@@ -12,7 +12,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults;
 /// </summary>
 /// <typeparam name="TCommand">The command type.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler this fault handler is paired with.</typeparam>
-internal abstract class CommandFaultHandler<TCommand, TCommandHandler> : IHandler<IMessage, CommandFaultContext>
+internal abstract class CommandFaultHandlerBase<TCommand, TCommandHandler> : IHandler<IMessage, CommandFaultContext>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
