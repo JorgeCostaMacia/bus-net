@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
@@ -24,31 +25,73 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     private static readonly IReadOnlyList<KeyValuePair<string, string>> HOST = Host();
 
     private readonly Domain.IConnection _connection;
+    private readonly ILogger<Producer> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ConcurrentDictionary<string, IChannel> _channels = new();
 
-    /// <summary>Creates the producer over the shared connection.</summary>
+    /// <summary>Creates the producer over the shared connection and the logger a failed produce is written through.</summary>
     /// <param name="connection">The shared RabbitMQ connection the destination channels are opened on.</param>
-    public Producer(Domain.IConnection connection) => _connection = connection;
+    /// <param name="logger">The logger a failed produce is written through, with the outbound delivery attached.</param>
+    public Producer(Domain.IConnection connection, ILogger<Producer> logger)
+    {
+        _connection = connection;
+        _logger = logger;
+    }
 
     /// <inheritdoc />
     public async Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
-        IChannel channel = await ChannelAsync(exchange, cancellationToken);
+        try
+        {
+            IChannel channel = await ChannelAsync(exchange, cancellationToken);
 
-        await channel.BasicPublishAsync(exchange, routingKey, mandatory: false, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+            await channel.BasicPublishAsync(exchange, routingKey, mandatory: false, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            LogFaulted(exchange, routingKey, body, headers, exception);
+
+            throw;
+        }
     }
 
     /// <inheritdoc />
     public async Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
-        IChannel channel = await ChannelAsync(string.Empty, cancellationToken);
+        try
+        {
+            IChannel channel = await ChannelAsync(string.Empty, cancellationToken);
 
-        // self-healing: the idempotent declare recreates a park queue deleted at runtime, with the
-        // consumers' exact options; mandatory is the tripwire — an unroutable park throws instead of
-        // being dropped (and confirmed) silently, so the failure lane can never lose a message here.
-        await channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
-        await channel.BasicPublishAsync(string.Empty, queue, mandatory: true, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+            // self-healing: the idempotent declare recreates a park queue deleted at runtime, with the
+            // consumers' exact options; mandatory is the tripwire — an unroutable park throws instead of
+            // being dropped (and confirmed) silently, so the failure lane can never lose a message here.
+            await channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
+            await channel.BasicPublishAsync(string.Empty, queue, mandatory: true, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            LogFaulted(string.Empty, queue, body, headers, exception);
+
+            throw;
+        }
+    }
+
+    /// <summary>Logs a failed produce with the outbound delivery attached (exchange, routing key, body, envelope); the caller rethrows, so the send's task still faults.</summary>
+    private void LogFaulted(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, Exception exception)
+    {
+        using (BusLogger.ProducerContext(exchange, routingKey, body, headers))
+        using (BusLogger.DescriptionContext(BusLoggerDescriptions.SendFaulted))
+        {
+            _logger.LogError(exception, "Producer failed.");
+        }
     }
 
     /// <summary>

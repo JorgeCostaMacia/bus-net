@@ -18,6 +18,7 @@ public class BusLoggerDescriptionsTests
         ["ParkedToFaultQueue"] = "Parked to the fault queue.",
         ["DeliveryNotAcked"] = "The delivery is not acked.",
         ["ScheduleFailed"] = "The scheduling failed; the delivery is not acked.",
+        ["SendFaulted"] = "The send faulted.",
         ["NackedWithRequeue"] = "Nacked with requeue; the broker redelivers the delivery.",
         ["RedeliveredOnRecovery"] = "The delivery is resolved but stays unacked; the broker redelivers it on channel recovery and the idempotent handler absorbs it.",
         ["HandedToFaultHandler"] = "The envelope is unreadable; handed to the fault handler.",

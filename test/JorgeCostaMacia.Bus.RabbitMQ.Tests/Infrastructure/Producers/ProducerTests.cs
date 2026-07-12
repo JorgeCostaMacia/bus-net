@@ -1,6 +1,7 @@
 using System.Text;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
+using Microsoft.Extensions.Logging;
 using RabbitProducer = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers.Producer;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Producers;
@@ -9,10 +10,11 @@ public class ProducerTests
 {
     private readonly ChannelFake _channel = new();
     private readonly ConnectionFake _connection;
+    private readonly RecordingLogger<RabbitProducer> _logger = new();
 
     public ProducerTests() => _connection = new ConnectionFake(_channel);
 
-    private RabbitProducer Sut() => new(_connection);
+    private RabbitProducer Sut() => new(_connection, _logger);
 
     private static Dictionary<string, string> Headers() => [];
 
@@ -117,11 +119,15 @@ public class ProducerTests
     }
 
     [Fact]
-    public async Task Produce_Failure_Rethrows()
+    public async Task Produce_Failure_LogsAndRethrows()
     {
         _channel.PublishFailure = new InvalidOperationException("broker down");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken));
+
+        (LogLevel level, string message) = Assert.Single(_logger.Logged);
+        Assert.Equal(LogLevel.Error, level);
+        Assert.Equal("Producer failed.", message);
     }
 
     [Fact]

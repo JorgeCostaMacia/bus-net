@@ -13,6 +13,7 @@ internal static class BusLoggerDescriptions
     public const string ParkedToFaultQueue = "Parked to the fault queue.";
     public const string DeliveryNotAcked = "The delivery is not acked.";
     public const string ScheduleFailed = "The scheduling failed; the delivery is not acked.";
+    public const string SendFaulted = "The send faulted.";
     public const string NackedWithRequeue = "Nacked with requeue; the broker redelivers the delivery.";
     public const string RedeliveredOnRecovery = "The delivery is resolved but stays unacked; the broker redelivers it on channel recovery and the idempotent handler absorbs it.";
     public const string HandedToFaultHandler = "The envelope is unreadable; handed to the fault handler.";
