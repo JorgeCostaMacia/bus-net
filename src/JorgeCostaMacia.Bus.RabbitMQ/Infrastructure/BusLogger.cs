@@ -64,6 +64,39 @@ internal static class BusLogger
     }
 
     /// <summary>
+    /// Opens the logging context carrying the whole OUTBOUND delivery — the destination exchange and
+    /// routing key, the raw body and every envelope header typed — so a failed produce is inspectable
+    /// and reinjectable from the log platform, the send side's mirror of <see cref="ConsumerContext"/>.
+    /// </summary>
+    /// <param name="exchange">The destination exchange (empty for a park through the default exchange).</param>
+    /// <param name="routingKey">The routing key (the queue name for a park).</param>
+    /// <param name="body">The serialized message body.</param>
+    /// <param name="headers">The outbound envelope headers.</param>
+    /// <returns>The context to dispose after logging the failure.</returns>
+    public static IDisposable ProducerContext(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers)
+    {
+        List<ILogEventEnricher> context =
+        [
+            new PropertyEnricher("Exchange", exchange),
+            new PropertyEnricher("RoutingKey", routingKey),
+            new PropertyEnricher("Body", body.Length == 0 ? null : Encoding.UTF8.GetString(body.Span))
+        ];
+
+        foreach ((string key, string value) in headers)
+        {
+            context.Add(new PropertyEnricher(
+                key,
+                TransportHeaders.GuidHeaders.Contains(key) && Guid.TryParse(value, out Guid id)
+                    ? id
+                    : TransportHeaders.IntHeaders.Contains(key) && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
+                        ? count
+                        : value));
+        }
+
+        return LogContext.Push(context.ToArray());
+    }
+
+    /// <summary>
     /// Opens the logging context carrying the channel's shutdown reason — the broker's reply code and
     /// text when the close carried them.
     /// </summary>
