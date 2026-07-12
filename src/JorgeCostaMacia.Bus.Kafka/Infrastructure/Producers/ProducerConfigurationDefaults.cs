@@ -43,12 +43,14 @@ public static class ProducerConfigurationDefaults
     public const int BATCH_SIZE = 1_000_000;
 
     /// <summary>
-    /// Maximum size (bytes) of a single message/request. Default: <c>2097152</c> (2 MB) — headroom
-    /// above the per-batch size for the occasional message carrying a small file (e.g. a 1–2 page PDF
-    /// in Base64). The broker's <c>message.max.bytes</c> and the topic's <c>max.message.bytes</c> must
-    /// allow at least this, and consumers must fetch at least this (<c>max.partition.fetch.bytes</c>).
+    /// Maximum size (bytes) of a single message/request. Default: <c>1048576</c> (1 MB) — the standard
+    /// Kafka size, matching the broker's default <c>message.max.bytes</c> (and the consumer's default
+    /// fetch), so no broker-side change is needed. Messages are expected to be small: structured domain
+    /// data, where even a text invoice PDF in Base64 is ~5–80 KB. A genuinely large payload (a scanned or
+    /// image blob) must NOT travel the bus — use the claim-check pattern: store the blob externally and
+    /// send a small reference instead.
     /// </summary>
-    public const int MESSAGE_MAX_BYTES = 2_097_152;
+    public const int MESSAGE_MAX_BYTES = 1_048_576;
 
     /// <summary>
     /// Maximum number of retries on send failure. Default: <see cref="int.MaxValue"/> — retries are
