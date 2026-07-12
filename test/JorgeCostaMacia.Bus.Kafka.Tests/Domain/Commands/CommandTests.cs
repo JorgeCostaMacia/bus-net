@@ -1,7 +1,7 @@
 using System.Text.Json;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain.Commands;
 
 public class CommandTests
 {

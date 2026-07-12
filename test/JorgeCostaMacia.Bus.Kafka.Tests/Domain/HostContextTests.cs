@@ -5,7 +5,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain;
 
 public class HostContextTests
 {

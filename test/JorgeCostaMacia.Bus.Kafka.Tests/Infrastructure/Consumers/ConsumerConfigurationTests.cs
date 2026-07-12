@@ -1,7 +1,7 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers;
 
 public class ConsumerConfigurationTests
 {

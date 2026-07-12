@@ -1,6 +1,6 @@
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure;
 
 public class BusHealthTests
 {

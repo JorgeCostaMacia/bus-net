@@ -7,7 +7,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure;
 
 public class BusTests
 {

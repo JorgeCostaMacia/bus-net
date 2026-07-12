@@ -4,10 +4,11 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Events;
 
 public class EventErrorHandlerTests
 {
@@ -18,7 +19,7 @@ public class EventErrorHandlerTests
     private readonly ProducerFake _producer = new();
     private readonly RetrySchedulerFake _scheduler = new();
 
-    private Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
+    private EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
         => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], excludes ?? []);
 
     [Fact]
@@ -28,7 +29,7 @@ public class EventErrorHandlerTests
         // reports Faulted so the worker relays the delivery to the fault lane instead of retrying.
         EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.BareTransport(), new InvalidOperationException("boom"));
 
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Faulted, sut.Result);
@@ -40,7 +41,7 @@ public class EventErrorHandlerTests
     {
         EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
 
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
@@ -94,7 +95,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task ZeroInterval_RequeuesToTopicTail_RetargetedToItsGroup()
     {
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -109,7 +110,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_ParksThroughScheduler_RetargetedToItsGroup()
     {
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -125,7 +126,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task LadderExhausted_Parks()
     {
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero, TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -136,7 +137,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task ExcludedException_Parks_InheritanceAware()
     {
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero], [typeof(BaseFailure)]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero], [typeof(BaseFailure)]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
 
@@ -147,7 +148,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_WithoutScheduler_ParksAsTerminal()
     {
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)], scheduler: false);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)], scheduler: false);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -160,7 +161,7 @@ public class EventErrorHandlerTests
     public async Task SchedulerFails_LeavesUnhandled()
     {
         _scheduler.Failure = new InvalidOperationException("scheduler down");
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -172,7 +173,7 @@ public class EventErrorHandlerTests
     public async Task RequeueProduceFails_LeavesUnhandled()
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -182,7 +183,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task SecondRetry_ContinuesTheCumulativeCount()
     {
-        Infrastructure.Consumers.Events.EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(retryCount: 1), new InvalidOperationException()), TestContext.Current.CancellationToken);
 

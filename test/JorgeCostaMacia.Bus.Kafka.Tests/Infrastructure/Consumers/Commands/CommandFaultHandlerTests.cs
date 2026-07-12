@@ -2,16 +2,17 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandFaultHandlerTests
 {
     private readonly ProducerFake _producer = new();
 
-    private Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
+    private CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
         => new(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID);
 
     [Fact]
@@ -19,7 +20,7 @@ public class CommandFaultHandlerTests
     {
         CommandFaultContext context = CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
 
-        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
+        CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Parked, sut.Result);
@@ -68,7 +69,7 @@ public class CommandFaultHandlerTests
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
 
-        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
+        CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
         await sut.Handle(CommandFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);

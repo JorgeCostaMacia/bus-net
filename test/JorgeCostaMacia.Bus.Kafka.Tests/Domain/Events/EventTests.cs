@@ -1,6 +1,6 @@
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain.Events;
 
 public class EventTests
 {

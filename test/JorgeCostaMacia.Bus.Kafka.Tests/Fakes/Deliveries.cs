@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using KafkaTransport = JorgeCostaMacia.Bus.Kafka.Domain.Transport;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
@@ -19,7 +20,7 @@ internal static class Deliveries
 
     /// <summary>A transport over a minimal envelope (retry count + aggregate trace) — for the error/fault handler tests that only need the transport.</summary>
     public static Transport Transport(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
-        => Domain.Transport.Create(Result("{}"u8.ToArray(), TraceHeaders(retryCount, aggregateId, aggregateCorrelationId)));
+        => KafkaTransport.Create(Result("{}"u8.ToArray(), TraceHeaders(retryCount, aggregateId, aggregateCorrelationId)));
 
     /// <summary>A well-formed delivery carrying the serialized message and the aggregate trace; <paramref name="consumers"/> stamps the <c>AggregateConsumers</c> header for the event filtering tests.</summary>
     public static ConsumeResult<Ignore, byte[]> Delivery<TMessage>(TMessage message, long offset = 10, string? consumers = null)
@@ -45,7 +46,7 @@ internal static class Deliveries
         => Result(JsonSerializer.SerializeToUtf8Bytes(message), [], offset);
 
     /// <summary>A transport over an envelope with NO trace headers — for the error handlers' unreadable-envelope path.</summary>
-    public static Transport BareTransport() => Domain.Transport.Create(Result("{}"u8.ToArray(), []));
+    public static Transport BareTransport() => KafkaTransport.Create(Result("{}"u8.ToArray(), []));
 
     /// <summary>Reads a header as UTF-8 text, or <see langword="null"/> when absent.</summary>
     public static string? Header(Message<Null, byte[]> message, string key)

@@ -1,11 +1,13 @@
 using System.Collections.Immutable;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Events;
 
 public class EventWorkerTests
 {
@@ -19,9 +21,9 @@ public class EventWorkerTests
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
-            .AddScoped<Domain.Events.Errors.EventErrorHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
+            .AddScoped<EventErrorHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
                 new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], []))
-            .AddScoped<Domain.Events.Faults.EventFaultHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
+            .AddScoped<EventFaultHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
                 new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
             .BuildServiceProvider();
 
