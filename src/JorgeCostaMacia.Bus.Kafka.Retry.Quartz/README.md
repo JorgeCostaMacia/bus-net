@@ -45,6 +45,27 @@ services
 
 Each parked retry is a **durable** job grouped under its topic, named `messageId:retryCount` (traceable; the same delivery parked twice just overwrites itself) and described with the failing consumer group id. Its single trigger fires the produce **exactly at the scheduled time**, then repeats it **every five minutes** while it keeps failing — four re-executions after the first fire, the same semantics as the bus's retries. A successful produce deletes the job; with the attempts exhausted Quartz completes the trigger and the durable job stays **parked as the dead-letter**: trigger-less, visible in the store, re-firable with `IScheduler.TriggerJob` (it deletes itself when a re-fire finally succeeds). The produce exception bubbles out of the job, so any Quartz job listeners (e.g. `JorgeCostaMacia.Quartz.Serilog`) observe every failed attempt.
 
+### Finding and replaying dead-letters
+
+A dead-letter is a **durable job with no trigger** left in the store. List them straight from the Quartz tables (Postgres, default prefix):
+
+```sql
+SELECT jd.job_name, jd.job_group, jd.description   -- messageId:retryCount, topic, failing group id
+FROM qrtz_job_details jd
+LEFT JOIN qrtz_triggers t
+  ON  t.sched_name = jd.sched_name
+  AND t.job_name  = jd.job_name
+  AND t.job_group = jd.job_group
+WHERE jd.is_durable = true
+  AND t.trigger_name IS NULL;                       -- no trigger => the retry ladder is exhausted
+```
+
+Re-fire one to retry the produce (it deletes itself once the produce finally succeeds):
+
+```csharp
+await scheduler.TriggerJob(new JobKey(jobName, jobGroup), cancellationToken);
+```
+
 ## Requirements
 
 One of the following SDKs: **.NET 8 / 9 / 10** *(.NET 10 recommended)*.
