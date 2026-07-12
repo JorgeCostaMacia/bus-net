@@ -25,7 +25,7 @@ services.AddBusContext(configuration,
     consumer => consumer.AddCommandHandler<PlaceOrder, PlaceOrderHandler>("orders.handler", retryIntervals: [TimeSpan.Zero, TimeSpan.Zero]));
 ```
 
-A message is a record over the `Command` / `Event` base (the serializer's constructor on top, the convenient one below); a handler closes `CommandHandler<T>` / `EventSubscriber<T>` and is scoped — one instance per delivery. Send and publish through the scoped `IBus`.
+A message is a record over the `Command` / `Event` base (the serializer's constructor on top, the convenient one below); a handler closes `CommandHandler<T>` / `EventSubscriber<T>` and is scoped — one instance per delivery. Delivery is **at-least-once and unordered**, so handlers must be idempotent — deduplicate by the message id or reconcile by its timestamp. Send and publish through the scoped `IBus`.
 
 ```csharp
 public sealed record PlaceOrder : Command
@@ -83,9 +83,20 @@ The `Bus:Connection` section configures the single RabbitMQ connection both side
 
 Each queue gets two durable park queues, unbound — reached by name via the default exchange, and **born lazily on the first park**: an existing `.error`/`.fault` queue always means there was a failure, and once drained it can simply be deleted — the broker stays clean until the next incident. Parking is loss-proof regardless: each park (re)declares its queue first and publishes `mandatory`, so an unroutable park throws — nacking the original for redelivery — instead of vanishing silently. A terminal handling failure parks to **`{queue}.error`** as a typed error record (the original message fully typed, the whole failure chain and the transport details, with the original envelope cloned in the parked headers); a malformed delivery — undeserializable body, unreadable envelope — and a broken error lane park the raw delivery to **`{queue}.fault`**.
 
+Treat a park queue as **exactly as sensitive as the traffic it shadows**: a `.error` record carries the original message body in full — the same domain data as the primary queue — plus the failure detail (exception type, message, stack trace, the inner-exception chain, and any `Exception.Data`), and a `.fault` record carries the raw delivery verbatim. So `{queue}.error` and `{queue}.fault` hold the same payloads as their source, sensitive ones included. Give them the **same vhost and user permissions** as the queue they shadow; never let the park queues pool into a broadly-readable "everything" lane that widens who can read those payloads. And since `Exception.Data` is copied into the parked record, handler authors should never attach a secret (token, credential, patient identifier) to it.
+
 ### Topology at startup
 
 The producer declares its own topology: a hosted worker creates every mapped exchange (a command's `direct`, an event's `fanout`) before the app starts serving, so a send-only service does not depend on a consumer having created it. Each consumer declares its exchange and its durable queue bound to it; the `.error` / `.fault` park queues are not part of the startup topology — they are created by the first park. Every declare is idempotent — whoever arrives first creates it, the other's declare is a no-op.
+
+## Guarantees & the consumer contract
+
+Delivery is **at-least-once and unordered** by design, not by accident of tuning — the four points below are the contract every consuming service must hold to. They are not knobs to relax: reading them before writing a handler is the difference between a correct consumer and a subtly broken one.
+
+- **At-least-once — handlers must be idempotent.** The same message can arrive more than once: a handling failure nacks the delivery for the broker to redeliver, and a delivery resolved but left unacked when its channel drops is redelivered on recovery. A handler must therefore tolerate reprocessing the same message with **no duplicated side effect** — deduplicate by the message id, or make the write naturally idempotent (upsert on a domain key, guard on the current state) so a second delivery is a no-op.
+- **No guaranteed ordering.** A single queue drained by one consumer keeps order, but that is not a guarantee to lean on: a nacked delivery is requeued and comes back out of position, a prefetch above one hands several deliveries over at once, and a scaled-out group with more than one consumer interleaves them. Never assume the order two messages arrive in — reconcile by the domain event-time (`AggregateOccurredAt`, last-writer-wins) so a stale or reprocessed message can never overwrite a newer state. A causal chain stays ordered on its own — a follow-up message is only produced once its cause has been handled — so this bites only messages that are genuinely concurrent.
+- **Messages must be small — use the claim-check pattern.** Messages carry structured domain data, not payloads — a text invoice PDF is ~5–80 KB in Base64, comfortably small, but a scan, a high-resolution image or any file is not. Store large blobs externally (blob storage, the database) and send a small reference — the *claim-check* — in the message; the consumer fetches the blob only if it needs it. The bus is a data channel, not a file transfer.
+- **Batch `Send`/`Publish` is not atomic.** A batch is published message by message over the channel; if one fails the others may already be on their exchanges, and because the delivery that triggered the batch is then retried, the **whole batch is re-published** on redelivery — so some of its messages are sent more than once. This is the at-least-once model showing through, not a defect: it is exactly why the first point holds — consumers must be idempotent.
 
 ## Wire format
 
