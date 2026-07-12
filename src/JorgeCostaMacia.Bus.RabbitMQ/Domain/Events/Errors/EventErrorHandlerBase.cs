@@ -13,7 +13,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Errors;
 /// </summary>
 /// <typeparam name="TEvent">The event type whose handling failures this handler manages.</typeparam>
 /// <typeparam name="TEventSubscriber">The subscriber this error handler is paired with — ties it to its event and subscriber, so each pairing is a distinct type resolvable on its own.</typeparam>
-internal abstract class EventErrorHandler<TEvent, TEventSubscriber> : IHandler<TEvent, EventErrorContext<TEvent>>
+internal abstract class EventErrorHandlerBase<TEvent, TEventSubscriber> : IHandler<TEvent, EventErrorContext<TEvent>>
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
