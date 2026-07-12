@@ -13,7 +13,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 /// </summary>
 /// <typeparam name="TEvent">The event type.</typeparam>
 /// <typeparam name="TEventSubscriber">The event subscriber this fault handler is paired with.</typeparam>
-internal abstract class EventFaultHandler<TEvent, TEventSubscriber> : IHandler<IMessage, EventFaultContext>
+internal abstract class EventFaultHandlerBase<TEvent, TEventSubscriber> : IHandler<IMessage, EventFaultContext>
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {

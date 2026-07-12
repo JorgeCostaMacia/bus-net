@@ -76,4 +76,22 @@ internal static class TransportHeaders
         headers.Remove(key);
         headers.Add(key, value);
     }
+
+    /// <summary>
+    /// Stamps a failure onto the (already cloned) envelope — the exception type and message, the
+    /// failing group and the UTC time — so the parked delivery is filterable and reinjectable
+    /// header-side. Shared by every error and fault handler so the stamp stays identical across lanes.
+    /// </summary>
+    /// <param name="headers">The headers to stamp — typically a clone of the delivery's envelope.</param>
+    /// <param name="error">The failure whose type and message are stamped.</param>
+    /// <param name="groupId">The failing consumer group id.</param>
+    public static void StampError(Headers headers, Exception error, string groupId)
+    {
+        Type type = error.GetType();
+
+        headers.Add(ErrorType, ToHeader(type.FullName ?? type.Name));
+        headers.Add(ErrorMessage, ToHeader(error.Message));
+        headers.Add(ErrorGroupId, ToHeader(groupId));
+        headers.Add(ErrorOccurredAt, ToHeader(DateTime.UtcNow.ToString("O")));
+    }
 }

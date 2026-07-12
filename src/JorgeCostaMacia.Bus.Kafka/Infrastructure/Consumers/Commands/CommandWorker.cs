@@ -54,7 +54,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <inheritdoc />
     protected override async Task<ErrorResult> HandleError(IServiceProvider services, CommandContext<TCommand> context, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler> errorHandler = services.GetRequiredService<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>();
+        CommandErrorHandlerBase<TCommand, TCommandHandler> errorHandler = services.GetRequiredService<CommandErrorHandlerBase<TCommand, TCommandHandler>>();
 
         await errorHandler.Handle(new CommandErrorContext<TCommand>(context.Message, context.Transport, exception), cancellationToken);
 
@@ -64,7 +64,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <inheritdoc />
     protected override async Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler> faultHandler = services.GetRequiredService<Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>>();
+        CommandFaultHandlerBase<TCommand, TCommandHandler> faultHandler = services.GetRequiredService<CommandFaultHandlerBase<TCommand, TCommandHandler>>();
 
         await faultHandler.Handle(CommandFaultContext.Create(body, transport, exception), cancellationToken);
 

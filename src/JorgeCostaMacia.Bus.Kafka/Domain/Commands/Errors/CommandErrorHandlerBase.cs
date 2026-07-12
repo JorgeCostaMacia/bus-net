@@ -13,7 +13,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
 /// </summary>
 /// <typeparam name="TCommand">The command type whose handling failures this handler manages.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler this error handler is paired with — ties the error handler to its command and handler, so each pairing is a distinct type resolvable on its own.</typeparam>
-internal abstract class CommandErrorHandler<TCommand, TCommandHandler> : IHandler<TCommand, CommandErrorContext<TCommand>>
+internal abstract class CommandErrorHandlerBase<TCommand, TCommandHandler> : IHandler<TCommand, CommandErrorContext<TCommand>>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {

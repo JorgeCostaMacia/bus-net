@@ -55,7 +55,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber> errorHandler = services.GetRequiredService<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>();
+        EventErrorHandlerBase<TEvent, TEventSubscriber> errorHandler = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
 
         await errorHandler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
 
@@ -65,7 +65,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber> faultHandler = services.GetRequiredService<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>();
+        EventFaultHandlerBase<TEvent, TEventSubscriber> faultHandler = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
 
         await faultHandler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
 
@@ -81,6 +81,8 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <returns>Whether the delivery is skipped.</returns>
     protected override bool Filtered(ConsumeResult<Ignore, byte[]> result)
     {
+        if (result.Message.Headers is null) return false;
+
         if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header)) return false;
 
         string consumers = Encoding.UTF8.GetString(header);

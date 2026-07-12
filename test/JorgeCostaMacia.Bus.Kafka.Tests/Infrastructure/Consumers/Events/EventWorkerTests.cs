@@ -19,9 +19,9 @@ public class EventWorkerTests
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
-            .AddScoped<Domain.Events.Errors.EventErrorHandler<TestEvent, RecordingEventSubscriber>>(_ =>
+            .AddScoped<Domain.Events.Errors.EventErrorHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
                 new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], []))
-            .AddScoped<Domain.Events.Faults.EventFaultHandler<TestEvent, RecordingEventSubscriber>>(_ =>
+            .AddScoped<Domain.Events.Faults.EventFaultHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
                 new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
             .BuildServiceProvider();
 

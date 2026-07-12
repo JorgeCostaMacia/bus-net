@@ -37,7 +37,7 @@ internal static class BusInfrastructureContext
     /// <returns>The same service collection, to allow method chaining.</returns>
     internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null)
     {
-        ProducerConfigurator producerConfigurator = new(configuration);
+        ProducerConfigurator producerConfigurator = new ProducerConfigurator(configuration);
 
         producer(producerConfigurator);
 
@@ -51,7 +51,7 @@ internal static class BusInfrastructureContext
 
         if (consumer is not null)
         {
-            ConsumerConfigurator consumerConfigurator = new(services, configuration, producerConfigurator.Messages);
+            ConsumerConfigurator consumerConfigurator = new ConsumerConfigurator(services, configuration, producerConfigurator.Messages);
 
             consumer(consumerConfigurator);
         }
@@ -74,15 +74,7 @@ internal static class BusInfrastructureContext
         BusHealth health = provider.GetRequiredService<BusHealth>();
 
         return new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) =>
-            {
-                KafkaLogger.LogError(kafkaLogger, error);
-
-                if (error.Code == ErrorCode.Local_AllBrokersDown) health.Down();
-                if (error.IsFatal) lifetime.StopApplication();
-            })
-            .SetLogHandler((_, log) => KafkaLogger.Log(kafkaLogger, log))
-            .SetStatisticsHandler((_, statistics) => KafkaLogger.LogStatistics(kafkaLogger, statistics))
+            .WithClientCallbacks(kafkaLogger, health, lifetime)
             .Build();
     }
 }
