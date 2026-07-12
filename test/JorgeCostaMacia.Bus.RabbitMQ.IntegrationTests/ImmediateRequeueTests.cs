@@ -26,7 +26,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<RabbitMqFixture>
 
     /// <summary>A handler that fails once, with a <c>00:00</c> retry step, is redelivered immediately and succeeds — invoked exactly twice, then acked.</summary>
     [Fact]
-    public async Task Send_toAHandlerThatFailsOnceWithAnImmediateRetryStep_IsRedeliveredAndSucceedsExactlyTwice()
+    public async Task Send_ToAHandlerThatFailsOnce_IsRedeliveredAndSucceeds()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         RequeueProbe probe = new();

@@ -22,7 +22,13 @@ public class EventContextTests
             [TransportHeaders.AggregateCorrelationId] = TransportHeaders.ToHeader(AGGREGATE_CORRELATION_ID),
             [TransportHeaders.AggregateOccurredAt] = TransportHeaders.ToHeader(OCCURRED_AT.ToString("O")),
             [TransportHeaders.AggregateConsumers] = TransportHeaders.ToHeader(new[] { "g1", "g2" }),
-            [TransportHeaders.RetryCount] = TransportHeaders.ToHeader(3)
+            [TransportHeaders.RetryCount] = TransportHeaders.ToHeader(3),
+            [TransportHeaders.HostMachineName] = TransportHeaders.ToHeader("box-1"),
+            [TransportHeaders.HostAssembly] = TransportHeaders.ToHeader("MyApp"),
+            [TransportHeaders.HostAssemblyVersion] = TransportHeaders.ToHeader("1.2.3.0"),
+            [TransportHeaders.HostFrameworkVersion] = TransportHeaders.ToHeader("10.0.8"),
+            [TransportHeaders.HostBusVersion] = TransportHeaders.ToHeader("2.0.0.0"),
+            [TransportHeaders.HostOperatingSystemVersion] = TransportHeaders.ToHeader("Unix 6.8")
         };
 
         return new Transport(headers, "orders.created", string.Empty, deliveryTag: 10, redelivered: false);
@@ -69,4 +75,17 @@ public class EventContextTests
     [Fact]
     public void AggregateConsumers_ReadsTheTargetsFromTheTransportHeaders()
         => Assert.Equal(["g1", "g2"], CreateSut().AggregateConsumers);
+
+    [Fact]
+    public void Host_ReadsFromTheTransportHeaders()
+    {
+        EventContext<TestEvent> context = CreateSut();
+
+        Assert.Equal("box-1", context.HostMachineName);
+        Assert.Equal("MyApp", context.HostAssembly);
+        Assert.Equal("1.2.3.0", context.HostAssemblyVersion);
+        Assert.Equal("10.0.8", context.HostFrameworkVersion);
+        Assert.Equal("2.0.0.0", context.HostBusVersion);
+        Assert.Equal("Unix 6.8", context.HostOperatingSystemVersion);
+    }
 }

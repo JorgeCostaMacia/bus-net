@@ -33,7 +33,7 @@ public sealed class FaultParkingTests : IClassFixture<RabbitMqFixture>
 
     /// <summary>A malformed body that cannot be deserialized breaks the delivery and is parked to the queue's <c>.fault</c>.</summary>
     [Fact]
-    public async Task Deliver_aMalformedBodyThatCannotBeDeserialized_ParksTheDeliveryToTheFaultQueue()
+    public async Task Deliver_AMalformedBody_ParksToTheFaultQueue()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         IConfiguration configuration = _fixture.BuildConfiguration();

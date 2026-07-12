@@ -34,7 +34,7 @@ public sealed class ErrorParkingTests : IClassFixture<RabbitMqFixture>
 
     /// <summary>A handler that always throws exhausts its retry ladder and the failure is parked to the queue's <c>.error</c>.</summary>
     [Fact]
-    public async Task Send_toAHandlerThatAlwaysThrowsWithAnExhaustingLadder_ParksTheFailureToTheErrorQueue()
+    public async Task Send_ToAnAlwaysThrowingHandler_ParksToTheErrorQueue()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         IConfiguration configuration = _fixture.BuildConfiguration();

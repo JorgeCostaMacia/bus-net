@@ -21,7 +21,13 @@ public class CommandContextTests
             [TransportHeaders.AggregateId] = TransportHeaders.ToHeader(AGGREGATE_ID),
             [TransportHeaders.AggregateCorrelationId] = TransportHeaders.ToHeader(AGGREGATE_CORRELATION_ID),
             [TransportHeaders.AggregateOccurredAt] = TransportHeaders.ToHeader(OCCURRED_AT.ToString("O")),
-            [TransportHeaders.RetryCount] = TransportHeaders.ToHeader(2)
+            [TransportHeaders.RetryCount] = TransportHeaders.ToHeader(2),
+            [TransportHeaders.HostMachineName] = TransportHeaders.ToHeader("box-1"),
+            [TransportHeaders.HostAssembly] = TransportHeaders.ToHeader("MyApp"),
+            [TransportHeaders.HostAssemblyVersion] = TransportHeaders.ToHeader("1.2.3.0"),
+            [TransportHeaders.HostFrameworkVersion] = TransportHeaders.ToHeader("10.0.8"),
+            [TransportHeaders.HostBusVersion] = TransportHeaders.ToHeader("2.0.0.0"),
+            [TransportHeaders.HostOperatingSystemVersion] = TransportHeaders.ToHeader("Unix 6.8")
         };
 
         return new Transport(headers, "orders", string.Empty, deliveryTag: 10, redelivered: false);
@@ -64,4 +70,17 @@ public class CommandContextTests
     [Fact]
     public void RetryCount_ReadsFromTheTransportHeaders()
         => Assert.Equal(2, CreateSut().RetryCount);
+
+    [Fact]
+    public void Host_ReadsFromTheTransportHeaders()
+    {
+        CommandContext<TestCommand> context = CreateSut();
+
+        Assert.Equal("box-1", context.HostMachineName);
+        Assert.Equal("MyApp", context.HostAssembly);
+        Assert.Equal("1.2.3.0", context.HostAssemblyVersion);
+        Assert.Equal("10.0.8", context.HostFrameworkVersion);
+        Assert.Equal("2.0.0.0", context.HostBusVersion);
+        Assert.Equal("Unix 6.8", context.HostOperatingSystemVersion);
+    }
 }
