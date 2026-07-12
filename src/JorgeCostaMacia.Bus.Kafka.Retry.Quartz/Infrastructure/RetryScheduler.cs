@@ -60,6 +60,10 @@ internal sealed class RetryScheduler : IRetryScheduler
             .WithIdentity(identity, topic)
             .WithDescription(groupId)
             .StartAt(new DateTimeOffset(DateTime.SpecifyKind(scheduledAt, DateTimeKind.Utc)))
+            // Misfire left to Quartz's default (smart policy): for a finite-repeat simple trigger it
+            // reschedules now with the existing repeat count, so a fire missed while the scheduler was
+            // down (e.g. a maintenance window) runs on recovery instead of being skipped — no delivery
+            // silently dropped. Left implicit on purpose; stated here so it reads as a choice, not an oversight.
             .WithSimpleSchedule(schedule => schedule.WithInterval(INTERVAL).WithRepeatCount(ATTEMPTS))
             .Build();
 
