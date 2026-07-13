@@ -14,7 +14,9 @@ public sealed class ResurrectionCommandHandler : CommandHandler<ResurrectionComm
     /// <summary>Takes the shared record of handled payloads.</summary>
     /// <param name="handled">The queue every delivered payload is appended to.</param>
     public ResurrectionCommandHandler(ConcurrentQueue<string> handled)
-        => _handled = handled;
+    {
+        _handled = handled;
+    }
 
     /// <summary>Appends the delivered payload to the shared record.</summary>
     /// <param name="context">The delivery's context.</param>

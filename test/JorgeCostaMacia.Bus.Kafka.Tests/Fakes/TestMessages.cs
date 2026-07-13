@@ -13,11 +13,15 @@ internal sealed record TestCommand : Command
     [JsonConstructor]
     public TestCommand(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string name)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
-        => Name = name;
+    {
+        Name = name;
+    }
 
     public TestCommand(string name, Guid? aggregateId = null, Guid? aggregateCorrelationId = null, DateTime? aggregateOccurredAt = null, IEnumerable<string>? aggregateConsumers = null)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
-        => Name = name;
+    {
+        Name = name;
+    }
 }
 
 /// <summary>Event used across the tests — the serializer's constructor on top, the convenient one below.</summary>
@@ -28,11 +32,15 @@ internal sealed record TestEvent : Event
     [JsonConstructor]
     public TestEvent(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string name)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
-        => Name = name;
+    {
+        Name = name;
+    }
 
     public TestEvent(string name, Guid? aggregateId = null, Guid? aggregateCorrelationId = null, DateTime? aggregateOccurredAt = null, IEnumerable<string>? aggregateConsumers = null)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
-        => Name = name;
+    {
+        Name = name;
+    }
 }
 
 /// <summary>No-op handler used to exercise the configurator registrations.</summary>

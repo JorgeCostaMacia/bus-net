@@ -10,7 +10,10 @@ internal sealed class ConnectionFake : IConnection
 
     /// <summary>Creates the fake over the channel it hands out.</summary>
     /// <param name="channel">The channel every <see cref="CreateChannelAsync"/> returns.</param>
-    public ConnectionFake(ChannelFake channel) => _channel = channel;
+    public ConnectionFake(ChannelFake channel)
+    {
+        _channel = channel;
+    }
 
     /// <summary>How many channels were requested from the connection.</summary>
     public int Created { get; private set; }

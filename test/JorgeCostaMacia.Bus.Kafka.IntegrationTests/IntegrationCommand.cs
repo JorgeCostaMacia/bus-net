@@ -23,11 +23,15 @@ public sealed record IntegrationCommand : Command
     [JsonConstructor]
     public IntegrationCommand(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string payload)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
-        => Payload = payload;
+    {
+        Payload = payload;
+    }
 
     /// <summary>Convenience constructor used to send the command, defaulting the metadata.</summary>
     /// <param name="payload">The payload.</param>
     public IntegrationCommand(string payload)
         : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
-        => Payload = payload;
+    {
+        Payload = payload;
+    }
 }

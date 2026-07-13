@@ -104,11 +104,17 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     {
         Dictionary<string, string> stamped = new(headers);
 
-        foreach (KeyValuePair<string, string> host in HOST) stamped[host.Key] = host.Value;
+        foreach (KeyValuePair<string, string> host in HOST)
+        {
+            stamped[host.Key] = host.Value;
+        }
 
         Dictionary<string, object?> table = new(stamped.Count);
 
-        foreach (KeyValuePair<string, string> header in stamped) table[header.Key] = header.Value;
+        foreach (KeyValuePair<string, string> header in stamped)
+        {
+            table[header.Key] = header.Value;
+        }
 
         BasicProperties properties = new BasicProperties()
         {
@@ -130,10 +136,25 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     /// </summary>
     private static void Native(BasicProperties properties, IReadOnlyDictionary<string, string> headers)
     {
-        if (GuidText(headers, TransportHeaders.MessageId) is { } messageId) properties.MessageId = messageId;
-        if (GuidText(headers, TransportHeaders.ConversationId) is { } correlationId) properties.CorrelationId = correlationId;
-        if (Text(headers, TransportHeaders.MessageType) is { } type) properties.Type = type;
-        if (Text(headers, TransportHeaders.HostAssembly) is { } appId) properties.AppId = appId;
+        if (GuidText(headers, TransportHeaders.MessageId) is { } messageId)
+        {
+            properties.MessageId = messageId;
+        }
+
+        if (GuidText(headers, TransportHeaders.ConversationId) is { } correlationId)
+        {
+            properties.CorrelationId = correlationId;
+        }
+
+        if (Text(headers, TransportHeaders.MessageType) is { } type)
+        {
+            properties.Type = type;
+        }
+
+        if (Text(headers, TransportHeaders.HostAssembly) is { } appId)
+        {
+            properties.AppId = appId;
+        }
 
         if (Text(headers, TransportHeaders.MessageOccurredAt) is { } occurredAt
             && DateTimeOffset.TryParse(occurredAt, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTimeOffset moment))
@@ -157,15 +178,24 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     /// </summary>
     private async Task<IChannel> ChannelAsync(string exchange, CancellationToken cancellationToken)
     {
-        if (_channels.TryGetValue(exchange, out IChannel? channel) && channel.IsOpen) return channel;
+        if (_channels.TryGetValue(exchange, out IChannel? channel) && channel.IsOpen)
+        {
+            return channel;
+        }
 
         await _gate.WaitAsync(cancellationToken);
 
         try
         {
-            if (_channels.TryGetValue(exchange, out channel) && channel.IsOpen) return channel;
+            if (_channels.TryGetValue(exchange, out channel) && channel.IsOpen)
+            {
+                return channel;
+            }
 
-            if (channel is not null) await channel.DisposeAsync();
+            if (channel is not null)
+            {
+                await channel.DisposeAsync();
+            }
 
             channel = await _connection.CreateChannelAsync(cancellationToken);
 
@@ -198,6 +228,9 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     /// <summary>Closes every destination channel — the container disposes the singleton at shutdown.</summary>
     public async ValueTask DisposeAsync()
     {
-        foreach (IChannel channel in _channels.Values) await channel.DisposeAsync();
+        foreach (IChannel channel in _channels.Values)
+        {
+            await channel.DisposeAsync();
+        }
     }
 }

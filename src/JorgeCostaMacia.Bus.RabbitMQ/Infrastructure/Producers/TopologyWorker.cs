@@ -30,7 +30,10 @@ internal sealed class TopologyWorker : IHostedService
     /// <param name="cancellationToken">A token to cancel startup.</param>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (_exchanges.Count == 0) return;
+        if (_exchanges.Count == 0)
+        {
+            return;
+        }
 
         await using IChannel channel = await _connection.CreateChannelAsync(cancellationToken);
 

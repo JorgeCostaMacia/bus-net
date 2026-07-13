@@ -33,7 +33,10 @@ public sealed class RetargetProbe
     {
         int attempt = Interlocked.Increment(ref _failingInvocations);
 
-        if (attempt == 2) _failingSucceeded.TrySetResult();
+        if (attempt == 2)
+        {
+            _failingSucceeded.TrySetResult();
+        }
 
         return attempt;
     }

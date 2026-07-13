@@ -100,7 +100,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="cancellationToken">A token bounding how long the stop may wait.</param>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (_cancellation is null || _loop is null) return;
+        if (_cancellation is null || _loop is null)
+        {
+            return;
+        }
 
         _cancellation.Cancel();
 
@@ -110,7 +113,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (OperationCanceledException)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerAbandoned)) _logger.LogWarning("Stop canceled.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerAbandoned))
+            {
+                _logger.LogWarning("Stop canceled.");
+            }
 
             return;
         }
@@ -210,11 +216,17 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Consume canceled.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerStopped))
+                {
+                    _logger.LogInformation("Consume canceled.");
+                }
             }
             catch (ConsumeException exception) when (exception.Error.IsFatal)
             {
-                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ApplicationStopped)) _logger.LogCritical(exception, "Consume failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ApplicationStopped))
+                {
+                    _logger.LogCritical(exception, "Consume failed.");
+                }
 
                 _lifetime.StopApplication();
 
@@ -222,13 +234,19 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             }
             catch (ConsumeException exception)
             {
-                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumeRetried)) _logger.LogError(exception, "Consume failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumeRetried))
+                {
+                    _logger.LogError(exception, "Consume failed.");
+                }
 
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
             catch (Exception exception)
             {
-                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumeLoopFailed)) _logger.LogError(exception, "Consume loop failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumeLoopFailed))
+                {
+                    _logger.LogError(exception, "Consume loop failed.");
+                }
 
                 await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
             }
@@ -315,7 +333,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.EscalatedToFaultHandler)) _logger.LogError(failure, "Error handler failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.EscalatedToFaultHandler))
+            {
+                _logger.LogError(failure, "Error handler failed.");
+            }
 
             outcome = ErrorResult.Unhandled;
         }
@@ -356,12 +377,18 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
             // a shutdown cancellation is not a failure: the park was reported undone because the
             // produce was canceled — the delivery stays unacked and a restart redelivers it.
-            if (cancellationToken.IsCancellationRequested) return;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
 
             // both lanes are down: the delivery could not be parked anywhere. Not acked — but a later
             // delivery on this partition will commit past it, so this alert is the recovery signal:
             // restart before that happens (redelivery) or re-inject from the topic while it is retained.
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryBuried)) _logger.LogError(exception, "Fault park failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryBuried))
+            {
+                _logger.LogError(exception, "Fault park failed.");
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -370,7 +397,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryBuried)) _logger.LogError(failure, "Fault handler failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryBuried))
+            {
+                _logger.LogError(failure, "Fault handler failed.");
+            }
         }
     }
 
@@ -382,11 +412,17 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (KafkaException exception) when (exception.Error.Code == ErrorCode.Local_State)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredToNewOwner)) _logger.LogWarning("Partition lost.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredToNewOwner))
+            {
+                _logger.LogWarning("Partition lost.");
+            }
         }
         catch (Exception exception)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogWarning(exception, "Store failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogWarning(exception, "Store failed.");
+            }
         }
     }
 }

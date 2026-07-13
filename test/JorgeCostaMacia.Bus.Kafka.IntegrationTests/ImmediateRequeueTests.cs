@@ -32,7 +32,9 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running Kafka container.</param>
     public ImmediateRequeueTests(KafkaFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A command handler that fails once, with a <c>00:00</c> retry step, is redelivered immediately and succeeds — invoked exactly twice.</summary>
     [Fact]

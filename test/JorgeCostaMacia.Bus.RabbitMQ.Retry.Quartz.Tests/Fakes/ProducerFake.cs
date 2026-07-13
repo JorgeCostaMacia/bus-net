@@ -10,14 +10,14 @@ internal sealed class ProducerFake : IProducer
     /// <summary>When set, every produce throws it — the broker-down seam.</summary>
     public Exception? Failure { get; set; }
 
-    public Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
-    }
+    public Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
     public Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
-        if (Failure is not null) throw Failure;
+        if (Failure is not null)
+        {
+            throw Failure;
+        }
 
         Produced.Add((exchange, routingKey, body.ToArray(), headers));
 

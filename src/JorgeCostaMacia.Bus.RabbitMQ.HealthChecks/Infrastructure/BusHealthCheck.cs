@@ -16,7 +16,10 @@ internal sealed class BusHealthCheck : IHealthCheck
 
     /// <summary>Creates the check over the bus's shared connection.</summary>
     /// <param name="connection">The bus's shared RabbitMQ connection.</param>
-    public BusHealthCheck(Domain.IConnection connection) => _connection = connection;
+    public BusHealthCheck(Domain.IConnection connection)
+    {
+        _connection = connection;
+    }
 
     /// <inheritdoc />
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)

@@ -14,7 +14,9 @@ public sealed class RequeueCommandHandler : CommandHandler<RequeueCommand>
     /// <summary>Takes the shared probe the handler records onto and the test awaits.</summary>
     /// <param name="probe">The invocation signal shared with the test.</param>
     public RequeueCommandHandler(RequeueProbe probe)
-        => _probe = probe;
+    {
+        _probe = probe;
+    }
 
     /// <summary>Fails the first delivery to force an immediate requeue; records and succeeds on the redelivery.</summary>
     /// <param name="context">The delivery's context.</param>
@@ -23,7 +25,10 @@ public sealed class RequeueCommandHandler : CommandHandler<RequeueCommand>
     {
         int attempt = _probe.Record();
 
-        if (attempt == 1) throw new InvalidOperationException("Failing the first delivery on purpose so the retry is re-published immediately for an instant redelivery.");
+        if (attempt == 1)
+        {
+            throw new InvalidOperationException("Failing the first delivery on purpose so the retry is re-published immediately for an instant redelivery.");
+        }
 
         return Task.CompletedTask;
     }

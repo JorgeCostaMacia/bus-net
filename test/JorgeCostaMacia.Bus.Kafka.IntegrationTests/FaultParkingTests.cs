@@ -29,7 +29,9 @@ public sealed class FaultParkingTests : IClassFixture<KafkaFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running Kafka container.</param>
     public FaultParkingTests(KafkaFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A malformed body that cannot be deserialized breaks the delivery and is parked to the topic's <c>.fault</c>.</summary>
     [Fact]

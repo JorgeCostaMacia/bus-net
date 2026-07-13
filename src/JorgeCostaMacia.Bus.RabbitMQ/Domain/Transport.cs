@@ -114,7 +114,10 @@ public sealed record Transport : ITransport
     /// <exception cref="KeyNotFoundException">No header with <paramref name="key"/> is present.</exception>
     public string GetHeaderString(string key)
     {
-        if (!Headers.TryGetValue(key, out object? value) || value is null) throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
+        if (!Headers.TryGetValue(key, out object? value) || value is null)
+        {
+            throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
+        }
 
         return Decode(value);
     }
@@ -131,7 +134,10 @@ public sealed record Transport : ITransport
     /// <exception cref="InvalidCastException">The header text is not a valid GUID.</exception>
     public Guid GetHeaderGuid(string key)
     {
-        if (Guid.TryParse(GetHeaderString(key), out Guid value)) return value;
+        if (Guid.TryParse(GetHeaderString(key), out Guid value))
+        {
+            return value;
+        }
 
         throw new InvalidCastException($"The key '{key}' was not a valid Guid.");
     }
@@ -142,7 +148,10 @@ public sealed record Transport : ITransport
     /// <exception cref="InvalidCastException">The header text is not a valid date/time.</exception>
     public DateTime GetHeaderDateTime(string key)
     {
-        if (DateTime.TryParse(GetHeaderString(key), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime value)) return value;
+        if (DateTime.TryParse(GetHeaderString(key), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime value))
+        {
+            return value;
+        }
 
         throw new InvalidCastException($"The key '{key}' was not a valid DateTime.");
     }
@@ -163,7 +172,10 @@ public sealed record Transport : ITransport
     /// <exception cref="InvalidCastException">The header text is not a valid integer.</exception>
     public int GetHeaderInt(string key)
     {
-        if (int.TryParse(GetHeaderString(key), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)) return value;
+        if (int.TryParse(GetHeaderString(key), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value))
+        {
+            return value;
+        }
 
         throw new InvalidCastException($"The key '{key}' was not a valid int.");
     }

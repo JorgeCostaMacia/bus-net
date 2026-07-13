@@ -30,7 +30,9 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
     /// <summary>Takes the shared broker + store fixture.</summary>
     /// <param name="fixture">The running RabbitMQ and Postgres containers.</param>
     public ScheduledRetryTests(RetryQuartzFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A failed delivery is parked as a durable Quartz job in Postgres and redelivered when its trigger fires.</summary>
     [Fact]

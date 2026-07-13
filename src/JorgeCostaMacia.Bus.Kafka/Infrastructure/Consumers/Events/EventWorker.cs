@@ -81,13 +81,22 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <returns>Whether the delivery is skipped.</returns>
     protected override bool Filtered(ConsumeResult<Ignore, byte[]> result)
     {
-        if (result.Message.Headers is null) return false;
+        if (result.Message.Headers is null)
+        {
+            return false;
+        }
 
-        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header)) return false;
+        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header))
+        {
+            return false;
+        }
 
         string consumers = Encoding.UTF8.GetString(header);
 
-        if (string.IsNullOrWhiteSpace(consumers)) return false;
+        if (string.IsNullOrWhiteSpace(consumers))
+        {
+            return false;
+        }
 
         return !consumers
             .Split(',')

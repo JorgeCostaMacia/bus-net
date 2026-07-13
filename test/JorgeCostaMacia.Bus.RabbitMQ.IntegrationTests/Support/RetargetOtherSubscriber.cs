@@ -15,7 +15,9 @@ public sealed class RetargetOtherSubscriber : EventSubscriber<RequeueEvent>
     /// <summary>Takes the shared probe the subscriber records onto and the test awaits.</summary>
     /// <param name="probe">The invocation signal shared with the test.</param>
     public RetargetOtherSubscriber(RetargetProbe probe)
-        => _probe = probe;
+    {
+        _probe = probe;
+    }
 
     /// <summary>Records its one invocation — the original delivery, never the failing subscriber's re-targeted retry.</summary>
     /// <param name="context">The delivery's context.</param>

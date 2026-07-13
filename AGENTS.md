@@ -38,6 +38,10 @@ Third-party **and** the cross-repo shared-net versions are centralized in **`Dir
 
 A single **`<VersionPrefix>`** lives in the **root `Directory.Build.props`** — bump once, everything moves together. Never put `VersionPrefix` back in individual csproj.
 
+## Code style
+
+Source is **UTF-8 without BOM**; camelCase locals, PascalCase types, I-prefixed interfaces. **Explicit types everywhere — spell the type out.** Never `var`, never target-typed `new()`, never collection expressions `[]`: write `new Foo(...)`, `new byte[] { ... }`, `new List<T> { ... }`, `Array.Empty<T>()`. The `.editorconfig` sets all three to explicit, but only `var` is analyzer-enforced — `new()`/`[]` can't be flagged (the analyzer never reports the implicit form), so they are **convention, kept explicit by hand and by the IDE generating explicit**. Braces are **always** required — a single-line `if` body still gets braces (this one IS analyzer-enforced, IDE0011). Do not introduce `var` / `new()` / `[]` / brace-less bodies when editing.
+
 ## CI / publishing
 
 - `main.yml`: push to `main` → build → test → `dotnet pack bus-net.slnx` → `dotnet nuget push` (nuget.org via Trusted Publishing / OIDC). **The central `VersionPrefix` is the publish gate.**

@@ -26,7 +26,9 @@ public sealed class ResurrectionTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     public ResurrectionTests(RabbitMqFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>Deleting the queue cancels the consumer; the worker resurrects and keeps processing.</summary>
     [Fact]
@@ -88,7 +90,10 @@ public sealed class ResurrectionTests : IClassFixture<RabbitMqFixture>
 
         while (DateTime.UtcNow < deadline)
         {
-            if (handled.Contains(payload)) return;
+            if (handled.Contains(payload))
+            {
+                return;
+            }
 
             await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
         }
@@ -112,7 +117,10 @@ public sealed class ResurrectionTests : IClassFixture<RabbitMqFixture>
             {
                 QueueDeclareOk declared = await channel.QueueDeclarePassiveAsync(Queue, cancellationToken);
 
-                if (declared.ConsumerCount >= 1) return;
+                if (declared.ConsumerCount >= 1)
+                {
+                    return;
+                }
             }
             catch (RabbitMQClientException)
             {

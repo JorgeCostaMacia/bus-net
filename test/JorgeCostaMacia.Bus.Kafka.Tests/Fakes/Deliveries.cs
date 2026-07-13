@@ -27,7 +27,10 @@ internal static class Deliveries
     {
         Headers headers = TraceHeaders();
 
-        if (consumers is not null) headers.Add(TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(consumers));
+        if (consumers is not null)
+        {
+            headers.Add(TransportHeaders.AggregateConsumers, Encoding.UTF8.GetBytes(consumers));
+        }
 
         return Result(JsonSerializer.SerializeToUtf8Bytes(message), headers, offset);
     }

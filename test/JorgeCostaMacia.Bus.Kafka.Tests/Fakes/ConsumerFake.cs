@@ -19,7 +19,10 @@ internal sealed class ConsumerFake : IConsumer
 
     /// <summary>Creates the fake over the deliveries the loop will consume, in order.</summary>
     /// <param name="deliveries">The deliveries handed to the loop, oldest first.</param>
-    public ConsumerFake(params ConsumeResult<Ignore, byte[]>[] deliveries) => _pending = new Queue<ConsumeResult<Ignore, byte[]>>(deliveries);
+    public ConsumerFake(params ConsumeResult<Ignore, byte[]>[] deliveries)
+    {
+        _pending = new Queue<ConsumeResult<Ignore, byte[]>>(deliveries);
+    }
 
     /// <summary>The offsets stored (acked) by the loop, in order.</summary>
     public List<TopicPartitionOffset> Stored { get; } = new List<TopicPartitionOffset>();
@@ -65,7 +68,10 @@ internal sealed class ConsumerFake : IConsumer
             throw failure;
         }
 
-        if (_pending.Count > 0) return _pending.Dequeue();
+        if (_pending.Count > 0)
+        {
+            return _pending.Dequeue();
+        }
 
         _drained.TrySetResult();
 
@@ -77,8 +83,14 @@ internal sealed class ConsumerFake : IConsumer
             throw failure;
         }
 
-        if (Hang) _park.Wait(CancellationToken.None);
-        else _park.Wait(cancellationToken);
+        if (Hang)
+        {
+            _park.Wait(CancellationToken.None);
+        }
+        else
+        {
+            _park.Wait(cancellationToken);
+        }
 
         throw new OperationCanceledException(cancellationToken);
     }

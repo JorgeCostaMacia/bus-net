@@ -15,7 +15,9 @@ public sealed class RetargetFailingSubscriber : EventSubscriber<RequeueEvent>
     /// <summary>Takes the shared probe the subscriber records onto and the test awaits.</summary>
     /// <param name="probe">The invocation signal shared with the test.</param>
     public RetargetFailingSubscriber(RetargetProbe probe)
-        => _probe = probe;
+    {
+        _probe = probe;
+    }
 
     /// <summary>Fails the first delivery to force an immediate, group-targeted requeue; records and succeeds on the redelivery.</summary>
     /// <param name="context">The delivery's context.</param>
@@ -24,7 +26,10 @@ public sealed class RetargetFailingSubscriber : EventSubscriber<RequeueEvent>
     {
         int attempt = _probe.RecordFailing();
 
-        if (attempt == 1) throw new InvalidOperationException("Failing the first delivery on purpose so the retry is re-published immediately, re-targeted to this subscriber's group only.");
+        if (attempt == 1)
+        {
+            throw new InvalidOperationException("Failing the first delivery on purpose so the retry is re-published immediately, re-targeted to this subscriber's group only.");
+        }
 
         return Task.CompletedTask;
     }

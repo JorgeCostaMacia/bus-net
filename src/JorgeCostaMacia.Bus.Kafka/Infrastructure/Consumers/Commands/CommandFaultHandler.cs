@@ -50,7 +50,10 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : CommandFa
 
             await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), Headers = FaultHeaders(context) }, cancellationToken);
 
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultTopic)) _logger.LogError(context.Error, "Delivery faulted.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultTopic))
+            {
+                _logger.LogError(context.Error, "Delivery faulted.");
+            }
 
             Result = FaultResult.Parked;
         }
@@ -60,7 +63,10 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : CommandFa
         }
         catch (Exception park)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogError(park, "Parking failed.");
+            }
 
             Result = FaultResult.Unhandled;
         }

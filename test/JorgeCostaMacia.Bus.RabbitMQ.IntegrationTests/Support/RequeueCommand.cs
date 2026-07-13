@@ -23,11 +23,15 @@ public sealed record RequeueCommand : Command
     [JsonConstructor]
     public RequeueCommand(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string payload)
         : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
-        => Payload = payload;
+    {
+        Payload = payload;
+    }
 
     /// <summary>Convenience constructor used to send the command, defaulting the metadata.</summary>
     /// <param name="payload">The payload.</param>
     public RequeueCommand(string payload)
         : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
-        => Payload = payload;
+    {
+        Payload = payload;
+    }
 }

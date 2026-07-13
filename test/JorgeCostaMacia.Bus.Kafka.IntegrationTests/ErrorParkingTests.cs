@@ -35,7 +35,9 @@ public sealed class ErrorParkingTests : IClassFixture<KafkaFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running Kafka container.</param>
     public ErrorParkingTests(KafkaFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A handler that always throws exhausts its retry ladder and the failure is parked to the topic's <c>.error</c>.</summary>
     [Fact]

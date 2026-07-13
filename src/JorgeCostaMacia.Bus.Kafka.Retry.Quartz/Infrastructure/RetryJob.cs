@@ -29,7 +29,10 @@ internal sealed class RetryJob : IJob
 
     /// <summary>Creates the job over the outbound producer.</summary>
     /// <param name="producer">The outbound gate — the retry is produced through it.</param>
-    public RetryJob(IProducer producer) => _producer = producer;
+    public RetryJob(IProducer producer)
+    {
+        _producer = producer;
+    }
 
     /// <inheritdoc />
     public async Task Execute(IJobExecutionContext context)
@@ -51,7 +54,10 @@ internal sealed class RetryJob : IJob
     {
         string? value = data.GetString(TOPIC_KEY);
 
-        if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{TOPIC_KEY}'.");
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException($"Retry job data is empty '{TOPIC_KEY}'.");
+        }
 
         return value;
     }
@@ -60,7 +66,10 @@ internal sealed class RetryJob : IJob
     {
         string? value = data.GetString(BODY_KEY);
 
-        if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{BODY_KEY}'.");
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException($"Retry job data is empty '{BODY_KEY}'.");
+        }
 
         return Convert.FromBase64String(value);
     }
@@ -69,7 +78,10 @@ internal sealed class RetryJob : IJob
     {
         string? value = data.GetString(HEADERS_KEY);
 
-        if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{HEADERS_KEY}'.");
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException($"Retry job data is empty '{HEADERS_KEY}'.");
+        }
 
         Headers headers = new Headers();
 

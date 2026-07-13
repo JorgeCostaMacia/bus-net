@@ -33,9 +33,20 @@ public class RetrySchedulerTests
     {
         Headers headers = new Headers();
 
-        if (messageId is Guid id) headers.Add(TransportHeaders.MessageId, id.ToByteArray());
-        if (retryCount is int count) headers.Add(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(count.ToString()));
-        foreach ((string key, byte[]? value) in extra) headers.Add(key, value);
+        if (messageId is Guid id)
+        {
+            headers.Add(TransportHeaders.MessageId, id.ToByteArray());
+        }
+
+        if (retryCount is int count)
+        {
+            headers.Add(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(count.ToString()));
+        }
+
+        foreach ((string key, byte[]? value) in extra)
+        {
+            headers.Add(key, value);
+        }
 
         return headers;
     }

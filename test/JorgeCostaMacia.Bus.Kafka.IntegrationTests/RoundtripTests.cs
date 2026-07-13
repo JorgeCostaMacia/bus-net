@@ -21,7 +21,9 @@ public sealed class RoundtripTests : IClassFixture<KafkaFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running Kafka container.</param>
     public RoundtripTests(KafkaFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A sent command is delivered to its handler carrying the original payload.</summary>
     [Fact]

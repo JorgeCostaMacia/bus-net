@@ -46,7 +46,10 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     {
         string? consumers = Transport.Create(args).GetHeaderStringOrDefault(TransportHeaders.AggregateConsumers);
 
-        if (string.IsNullOrWhiteSpace(consumers)) return false;
+        if (string.IsNullOrWhiteSpace(consumers))
+        {
+            return false;
+        }
 
         return !consumers
             .Split(',')

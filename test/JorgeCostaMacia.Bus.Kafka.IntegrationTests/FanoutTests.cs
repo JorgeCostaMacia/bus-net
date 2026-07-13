@@ -28,7 +28,9 @@ public sealed class FanoutTests : IClassFixture<KafkaFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running Kafka container.</param>
     public FanoutTests(KafkaFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>One published event is delivered to two subscribers on two consumer groups reading its topic.</summary>
     [Fact]

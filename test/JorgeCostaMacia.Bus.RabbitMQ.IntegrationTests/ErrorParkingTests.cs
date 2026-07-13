@@ -30,7 +30,9 @@ public sealed class ErrorParkingTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     public ErrorParkingTests(RabbitMqFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A handler that always throws exhausts its retry ladder and the failure is parked to the queue's <c>.error</c>.</summary>
     [Fact]

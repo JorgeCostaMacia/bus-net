@@ -72,7 +72,10 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     /// <inheritdoc />
     public Task AckAsync(ulong deliveryTag, CancellationToken cancellationToken = default)
     {
-        if (AckFailure is not null) throw AckFailure;
+        if (AckFailure is not null)
+        {
+            throw AckFailure;
+        }
 
         Acked.Add(deliveryTag);
 
@@ -107,7 +110,10 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     /// <param name="reason">The shutdown reason, or <see langword="null"/> for a consumer cancellation without one.</param>
     public Task CloseAsync(ShutdownEventArgs? reason = null)
     {
-        if (reason is not null) IsOpen = false;
+        if (reason is not null)
+        {
+            IsOpen = false;
+        }
 
         return _onClosed?.Invoke(reason) ?? Task.CompletedTask;
     }

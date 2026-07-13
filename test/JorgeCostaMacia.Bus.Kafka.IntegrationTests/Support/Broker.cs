@@ -73,7 +73,10 @@ internal static class Broker
                     // yet), a delivery once the parked message is readable.
                     ConsumeResult<Ignore, byte[]>? result = consumer.Consume(TimeSpan.FromMilliseconds(500));
 
-                    if (result?.Message is not null) return result;
+                    if (result?.Message is not null)
+                    {
+                        return result;
+                    }
                 }
                 catch (ConsumeException exception) when (!exception.Error.IsFatal)
                 {
@@ -158,7 +161,10 @@ internal static class Broker
     /// <returns>The header text, or <see langword="null"/> when the header is absent.</returns>
     public static string? Header(ConsumeResult<Ignore, byte[]> result, string key)
     {
-        if (!result.Message.Headers.TryGetLastBytes(key, out byte[] bytes)) return null;
+        if (!result.Message.Headers.TryGetLastBytes(key, out byte[] bytes))
+        {
+            return null;
+        }
 
         return Encoding.UTF8.GetString(bytes);
     }

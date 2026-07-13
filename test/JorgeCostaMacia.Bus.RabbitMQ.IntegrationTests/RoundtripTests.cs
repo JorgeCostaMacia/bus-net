@@ -21,7 +21,9 @@ public sealed class RoundtripTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     public RoundtripTests(RabbitMqFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A sent command is delivered to its handler carrying the original payload.</summary>
     [Fact]

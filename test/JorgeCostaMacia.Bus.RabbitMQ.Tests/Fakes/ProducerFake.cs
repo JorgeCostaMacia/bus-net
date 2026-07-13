@@ -16,7 +16,10 @@ internal sealed class ProducerFake : IProducer
 
     public Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
     {
-        if (Failure is not null) throw Failure;
+        if (Failure is not null)
+        {
+            throw Failure;
+        }
 
         Produced.Add((exchange, routingKey, body.ToArray(), headers));
 

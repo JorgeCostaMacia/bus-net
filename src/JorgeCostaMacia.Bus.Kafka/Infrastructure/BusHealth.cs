@@ -51,7 +51,10 @@ internal sealed class BusHealth
     {
         lock (_gate)
         {
-            if (_isUp == up) return;
+            if (_isUp == up)
+            {
+                return;
+            }
 
             _isUp = up;
             _changedAt = DateTime.UtcNow;

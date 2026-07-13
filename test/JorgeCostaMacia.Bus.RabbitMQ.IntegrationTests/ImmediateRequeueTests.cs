@@ -31,7 +31,9 @@ public sealed class ImmediateRequeueTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     public ImmediateRequeueTests(RabbitMqFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A handler that fails once, with a <c>00:00</c> retry step, is redelivered immediately and succeeds — invoked exactly twice, then acked.</summary>
     [Fact]

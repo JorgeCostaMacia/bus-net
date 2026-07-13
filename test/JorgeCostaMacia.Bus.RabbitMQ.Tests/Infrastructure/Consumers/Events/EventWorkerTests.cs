@@ -40,7 +40,10 @@ public class EventWorkerTests
     {
         await worker.StartAsync(TestContext.Current.CancellationToken);
 
-        foreach (BasicDeliverEventArgs delivery in deliveries) await channel.DeliverAsync(delivery);
+        foreach (BasicDeliverEventArgs delivery in deliveries)
+        {
+            await channel.DeliverAsync(delivery);
+        }
 
         await worker.StopAsync(TestContext.Current.CancellationToken);
     }

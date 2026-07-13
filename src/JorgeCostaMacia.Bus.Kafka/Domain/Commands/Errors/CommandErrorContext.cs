@@ -23,5 +23,7 @@ public sealed record CommandErrorContext<TCommand> :
     /// <param name="error">The failure that exhausted the delivery.</param>
     public CommandErrorContext(TCommand message, Transport transport, Exception error)
         : base(message, transport)
-        => Error = error;
+    {
+        Error = error;
+    }
 }

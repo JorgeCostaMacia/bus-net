@@ -34,7 +34,9 @@ public sealed class ProducerFailureTests : IClassFixture<KafkaFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running Kafka container.</param>
     public ProducerFailureTests(KafkaFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>An oversized produce to a size-capped topic throws <see cref="ProduceException{Null, Byte}"/> with <see cref="ErrorCode.MsgSizeTooLarge"/> — the type the bus's produce catch-blocks depend on.</summary>
     [Fact]

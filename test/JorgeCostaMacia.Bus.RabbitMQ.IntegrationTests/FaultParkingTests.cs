@@ -29,7 +29,9 @@ public sealed class FaultParkingTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     public FaultParkingTests(RabbitMqFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>A malformed body that cannot be deserialized breaks the delivery and is parked to the queue's <c>.fault</c>.</summary>
     [Fact]
