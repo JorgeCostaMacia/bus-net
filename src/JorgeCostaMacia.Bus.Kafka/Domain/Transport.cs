@@ -105,7 +105,7 @@ public sealed record Transport : ITransport
     /// <exception cref="KeyNotFoundException">No header with <paramref name="key"/> is present.</exception>
     public byte[] GetHeader(string key)
     {
-        byte[]? header = (Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes()) ?? throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
+        byte[]? header = Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes() ?? throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
 
         return header;
     }
