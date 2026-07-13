@@ -42,7 +42,7 @@ internal static class Broker
     /// <returns>The parked delivery, or <see langword="null"/> if none arrived in time.</returns>
     public static async Task<ConsumeResult<Ignore, byte[]>?> WaitForParkedAsync(IConfiguration configuration, string topic, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        ConsumerConfig config = new()
+        ConsumerConfig config = new ConsumerConfig()
         {
             BootstrapServers = BootstrapServers(configuration),
             SecurityProtocol = SecurityProtocol.Plaintext,
@@ -97,7 +97,7 @@ internal static class Broker
     /// <returns>A bare producer the caller disposes.</returns>
     public static IProducer<Null, byte[]> Producer(IConfiguration configuration)
     {
-        ProducerConfig config = new()
+        ProducerConfig config = new ProducerConfig()
         {
             BootstrapServers = BootstrapServers(configuration),
             SecurityProtocol = SecurityProtocol.Plaintext
@@ -117,7 +117,7 @@ internal static class Broker
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     public static async Task CreateCappedTopicAsync(IConfiguration configuration, string topic, int maxMessageBytes, CancellationToken cancellationToken)
     {
-        AdminClientConfig config = new()
+        AdminClientConfig config = new AdminClientConfig()
         {
             BootstrapServers = BootstrapServers(configuration),
             SecurityProtocol = SecurityProtocol.Plaintext
@@ -129,14 +129,15 @@ internal static class Broker
         // can exhaust ("Failed while waiting for controller: Local_TimedOut") when this suite runs
         // alongside the other broker containers and controller discovery is slow under that load. A
         // 90s request/operation window absorbs that contention while staying bounded.
-        CreateTopicsOptions options = new()
+        CreateTopicsOptions options = new CreateTopicsOptions()
         {
             RequestTimeout = TimeSpan.FromSeconds(90),
             OperationTimeout = TimeSpan.FromSeconds(90)
         };
 
         await admin.CreateTopicsAsync(
-            [
+            new[]
+            {
                 new TopicSpecification
                 {
                     Name = topic,
@@ -144,7 +145,7 @@ internal static class Broker
                     ReplicationFactor = 1,
                     Configs = new Dictionary<string, string> { ["max.message.bytes"] = maxMessageBytes.ToString(CultureInfo.InvariantCulture) }
                 }
-            ],
+            },
             options);
 
         // CreateTopicsAsync completing does not guarantee cancellation observability, so honor the token here.

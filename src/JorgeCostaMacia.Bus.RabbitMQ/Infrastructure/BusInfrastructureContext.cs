@@ -30,7 +30,7 @@ internal static class BusInfrastructureContext
     {
         ConnectionConfiguration connectionConfiguration = CreateConnectionConfiguration(configuration);
 
-        ProducerConfigurator producerConfigurator = new();
+        ProducerConfigurator producerConfigurator = new ProducerConfigurator();
 
         producer(producerConfigurator);
 

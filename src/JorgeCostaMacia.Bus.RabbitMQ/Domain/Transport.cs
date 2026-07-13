@@ -86,7 +86,7 @@ public sealed record Transport : ITransport
     /// <returns>A new <c>string → string</c> header table holding every header's decoded text.</returns>
     public Dictionary<string, string> CloneHeaders()
     {
-        Dictionary<string, string> clonedHeaders = [];
+        Dictionary<string, string> clonedHeaders = new Dictionary<string, string>();
 
         foreach ((string key, object? value) in Headers)
         {

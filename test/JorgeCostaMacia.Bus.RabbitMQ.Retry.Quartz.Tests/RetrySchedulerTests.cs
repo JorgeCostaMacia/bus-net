@@ -31,7 +31,7 @@ public class RetrySchedulerTests
 
     private static Dictionary<string, string> Headers(Guid? messageId = null, int? retryCount = null, params (string Key, string Value)[] extra)
     {
-        Dictionary<string, string> headers = [];
+        Dictionary<string, string> headers = new Dictionary<string, string>();
 
         if (messageId is Guid id) headers[TransportHeaders.MessageId] = id.ToString();
         if (retryCount is int count) headers[TransportHeaders.RetryCount] = count.ToString(CultureInfo.InvariantCulture);

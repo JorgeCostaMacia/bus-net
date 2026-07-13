@@ -70,7 +70,7 @@ internal sealed class RetryJob : IJob
 
         if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{HEADERS_KEY}'.");
 
-        Dictionary<string, string> headers = [];
+        Dictionary<string, string> headers = new Dictionary<string, string>();
 
         foreach (KeyValuePair<string, string> header in JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(value) ?? [])
         {

@@ -11,7 +11,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 /// </summary>
 internal sealed class BusHealth
 {
-    private readonly object _gate = new();
+    private readonly object _gate = new object();
 
     private bool _isUp = true;
     private DateTime _changedAt = DateTime.UtcNow;

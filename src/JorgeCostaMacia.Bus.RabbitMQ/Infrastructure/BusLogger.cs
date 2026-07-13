@@ -50,13 +50,13 @@ internal static class BusLogger
     /// <returns>The context to dispose when the delivery's iteration ends.</returns>
     public static IDisposable ConsumerContext(BasicDeliverEventArgs args)
     {
-        List<ILogEventEnricher> context =
-        [
+        List<ILogEventEnricher> context = new List<ILogEventEnricher>
+        {
             new PropertyEnricher("RoutingKey", args.RoutingKey),
             new PropertyEnricher("DeliveryTag", args.DeliveryTag),
             new PropertyEnricher("Redelivered", args.Redelivered),
             new PropertyEnricher("Body", args.Body.Length == 0 ? null : Encoding.UTF8.GetString(args.Body.Span))
-        ];
+        };
 
         Decode(context, args.BasicProperties.Headers);
 
@@ -75,12 +75,12 @@ internal static class BusLogger
     /// <returns>The context to dispose after logging the failure.</returns>
     public static IDisposable ProducerContext(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers)
     {
-        List<ILogEventEnricher> context =
-        [
+        List<ILogEventEnricher> context = new List<ILogEventEnricher>
+        {
             new PropertyEnricher("Exchange", exchange),
             new PropertyEnricher("RoutingKey", routingKey),
             new PropertyEnricher("Body", body.Length == 0 ? null : Encoding.UTF8.GetString(body.Span))
-        ];
+        };
 
         foreach ((string key, string value) in headers)
         {

@@ -35,7 +35,7 @@ public sealed class FanoutTests : IClassFixture<KafkaFixture>
     public async Task Publish_fansTheEventOutToEverySubscriberGroup_BothReceiveIt()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        FanoutProbe probe = new();
+        FanoutProbe probe = new FanoutProbe();
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(probe);

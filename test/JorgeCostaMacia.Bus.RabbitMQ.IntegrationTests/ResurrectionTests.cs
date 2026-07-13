@@ -34,7 +34,7 @@ public sealed class ResurrectionTests : IClassFixture<RabbitMqFixture>
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         IConfiguration configuration = _fixture.BuildConfiguration();
-        ConcurrentQueue<string> handled = new();
+        ConcurrentQueue<string> handled = new ConcurrentQueue<string>();
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(handled);

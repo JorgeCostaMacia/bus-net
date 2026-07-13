@@ -12,18 +12,18 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandWorkerTests
 {
-    private readonly ProducerFake _producer = new();
-    private readonly RetrySchedulerFake _scheduler = new();
-    private readonly LifetimeFake _lifetime = new();
-    private readonly BusHealth _health = new();
-    private readonly RecordingCommandHandler _handler = new();
+    private readonly ProducerFake _producer = new ProducerFake();
+    private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
+    private readonly LifetimeFake _lifetime = new LifetimeFake();
+    private readonly BusHealth _health = new BusHealth();
+    private readonly RecordingCommandHandler _handler = new RecordingCommandHandler();
 
     private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>? faultHandler = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<CommandErrorHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
-                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], []))
+                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
             .AddScoped<CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
                 faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
             .BuildServiceProvider();
@@ -92,7 +92,7 @@ public class CommandWorkerTests
         _handler.Failure = new InvalidOperationException("boom");
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
 
-        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+        await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
         Assert.Equal(Deliveries.TOPIC, topic);
@@ -106,7 +106,7 @@ public class CommandWorkerTests
         _handler.Failure = new KeyNotFoundException("user code dictionary miss");
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
 
-        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+        await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
         Assert.Equal(Deliveries.TOPIC, topic);
@@ -149,7 +149,7 @@ public class CommandWorkerTests
         _producer.FailingTopics.Add(Deliveries.TOPIC);
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
 
-        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+        await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
         Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
@@ -168,7 +168,7 @@ public class CommandWorkerTests
         _producer.FailingTopics.Add($"{Deliveries.TOPIC}.fault");
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
 
-        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+        await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         Assert.Equal("second", _handler.Received?.Name);   // the loop survived the first delivery's double failure
         Assert.Empty(consumer.Stored);                     // nothing acked — no delivery was parked
@@ -185,7 +185,7 @@ public class CommandWorkerTests
         _producer.FailingTopics.Add(Deliveries.TOPIC);
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
 
-        await Drive(Worker(consumer, [TimeSpan.Zero], new ThrowingCommandFaultHandler()), consumer);
+        await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero), new ThrowingCommandFaultHandler()), consumer);
 
         Assert.Equal("second", _handler.Received?.Name);
         Assert.Empty(consumer.Stored);
@@ -195,7 +195,7 @@ public class CommandWorkerTests
     [Fact]
     public async Task FatalConsumeError_StopsTheApplication()
     {
-        ConsumerFake consumer = new() { ConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Fatal, "fatal", isFatal: true)) };
+        ConsumerFake consumer = new ConsumerFake() { ConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Fatal, "fatal", isFatal: true)) };
 
         await Drive(Worker(consumer), consumer);
 
@@ -225,7 +225,7 @@ public class CommandWorkerTests
         // the shutdown's grace period runs out while the loop is still blocked: the stop returns
         // without failing the host and without closing or disposing the consumer under the live loop
         // — the session timeout evicts it and the process teardown reclaims it.
-        ConsumerFake consumer = new() { Hang = true };
+        ConsumerFake consumer = new ConsumerFake() { Hang = true };
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer);
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
@@ -279,7 +279,7 @@ public class CommandWorkerTests
         // the app shuts down while the fault lane is parking a delivery: the cancellation is rethrown
         // for the loop to exit through — no crash, nothing acked, nothing produced — and the stop
         // still closes the consumer gracefully.
-        StoppingCommandFaultHandler faultHandler = new();
+        StoppingCommandFaultHandler faultHandler = new StoppingCommandFaultHandler();
         ConsumerFake consumer = new(Deliveries.Garbage());
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer, faultHandler: faultHandler);
         faultHandler.Stop = () => worker.StopAsync(TestContext.Current.CancellationToken);
@@ -331,7 +331,7 @@ public class CommandWorkerTests
         await Drive(Worker(consumer), consumer);
 
         Assert.Equal("b", _handler.Received?.Name);
-        Assert.Equal([10L, 11L], consumer.Stored.Select(offset => offset.Offset.Value));
+        Assert.Equal(new[] { 10L, 11L }, consumer.Stored.Select(offset => offset.Offset.Value));
     }
 
     [Fact]

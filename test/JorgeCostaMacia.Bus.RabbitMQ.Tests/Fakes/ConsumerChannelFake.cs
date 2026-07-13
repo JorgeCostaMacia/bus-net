@@ -35,10 +35,10 @@ internal sealed class ConsumerChannelFake : IConsumerChannel, IConsumerChannelFa
     public bool Disposed { get; private set; }
 
     /// <summary>The delivery tags acked by the worker, in order.</summary>
-    public List<ulong> Acked { get; } = [];
+    public List<ulong> Acked { get; } = new List<ulong>();
 
     /// <summary>The (delivery tag, requeue) nacks by the worker, in order.</summary>
-    public List<(ulong DeliveryTag, bool Requeue)> Nacked { get; } = [];
+    public List<(ulong DeliveryTag, bool Requeue)> Nacked { get; } = new List<(ulong DeliveryTag, bool Requeue)>();
 
     /// <inheritdoc />
     public Task<IConsumerChannel> CreateAsync(CancellationToken cancellationToken = default)

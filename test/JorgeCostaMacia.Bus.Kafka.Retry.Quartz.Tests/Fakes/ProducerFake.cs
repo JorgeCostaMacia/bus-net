@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests.Fakes;
 /// <summary>In-memory outbound gate capturing every produced message — the seam the retry job re-produces through.</summary>
 internal sealed class ProducerFake : IProducer
 {
-    public List<(string Topic, Message<Null, byte[]> Message)> Produced { get; } = [];
+    public List<(string Topic, Message<Null, byte[]> Message)> Produced { get; } = new List<(string Topic, Message<Null, byte[]> Message)>();
 
     /// <summary>When set, every produce throws it — the broker-down seam.</summary>
     public Exception? Failure { get; set; }

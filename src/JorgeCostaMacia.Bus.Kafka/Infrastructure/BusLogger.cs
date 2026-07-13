@@ -107,12 +107,12 @@ internal static class BusLogger
     /// <returns>The context to dispose when the delivery's iteration ends.</returns>
     public static IDisposable ConsumerContext(ConsumeResult<Ignore, byte[]> result)
     {
-        List<ILogEventEnricher> context =
-        [
+        List<ILogEventEnricher> context = new List<ILogEventEnricher>
+        {
             new PropertyEnricher("Partition", result.Partition.Value),
             new PropertyEnricher("Offset", result.Offset.Value),
             new PropertyEnricher("Body", result.Message.Value is null ? null : Encoding.UTF8.GetString(result.Message.Value))
-        ];
+        };
 
         Decode(context, result.Message.Headers);
 
@@ -129,11 +129,11 @@ internal static class BusLogger
     /// <returns>The context to dispose after logging the failure.</returns>
     public static IDisposable ProducerContext(string topic, Message<Null, byte[]> message)
     {
-        List<ILogEventEnricher> context =
-        [
+        List<ILogEventEnricher> context = new List<ILogEventEnricher>
+        {
             new PropertyEnricher("Topic", topic),
             new PropertyEnricher("Body", message.Value is null ? null : Encoding.UTF8.GetString(message.Value))
-        ];
+        };
 
         Decode(context, message.Headers);
 

@@ -11,7 +11,7 @@ public class BusTests
 {
     private sealed record ForeignTransport : ITransport;
 
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private RabbitBus CreateSut(params (Type Type, string Exchange)[] messages)
         => new(_producer, messages.ToDictionary(e => e.Type, e => e.Exchange));
@@ -63,7 +63,7 @@ public class BusTests
         Guid inboundMessageId = Guid.NewGuid();
         Guid conversationId = Guid.NewGuid();
 
-        Dictionary<string, object?> inbound = new()
+        Dictionary<string, object?> inbound = new Dictionary<string, object?>()
         {
             [TransportHeaders.MessageId] = Encoding.UTF8.GetBytes(inboundMessageId.ToString()),
             [TransportHeaders.MessageType] = "Inbound"u8.ToArray(),
@@ -102,7 +102,7 @@ public class BusTests
     {
         // the continuation re-stamps AggregateConsumers from the outbound message: an untargeted
         // message (empty list) clears the inbound targeting instead of carrying it over.
-        Dictionary<string, object?> inbound = new()
+        Dictionary<string, object?> inbound = new Dictionary<string, object?>()
         {
             [TransportHeaders.MessageDestinationAddress] = "orders"u8.ToArray(),
             [TransportHeaders.ConversationId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
@@ -152,19 +152,19 @@ public class BusTests
     [Fact]
     public async Task Publish_Batch_ProducesEveryEventInOrder()
     {
-        TestEvent[] events = [new("a"), new("b"), new("c")];
+        TestEvent[] events = new TestEvent[] { new("a"), new("b"), new("c") };
 
         await CreateSut((typeof(TestEvent), "orders.created")).Publish(events, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced => Assert.Equal("orders.created", produced.Exchange));
-        Assert.Equal(["a", "b", "c"], _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Body).GetProperty("name").GetString()));
+        Assert.Equal(new[] { "a", "b", "c" }, _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Body).GetProperty("name").GetString()));
     }
 
     [Fact]
     public async Task Send_Batch_ProducesEveryCommand()
     {
-        TestCommand[] commands = [new("x"), new("y")];
+        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
 
         await CreateSut((typeof(TestCommand), "orders")).Send(commands, TestContext.Current.CancellationToken);
 
@@ -177,7 +177,7 @@ public class BusTests
     {
         Guid conversationId = Guid.NewGuid();
 
-        Dictionary<string, object?> inbound = new()
+        Dictionary<string, object?> inbound = new Dictionary<string, object?>()
         {
             [TransportHeaders.MessageId] = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString()),
             [TransportHeaders.MessageDestinationAddress] = "orders"u8.ToArray(),
@@ -192,7 +192,7 @@ public class BusTests
         };
 
         Transport transport = new(inbound, "orders", string.Empty, deliveryTag: 10, redelivered: false);
-        TestCommand[] commands = [new("x"), new("y")];
+        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
 
         await CreateSut((typeof(TestCommand), "payments")).Send(commands, transport, TestContext.Current.CancellationToken);
 

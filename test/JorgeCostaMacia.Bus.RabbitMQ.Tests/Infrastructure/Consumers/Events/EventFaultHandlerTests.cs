@@ -9,7 +9,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Events;
 
 public class EventFaultHandlerTests
 {
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private FaultHandler Fault()
         => new(_producer, NullLogger.Instance, Deliveries.QUEUE);

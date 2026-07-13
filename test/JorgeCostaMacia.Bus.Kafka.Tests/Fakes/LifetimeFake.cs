@@ -5,7 +5,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 /// <summary>Application lifetime double — records whether the consumer asked to stop the application on a fatal client error.</summary>
 internal sealed class LifetimeFake : IHostApplicationLifetime
 {
-    private readonly CancellationTokenSource _stopping = new();
+    private readonly CancellationTokenSource _stopping = new CancellationTokenSource();
 
     /// <summary>Whether <see cref="StopApplication"/> was called.</summary>
     public bool StopRequested { get; private set; }

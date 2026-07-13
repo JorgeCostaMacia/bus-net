@@ -39,7 +39,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
     public async Task Send_toAHandlerThatFailsOnceWithAnImmediateRetryStep_IsRedeliveredAndSucceedsExactlyTwice()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        RequeueProbe probe = new();
+        RequeueProbe probe = new RequeueProbe();
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(probe);
@@ -81,7 +81,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
     public async Task Publish_toTwoGroupsWhereOneFailsOnce_ReTargetsTheImmediateRetryToTheFailingGroupOnly()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        RetargetProbe probe = new();
+        RetargetProbe probe = new RetargetProbe();
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(probe);

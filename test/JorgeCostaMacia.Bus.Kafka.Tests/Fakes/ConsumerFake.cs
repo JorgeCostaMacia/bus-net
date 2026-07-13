@@ -22,7 +22,7 @@ internal sealed class ConsumerFake : IConsumer
     public ConsumerFake(params ConsumeResult<Ignore, byte[]>[] deliveries) => _pending = new Queue<ConsumeResult<Ignore, byte[]>>(deliveries);
 
     /// <summary>The offsets stored (acked) by the loop, in order.</summary>
-    public List<TopicPartitionOffset> Stored { get; } = [];
+    public List<TopicPartitionOffset> Stored { get; } = new List<TopicPartitionOffset>();
 
     /// <summary>The topic the loop subscribed to.</summary>
     public string? SubscribedTopic { get; private set; }

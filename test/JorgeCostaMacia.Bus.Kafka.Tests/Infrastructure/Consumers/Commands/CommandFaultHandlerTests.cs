@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandFaultHandlerTests
 {
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
         => new(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID);

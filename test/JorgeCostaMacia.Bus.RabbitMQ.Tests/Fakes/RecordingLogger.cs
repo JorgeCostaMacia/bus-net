@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 internal sealed class RecordingLogger<T> : ILogger<T>
 {
     /// <summary>The (level, message) entries logged, in order.</summary>
-    public List<(LogLevel Level, string Message)> Logged { get; } = [];
+    public List<(LogLevel Level, string Message)> Logged { get; } = new List<(LogLevel Level, string Message)>();
 
     /// <inheritdoc />
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;

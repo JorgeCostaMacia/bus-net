@@ -8,15 +8,15 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Producers;
 
 public class ProducerTests
 {
-    private readonly ChannelFake _channel = new();
+    private readonly ChannelFake _channel = new ChannelFake();
     private readonly ConnectionFake _connection;
-    private readonly RecordingLogger<RabbitProducer> _logger = new();
+    private readonly RecordingLogger<RabbitProducer> _logger = new RecordingLogger<RabbitProducer>();
 
     public ProducerTests() => _connection = new ConnectionFake(_channel);
 
     private RabbitProducer Sut() => new(_connection, _logger);
 
-    private static Dictionary<string, string> Headers() => [];
+    private static Dictionary<string, string> Headers() => new Dictionary<string, string>();
 
     [Fact]
     public async Task Produce_PublishesToTheExchangeWithTheRoutingKey()
@@ -145,7 +145,7 @@ public class ProducerTests
     [Fact]
     public async Task Produce_ReStampsTheHost_OverGivenHeaders()
     {
-        Dictionary<string, string> headers = new()
+        Dictionary<string, string> headers = new Dictionary<string, string>()
         {
             [TransportHeaders.HostMachineName] = "another-host"
         };
@@ -159,7 +159,7 @@ public class ProducerTests
     public async Task Produce_CarriesTheGivenEnvelopeHeaders()
     {
         Guid messageId = Guid.NewGuid();
-        Dictionary<string, string> headers = new()
+        Dictionary<string, string> headers = new Dictionary<string, string>()
         {
             [TransportHeaders.MessageId] = messageId.ToString()
         };
@@ -176,7 +176,7 @@ public class ProducerTests
         Guid conversationId = Guid.NewGuid();
         DateTime occurredAt = new(2026, 7, 7, 12, 30, 45, DateTimeKind.Utc);
 
-        Dictionary<string, string> headers = new()
+        Dictionary<string, string> headers = new Dictionary<string, string>()
         {
             [TransportHeaders.MessageId] = messageId.ToString(),
             [TransportHeaders.ConversationId] = conversationId.ToString(),
@@ -201,7 +201,7 @@ public class ProducerTests
         // the native mirroring is best-effort: an undecodable jcm-message-id leaves BasicProperties
         // .MessageId unset rather than stamping garbage. The valid-guid case is covered by
         // Produce_MapsTheEnvelopeToNativeAmqpProperties.
-        Dictionary<string, string> headers = new()
+        Dictionary<string, string> headers = new Dictionary<string, string>()
         {
             [TransportHeaders.MessageId] = "not-a-guid"
         };
@@ -218,10 +218,10 @@ public class ProducerTests
         // produces spread across several exchanges (several per exchange) open exactly one channel
         // per distinct exchange and never double-open. Outcome asserted after WhenAll, not timing.
         RabbitProducer sut = Sut();
-        string[] exchanges = ["orders", "orders.created", "billing", "shipping"];
+        string[] exchanges = new[] { "orders", "orders.created", "billing", "shipping" };
 
-        Task[] produces = [.. Enumerable.Range(0, 200).Select(i =>
-            Task.Run(() => sut.Produce(exchanges[i % exchanges.Length], string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken), TestContext.Current.CancellationToken))];
+        Task[] produces = Enumerable.Range(0, 200).Select(i =>
+            Task.Run(() => sut.Produce(exchanges[i % exchanges.Length], string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)).ToArray();
 
         await Task.WhenAll(produces);
 

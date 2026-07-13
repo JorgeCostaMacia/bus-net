@@ -40,7 +40,7 @@ public sealed class RabbitMqFixture : IAsyncLifetime
         Uri uri = new(_container.GetConnectionString());
         string[] userInfo = uri.UserInfo.Split(':');
 
-        Dictionary<string, string?> settings = new()
+        Dictionary<string, string?> settings = new Dictionary<string, string?>()
         {
             ["Bus:Connection:HostName"] = _container.Hostname,
             ["Bus:Connection:UserName"] = userInfo[0],

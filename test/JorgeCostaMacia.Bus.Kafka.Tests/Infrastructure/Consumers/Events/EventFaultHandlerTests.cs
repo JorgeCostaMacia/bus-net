@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Events;
 
 public class EventFaultHandlerTests
 {
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private EventFaultHandler<TestEvent, TestEventSubscriber> Fault()
         => new(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID);

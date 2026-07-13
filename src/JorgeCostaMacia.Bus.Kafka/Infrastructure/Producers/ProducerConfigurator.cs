@@ -17,7 +17,7 @@ public sealed class ProducerConfigurator
 {
     private const string PRODUCER_SECTION = "Bus:Producer";
 
-    private readonly Dictionary<Type, string> _messages = [];
+    private readonly Dictionary<Type, string> _messages = new Dictionary<Type, string>();
     private readonly ProducerConfiguration _producerConfiguration;
 
     /// <summary>Binds the producer configuration from the <c>Bus:Producer</c> section.</summary>

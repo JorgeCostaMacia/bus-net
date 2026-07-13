@@ -13,7 +13,7 @@ public class EventContextTests
 
     private static Transport Transport()
     {
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, object?> headers = new Dictionary<string, object?>()
         {
             [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(CONVERSATION_ID),
             [TransportHeaders.ConversationAddress] = TransportHeaders.ToHeader("orders.created"),
@@ -74,7 +74,7 @@ public class EventContextTests
 
     [Fact]
     public void AggregateConsumers_ReadsTheTargetsFromTheTransportHeaders()
-        => Assert.Equal(["g1", "g2"], CreateSut().AggregateConsumers);
+        => Assert.Equal(new[] { "g1", "g2" }, CreateSut().AggregateConsumers);
 
     [Fact]
     public void Host_ReadsFromTheTransportHeaders()

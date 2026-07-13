@@ -15,7 +15,7 @@ public class BusContextTests
 {
     private static IConfiguration Configuration(bool connection = true, string? hostName = "bus", string? userName = "user", string? password = "pass")
     {
-        Dictionary<string, string?> values = [];
+        Dictionary<string, string?> values = new Dictionary<string, string?>();
 
         if (connection)
         {
@@ -66,7 +66,7 @@ public class BusContextTests
     [Fact]
     public void AddBusContext_ProducerOnly_RegistersTheSendSide_AndNeedsNoConsumer()
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddBusContext(Configuration(), _ => { });
 
@@ -116,7 +116,7 @@ public class BusContextTests
     [Fact]
     public void AddCommandHandler_RegistersTheHandlerAndItsWorker()
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddBusContext(Configuration(),
             producer => producer.AddCommand<TestCommand>("orders"),
@@ -135,7 +135,7 @@ public class BusContextTests
     [Fact]
     public void AddEventSubscriber_RegistersTheSubscriberAndItsWorker()
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddBusContext(Configuration(),
             producer => producer.AddEvent<TestEvent>("orders.created"),

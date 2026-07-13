@@ -5,7 +5,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 /// <summary>In-memory retry scheduler capturing every parked retry, with an optional failure to throw.</summary>
 internal sealed class RetrySchedulerFake : IRetryScheduler
 {
-    public List<(string Exchange, string Queue, byte[] Body, IReadOnlyDictionary<string, string> Headers, DateTime ScheduledAt)> Scheduled { get; } = [];
+    public List<(string Exchange, string Queue, byte[] Body, IReadOnlyDictionary<string, string> Headers, DateTime ScheduledAt)> Scheduled { get; } = new List<(string Exchange, string Queue, byte[] Body, IReadOnlyDictionary<string, string> Headers, DateTime ScheduledAt)>();
 
     public Exception? Failure { get; set; }
 

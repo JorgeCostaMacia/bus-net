@@ -30,7 +30,7 @@ public sealed class FanoutTests : IClassFixture<RabbitMqFixture>
     public async Task Publish_AnEvent_FansOutToEverySubscriber()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        FanoutProbe probe = new();
+        FanoutProbe probe = new FanoutProbe();
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(probe);

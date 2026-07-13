@@ -63,7 +63,7 @@ public sealed class RetryQuartzFixture : IAsyncLifetime
         // bootstrap.servers wants a bare host:port list, so take the authority.
         string bootstrapServers = new Uri(_kafka.GetBootstrapAddress()).Authority;
 
-        Dictionary<string, string?> settings = new()
+        Dictionary<string, string?> settings = new Dictionary<string, string?>()
         {
             ["Bus:Producer:BootstrapServers"] = bootstrapServers,
             ["Bus:Producer:SecurityProtocol"] = "Plaintext",

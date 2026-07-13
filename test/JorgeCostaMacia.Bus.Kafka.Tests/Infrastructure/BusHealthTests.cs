@@ -9,7 +9,7 @@ public class BusHealthTests
     {
         DateTime before = DateTime.UtcNow;
 
-        BusHealth health = new();
+        BusHealth health = new BusHealth();
 
         Assert.True(health.IsUp);
         Assert.InRange(health.ChangedAt, before, DateTime.UtcNow);
@@ -18,7 +18,7 @@ public class BusHealthTests
     [Fact]
     public void Down_FlipsTheState_AndStampsTheFlip()
     {
-        BusHealth health = new();
+        BusHealth health = new BusHealth();
         DateTime constructedAt = health.ChangedAt;
 
         health.Down();
@@ -30,7 +30,7 @@ public class BusHealthTests
     [Fact]
     public void Down_AlreadyDown_KeepsTheFirstFlipInstant()
     {
-        BusHealth health = new();
+        BusHealth health = new BusHealth();
         health.Down();
         DateTime flippedAt = health.ChangedAt;
 
@@ -43,7 +43,7 @@ public class BusHealthTests
     [Fact]
     public void Up_AfterDown_FlipsBack_AndStampsTheFlip()
     {
-        BusHealth health = new();
+        BusHealth health = new BusHealth();
         health.Down();
         DateTime downAt = health.ChangedAt;
 
@@ -56,7 +56,7 @@ public class BusHealthTests
     [Fact]
     public void Up_AlreadyUp_KeepsTheConstructionInstant()
     {
-        BusHealth health = new();
+        BusHealth health = new BusHealth();
         DateTime constructedAt = health.ChangedAt;
 
         health.Up();

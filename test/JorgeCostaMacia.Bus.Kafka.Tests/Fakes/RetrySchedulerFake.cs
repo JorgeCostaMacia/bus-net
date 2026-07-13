@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 /// <summary>In-memory retry scheduler capturing every parked retry, with an optional failure to throw.</summary>
 internal sealed class RetrySchedulerFake : IRetryScheduler
 {
-    public List<(string Topic, string GroupId, byte[] Body, Headers Headers, DateTime ScheduledAt)> Scheduled { get; } = [];
+    public List<(string Topic, string GroupId, byte[] Body, Headers Headers, DateTime ScheduledAt)> Scheduled { get; } = new List<(string Topic, string GroupId, byte[] Body, Headers Headers, DateTime ScheduledAt)>();
 
     public Exception? Failure { get; set; }
 

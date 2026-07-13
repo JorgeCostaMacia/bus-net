@@ -38,7 +38,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<RabbitMqFixture>
     public async Task Send_ToAHandlerThatFailsOnce_IsRedeliveredAndSucceeds()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        RequeueProbe probe = new();
+        RequeueProbe probe = new RequeueProbe();
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(probe);
@@ -80,7 +80,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<RabbitMqFixture>
     public async Task Publish_ToTwoSubscribersWhereOneFailsOnce_ReTargetsTheImmediateRetryToTheFailingSubscriberOnly()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        RetargetProbe probe = new();
+        RetargetProbe probe = new RetargetProbe();
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(probe);

@@ -58,7 +58,7 @@ public class ErrorInfoTests
         // (a reference cycle, a Type…) must degrade to its text instead of poisoning the park and
         // turning the failure into a hot redelivery loop.
         InvalidOperationException exception = new("boom");
-        Dictionary<string, object> cyclic = [];
+        Dictionary<string, object> cyclic = new Dictionary<string, object>();
         cyclic["self"] = cyclic;
         exception.Data["cyclic"] = cyclic;
         exception.Data["type"] = typeof(InvalidOperationException);

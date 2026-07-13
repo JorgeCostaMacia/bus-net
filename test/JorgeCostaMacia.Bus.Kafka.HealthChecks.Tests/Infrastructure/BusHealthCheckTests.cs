@@ -6,10 +6,10 @@ namespace JorgeCostaMacia.Bus.Kafka.HealthChecks.Tests.Infrastructure;
 
 public class BusHealthCheckTests
 {
-    private readonly BusHealth _health = new();
+    private readonly BusHealth _health = new BusHealth();
 
     private static HealthCheckContext Context(IHealthCheck check, HealthStatus? failureStatus = null)
-        => new() { Registration = new HealthCheckRegistration("bus-kafka", check, failureStatus, tags: null) };
+        => new HealthCheckContext() { Registration = new HealthCheckRegistration("bus-kafka", check, failureStatus, tags: null) };
 
     [Fact]
     public async Task CheckHealthAsync_BrokersReachable_ReportsHealthy()

@@ -13,8 +13,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 /// </summary>
 public sealed class ProducerConfigurator
 {
-    private readonly Dictionary<Type, string> _messages = [];
-    private readonly Dictionary<string, string> _exchanges = [];
+    private readonly Dictionary<Type, string> _messages = new Dictionary<Type, string>();
+    private readonly Dictionary<string, string> _exchanges = new Dictionary<string, string>();
 
     /// <summary>Creates an empty configurator.</summary>
     internal ProducerConfigurator() { }

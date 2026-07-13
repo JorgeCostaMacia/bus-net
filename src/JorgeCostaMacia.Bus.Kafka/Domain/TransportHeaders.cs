@@ -41,19 +41,14 @@ internal static class TransportHeaders
     public const string HostOperatingSystemVersion = Prefix + "host-operating-system-version";
 
     /// <summary>The keys whose values travel as 16 raw <see cref="Guid"/> bytes.</summary>
-    public static readonly ImmutableList<string> GuidHeaders =
-    [
+    public static readonly ImmutableList<string> GuidHeaders = ImmutableList.Create(
         MessageId,
         ConversationId,
         AggregateId,
-        AggregateCorrelationId
-    ];
+        AggregateCorrelationId);
 
     /// <summary>The keys whose values travel as integer digits (the resilience counter).</summary>
-    public static readonly ImmutableList<string> IntHeaders =
-    [
-        RetryCount
-    ];
+    public static readonly ImmutableList<string> IntHeaders = ImmutableList.Create(RetryCount);
 
     /// <summary>Encodes a text value to header bytes (UTF-8).</summary>
     public static byte[] ToHeader(string value) => Encoding.UTF8.GetBytes(value);

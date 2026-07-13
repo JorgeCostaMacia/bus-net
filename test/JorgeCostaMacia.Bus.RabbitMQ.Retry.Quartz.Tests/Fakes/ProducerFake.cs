@@ -5,7 +5,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests.Fakes;
 /// <summary>In-memory outbound gate capturing every produced message — the seam the retry job re-produces through.</summary>
 internal sealed class ProducerFake : IProducer
 {
-    public List<(string Exchange, string RoutingKey, byte[] Body, IReadOnlyDictionary<string, string> Headers)> Produced { get; } = [];
+    public List<(string Exchange, string RoutingKey, byte[] Body, IReadOnlyDictionary<string, string> Headers)> Produced { get; } = new List<(string Exchange, string RoutingKey, byte[] Body, IReadOnlyDictionary<string, string> Headers)>();
 
     /// <summary>When set, every produce throws it — the broker-down seam.</summary>
     public Exception? Failure { get; set; }
