@@ -14,7 +14,9 @@ public sealed class SecondFanoutSubscriber : EventSubscriber<FanoutEvent>
     /// <summary>Takes the shared signal the test awaits.</summary>
     /// <param name="probe">The fanout signal shared with the test.</param>
     public SecondFanoutSubscriber(FanoutProbe probe)
-        => _probe = probe;
+    {
+        _probe = probe;
+    }
 
     /// <summary>Signals the delivered event's payload to the awaiting test.</summary>
     /// <param name="context">The delivery's context.</param>

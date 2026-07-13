@@ -14,7 +14,10 @@ internal sealed class Consumer : IConsumer
 
     /// <summary>Builds the consumer from its ready-made Kafka builder.</summary>
     /// <param name="builder">The consumer builder, with the Kafka settings and logging handlers already wired.</param>
-    public Consumer(ConsumerBuilder<Ignore, byte[]> builder) => _consumer = builder.Build();
+    public Consumer(ConsumerBuilder<Ignore, byte[]> builder)
+    {
+        _consumer = builder.Build();
+    }
 
     /// <inheritdoc />
     public void Subscribe(string topic) => _consumer.Subscribe(topic);

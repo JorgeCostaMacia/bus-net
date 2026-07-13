@@ -18,7 +18,10 @@ internal sealed class BusHealthCheck : IHealthCheck
 
     /// <summary>Creates the check over the bus's broker-reachability tracker.</summary>
     /// <param name="health">The tracker the transport feeds.</param>
-    public BusHealthCheck(BusHealth health) => _health = health;
+    public BusHealthCheck(BusHealth health)
+    {
+        _health = health;
+    }
 
     /// <inheritdoc />
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)

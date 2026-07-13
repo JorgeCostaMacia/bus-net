@@ -187,7 +187,10 @@ public sealed class ConsumerConfigurator
     /// <exception cref="InvalidOperationException">The group id is already registered by another handler.</exception>
     private void RegisterGroupId(string groupId)
     {
-        if (!_groupIds.Add(groupId)) throw new InvalidOperationException($"Consumer group id '{groupId}' is already registered; give each handler its own group id.");
+        if (!_groupIds.Add(groupId))
+        {
+            throw new InvalidOperationException($"Consumer group id '{groupId}' is already registered; give each handler its own group id.");
+        }
     }
 
     /// <summary>
@@ -202,9 +205,20 @@ public sealed class ConsumerConfigurator
         ConsumerConfiguration consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>()
             ?? throw new InvalidOperationException($"'{CONSUMER_SECTION}' is null.");
 
-        if (string.IsNullOrWhiteSpace(consumerConfiguration.BootstrapServers)) throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
-        if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslUsername)) throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslUsername)}' is null.");
-        if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslPassword)) throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslPassword)}' is null.");
+        if (string.IsNullOrWhiteSpace(consumerConfiguration.BootstrapServers))
+        {
+            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
+        }
+
+        if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslUsername))
+        {
+            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslUsername)}' is null.");
+        }
+
+        if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslPassword))
+        {
+            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslPassword)}' is null.");
+        }
 
         return consumerConfiguration;
     }

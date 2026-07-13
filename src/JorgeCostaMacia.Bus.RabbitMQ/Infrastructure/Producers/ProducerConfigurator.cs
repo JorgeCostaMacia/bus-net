@@ -32,7 +32,10 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddCommand<TCommand>(string exchange)
         where TCommand : Command
     {
-        if (!_messages.TryAdd(typeof(TCommand), exchange)) throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is already mapped to an exchange.");
+        if (!_messages.TryAdd(typeof(TCommand), exchange))
+        {
+            throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is already mapped to an exchange.");
+        }
 
         RegisterExchange(exchange, ExchangeType.Direct);
 
@@ -46,7 +49,10 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddEvent<TEvent>(string exchange)
         where TEvent : Event
     {
-        if (!_messages.TryAdd(typeof(TEvent), exchange)) throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is already mapped to an exchange.");
+        if (!_messages.TryAdd(typeof(TEvent), exchange))
+        {
+            throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is already mapped to an exchange.");
+        }
 
         RegisterExchange(exchange, ExchangeType.Fanout);
 

@@ -16,7 +16,10 @@ internal sealed class ConsumerChannel : IConsumerChannel
 
     /// <summary>Wraps the channel the worker opened.</summary>
     /// <param name="channel">The RabbitMQ channel this gate owns.</param>
-    public ConsumerChannel(IChannel channel) => _channel = channel;
+    public ConsumerChannel(IChannel channel)
+    {
+        _channel = channel;
+    }
 
     /// <inheritdoc />
     public bool IsOpen => _channel.IsOpen;
@@ -27,7 +30,6 @@ internal sealed class ConsumerChannel : IConsumerChannel
         await _channel.ExchangeDeclareAsync(exchange, exchangeType, durable: true, autoDelete: false, cancellationToken: cancellationToken);
         await _channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
         await _channel.QueueBindAsync(queue, exchange, routingKey: string.Empty, cancellationToken: cancellationToken);
-
 
         await _channel.BasicQosAsync(prefetchSize: 0, prefetchCount: prefetchCount, global: false, cancellationToken: cancellationToken);
     }

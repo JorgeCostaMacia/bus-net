@@ -142,7 +142,10 @@ internal static class BusLogger
     /// <param name="headers">The delivery's headers, or <see langword="null"/> when the message carries none.</param>
     private static void Decode(List<ILogEventEnricher> context, IDictionary<string, object?>? headers)
     {
-        if (headers is null) return;
+        if (headers is null)
+        {
+            return;
+        }
 
         foreach ((string key, object? raw) in headers)
         {

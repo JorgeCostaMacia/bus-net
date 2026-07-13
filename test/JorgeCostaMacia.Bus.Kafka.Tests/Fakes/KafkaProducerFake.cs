@@ -30,7 +30,10 @@ internal sealed class KafkaProducerFake : IProducer<Null, byte[]>
     /// <inheritdoc />
     public Task<DeliveryResult<Null, byte[]>> ProduceAsync(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
     {
-        if (ProduceFailure is not null && (FailingTopics.Count == 0 || FailingTopics.Contains(topic))) return Task.FromException<DeliveryResult<Null, byte[]>>(ProduceFailure);
+        if (ProduceFailure is not null && (FailingTopics.Count == 0 || FailingTopics.Contains(topic)))
+        {
+            return Task.FromException<DeliveryResult<Null, byte[]>>(ProduceFailure);
+        }
 
         Produced.Add((topic, message));
 
@@ -48,7 +51,10 @@ internal sealed class KafkaProducerFake : IProducer<Null, byte[]>
     {
         Flushes++;
 
-        if (FlushFailure is not null) throw FlushFailure;
+        if (FlushFailure is not null)
+        {
+            throw FlushFailure;
+        }
     }
 
     /// <inheritdoc />

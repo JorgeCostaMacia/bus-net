@@ -43,7 +43,14 @@ internal static class KafkaClientCallbacks
     {
         KafkaLogger.LogError(logger, error);
 
-        if (error.Code == ErrorCode.Local_AllBrokersDown) health.Down();
-        if (error.IsFatal) lifetime.StopApplication();
+        if (error.Code == ErrorCode.Local_AllBrokersDown)
+        {
+            health.Down();
+        }
+
+        if (error.IsFatal)
+        {
+            lifetime.StopApplication();
+        }
     }
 }

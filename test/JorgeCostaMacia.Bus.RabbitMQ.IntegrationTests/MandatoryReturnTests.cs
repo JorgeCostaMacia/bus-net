@@ -30,7 +30,9 @@ public sealed class MandatoryReturnTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     public MandatoryReturnTests(RabbitMqFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>An unroutable mandatory publish throws <see cref="PublishReturnException"/>, which the error handler classifies as a <see cref="RabbitMQClientException"/> (the <c>Unhandled</c> lane, not <c>Faulted</c>).</summary>
     [Fact]

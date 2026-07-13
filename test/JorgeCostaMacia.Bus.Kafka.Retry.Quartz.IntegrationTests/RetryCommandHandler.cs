@@ -16,7 +16,9 @@ public sealed class RetryCommandHandler : CommandHandler<RetryCommand>
     /// <summary>Takes the shared probe the handler records onto and the test awaits.</summary>
     /// <param name="probe">The invocation signal shared with the test.</param>
     public RetryCommandHandler(RetryProbe probe)
-        => _probe = probe;
+    {
+        _probe = probe;
+    }
 
     /// <summary>Fails the first delivery to force a scheduled retry; records and succeeds on the redelivery.</summary>
     /// <param name="context">The delivery's context.</param>
@@ -25,7 +27,10 @@ public sealed class RetryCommandHandler : CommandHandler<RetryCommand>
     {
         int attempt = _probe.Record();
 
-        if (attempt == 1) throw new InvalidOperationException("Failing the first delivery on purpose so the retry is parked as a delayed Quartz job.");
+        if (attempt == 1)
+        {
+            throw new InvalidOperationException("Failing the first delivery on purpose so the retry is parked as a delayed Quartz job.");
+        }
 
         return Task.CompletedTask;
     }

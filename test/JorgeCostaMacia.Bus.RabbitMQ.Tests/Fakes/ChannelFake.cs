@@ -34,11 +34,17 @@ internal sealed class ChannelFake : IChannel
 
     ValueTask IChannel.BasicPublishAsync<TProperties>(string exchange, string routingKey, bool mandatory, TProperties basicProperties, ReadOnlyMemory<byte> body, CancellationToken cancellationToken)
     {
-        if (PublishFailure is not null) return ValueTask.FromException(PublishFailure);
+        if (PublishFailure is not null)
+        {
+            return ValueTask.FromException(PublishFailure);
+        }
 
         Publish publish = new(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body, mandatory);
 
-        lock (_publishGate) Published.Add(publish);
+        lock (_publishGate)
+        {
+            Published.Add(publish);
+        }
 
         return ValueTask.CompletedTask;
     }

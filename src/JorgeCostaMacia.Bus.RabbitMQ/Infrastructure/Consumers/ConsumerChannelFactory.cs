@@ -12,7 +12,10 @@ internal sealed class ConsumerChannelFactory : IConsumerChannelFactory
 
     /// <summary>Creates the factory over the shared connection.</summary>
     /// <param name="connection">The shared RabbitMQ connection the channels are opened on.</param>
-    public ConsumerChannelFactory(IConnection connection) => _connection = connection;
+    public ConsumerChannelFactory(IConnection connection)
+    {
+        _connection = connection;
+    }
 
     /// <inheritdoc />
     public async Task<IConsumerChannel> CreateAsync(CancellationToken cancellationToken = default)

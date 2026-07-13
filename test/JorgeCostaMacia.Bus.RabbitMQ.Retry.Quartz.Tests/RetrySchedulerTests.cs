@@ -33,9 +33,20 @@ public class RetrySchedulerTests
     {
         Dictionary<string, string> headers = new Dictionary<string, string>();
 
-        if (messageId is Guid id) headers[TransportHeaders.MessageId] = id.ToString();
-        if (retryCount is int count) headers[TransportHeaders.RetryCount] = count.ToString(CultureInfo.InvariantCulture);
-        foreach ((string key, string value) in extra) headers[key] = value;
+        if (messageId is Guid id)
+        {
+            headers[TransportHeaders.MessageId] = id.ToString();
+        }
+
+        if (retryCount is int count)
+        {
+            headers[TransportHeaders.RetryCount] = count.ToString(CultureInfo.InvariantCulture);
+        }
+
+        foreach ((string key, string value) in extra)
+        {
+            headers[key] = value;
+        }
 
         return headers;
     }

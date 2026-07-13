@@ -31,7 +31,10 @@ internal static class Deliveries
     {
         Dictionary<string, object?> headers = TraceHeaders();
 
-        if (consumers is not null) headers[TransportHeaders.AggregateConsumers] = Encoding.UTF8.GetBytes(consumers);
+        if (consumers is not null)
+        {
+            headers[TransportHeaders.AggregateConsumers] = Encoding.UTF8.GetBytes(consumers);
+        }
 
         return Args(JsonSerializer.SerializeToUtf8Bytes(message), headers, deliveryTag);
     }

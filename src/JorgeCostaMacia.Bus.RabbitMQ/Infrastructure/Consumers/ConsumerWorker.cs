@@ -123,17 +123,29 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer without one.</param>
     private Task OnClosedAsync(ShutdownEventArgs? reason)
     {
-        if (_stopping.IsCancellationRequested) return Task.CompletedTask;
+        if (_stopping.IsCancellationRequested)
+        {
+            return Task.CompletedTask;
+        }
 
         // our own close, not a death: disposing the dead channel after a resurrection raises its
         // shutdown event one last time — logging it would stamp a spurious warning per resurrection.
-        if (reason?.Initiator == ShutdownInitiator.Application) return Task.CompletedTask;
+        if (reason?.Initiator == ShutdownInitiator.Application)
+        {
+            return Task.CompletedTask;
+        }
 
         using (BusLogger.WorkerContext(_exchange, _queue))
         using (BusLogger.ShutdownContext(reason))
-        using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelClosed)) _logger.LogWarning("Channel closed.");
+        using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelClosed))
+        {
+            _logger.LogWarning("Channel closed.");
+        }
 
-        if (Interlocked.CompareExchange(ref _resurrecting, 1, 0) == 0) _ = ResurrectAsync(consumerCancelled: reason is null);
+        if (Interlocked.CompareExchange(ref _resurrecting, 1, 0) == 0)
+        {
+            _ = ResurrectAsync(consumerCancelled: reason is null);
+        }
 
         return Task.CompletedTask;
     }
@@ -166,8 +178,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                     return;
                 }
 
-                if (_stopping.IsCancellationRequested) return;
-                if (!consumerCancelled && _channel!.IsOpen) return;
+                if (_stopping.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                if (!consumerCancelled && _channel!.IsOpen)
+                {
+                    return;
+                }
 
                 try
                 {
@@ -182,7 +201,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                     await dead.DisposeAsync();
 
                     using (BusLogger.WorkerContext(_exchange, _queue))
-                    using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelRestored)) _logger.LogInformation("Channel restored.");
+                    using (BusLogger.DescriptionContext(BusLoggerDescriptions.ConsumerChannelRestored))
+                    {
+                        _logger.LogInformation("Channel restored.");
+                    }
 
                     return;
                 }
@@ -280,7 +302,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception exception)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredOnRecovery)) _logger.LogWarning(exception, "Ack failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredOnRecovery))
+            {
+                _logger.LogWarning(exception, "Ack failed.");
+            }
         }
     }
 
@@ -313,7 +338,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Error handler failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue))
+            {
+                _logger.LogError(failure, "Error handler failed.");
+            }
 
             await Nack(channel, args);
 
@@ -363,7 +391,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception failure)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue)) _logger.LogError(failure, "Fault handler failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.NackedWithRequeue))
+            {
+                _logger.LogError(failure, "Fault handler failed.");
+            }
 
             await Nack(channel, args);
 
@@ -372,8 +403,14 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
         // the fault is already parked: an ack failure here must not undo that work (a nack would
         // redeliver and park a duplicate) — quietly logged, the broker redelivers on recovery.
-        if (outcome is FaultResult.Parked) await AckQuietly(channel, args);
-        else await Nack(channel, args);
+        if (outcome is FaultResult.Parked)
+        {
+            await AckQuietly(channel, args);
+        }
+        else
+        {
+            await Nack(channel, args);
+        }
     }
 
     /// <summary>Acks the delivery on the channel that delivered it — it was dealt with; the delivering channel is targeted so a resurrection swap can't cross-ack.</summary>
@@ -395,7 +432,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="args">The delivery to nack.</param>
     private async Task Nack(IConsumerChannel channel, BasicDeliverEventArgs args)
     {
-        if (!_stopping.IsCancellationRequested) await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+        if (!_stopping.IsCancellationRequested)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+        }
 
         try
         {
@@ -407,7 +447,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
         catch (Exception exception)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredOnRecovery)) _logger.LogWarning(exception, "Nack failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RedeliveredOnRecovery))
+            {
+                _logger.LogWarning(exception, "Nack failed.");
+            }
         }
     }
 
@@ -423,9 +466,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     {
         await _stopping.CancelAsync();
 
-        if (_channel is not null) await _channel.DisposeAsync();
+        if (_channel is not null)
+        {
+            await _channel.DisposeAsync();
+        }
 
         using (BusLogger.WorkerContext(_exchange, _queue))
-        using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerStopped)) _logger.LogInformation("Worker stopped.");
+        using (BusLogger.DescriptionContext(BusLoggerDescriptions.WorkerStopped))
+        {
+            _logger.LogInformation("Worker stopped.");
+        }
     }
 }

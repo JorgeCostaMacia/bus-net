@@ -49,14 +49,20 @@ public class CommandWorkerTests
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(5));
 
-        while (!condition()) await Task.Delay(10, timeout.Token);
+        while (!condition())
+        {
+            await Task.Delay(10, timeout.Token);
+        }
     }
 
     private async Task Deliver(ConsumerChannelFake channel, CommandWorker<TestCommand, RecordingCommandHandler> worker, params BasicDeliverEventArgs[] deliveries)
     {
         await worker.StartAsync(TestContext.Current.CancellationToken);
 
-        foreach (BasicDeliverEventArgs delivery in deliveries) await channel.DeliverAsync(delivery);
+        foreach (BasicDeliverEventArgs delivery in deliveries)
+        {
+            await channel.DeliverAsync(delivery);
+        }
 
         await worker.StopAsync(TestContext.Current.CancellationToken);
     }

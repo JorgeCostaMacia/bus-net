@@ -23,7 +23,9 @@ public sealed class FanoutTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     public FanoutTests(RabbitMqFixture fixture)
-        => _fixture = fixture;
+    {
+        _fixture = fixture;
+    }
 
     /// <summary>One published event is delivered to two subscribers on two queues bound to its fanout exchange.</summary>
     [Fact]

@@ -18,7 +18,10 @@ internal sealed class ProducerFake : IProducer
 
     public Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
     {
-        if (Failure is not null && (FailingTopics.Count == 0 || FailingTopics.Contains(topic))) throw Failure;
+        if (Failure is not null && (FailingTopics.Count == 0 || FailingTopics.Contains(topic)))
+        {
+            throw Failure;
+        }
 
         Produced.Add((topic, message));
 

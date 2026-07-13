@@ -14,7 +14,9 @@ public sealed class IntegrationCommandHandler : CommandHandler<IntegrationComman
     /// <summary>Takes the shared signal the test awaits.</summary>
     /// <param name="received">The completion source signalled on delivery.</param>
     public IntegrationCommandHandler(TaskCompletionSource<IntegrationCommand> received)
-        => _received = received;
+    {
+        _received = received;
+    }
 
     /// <summary>Signals the delivered command to the awaiting test.</summary>
     /// <param name="context">The delivery's context.</param>

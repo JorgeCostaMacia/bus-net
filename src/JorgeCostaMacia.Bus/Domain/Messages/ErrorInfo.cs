@@ -71,7 +71,10 @@ public sealed record ErrorInfo
     /// <summary>Captures the exception's <see cref="Exception.Data"/> as a serializable dictionary — keys as text, the last wins on a collision, values sanitized through <see cref="Sanitize"/>; empty when there is none.</summary>
     private static ImmutableDictionary<string, object?> ExtractData(Exception exception)
     {
-        if (exception.Data.Count == 0) return ImmutableDictionary<string, object?>.Empty;
+        if (exception.Data.Count == 0)
+        {
+            return ImmutableDictionary<string, object?>.Empty;
+        }
 
         ImmutableDictionary<string, object?>.Builder data = ImmutableDictionary.CreateBuilder<string, object?>();
 
@@ -91,7 +94,10 @@ public sealed record ErrorInfo
     /// </summary>
     private static object? Sanitize(object? value)
     {
-        if (value is null) return null;
+        if (value is null)
+        {
+            return null;
+        }
 
         try
         {

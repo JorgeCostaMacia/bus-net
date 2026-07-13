@@ -39,7 +39,10 @@ internal static class BusLogger
     /// <param name="committed">The commit result reported by the client.</param>
     public static void LogCommit(ILogger logger, CommittedOffsets committed)
     {
-        if (!committed.Error.IsError && committed.Offsets.All(offset => !offset.Error.IsError)) return;
+        if (!committed.Error.IsError && committed.Offsets.All(offset => !offset.Error.IsError))
+        {
+            return;
+        }
 
         using (LogContext.Push(
             new PropertyEnricher("KafkaError", committed.Error, destructureObjects: true),
@@ -175,7 +178,10 @@ internal static class BusLogger
     /// <param name="headers">The delivery's headers, or <see langword="null"/> when the message carries none.</param>
     private static void Decode(List<ILogEventEnricher> context, Headers? headers)
     {
-        if (headers is null) return;
+        if (headers is null)
+        {
+            return;
+        }
 
         Dictionary<string, object?> decoded = new Dictionary<string, object?>();
 

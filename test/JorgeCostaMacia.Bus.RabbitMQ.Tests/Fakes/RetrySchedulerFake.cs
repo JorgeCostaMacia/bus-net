@@ -11,7 +11,10 @@ internal sealed class RetrySchedulerFake : IRetryScheduler
 
     public Task Schedule(string exchange, string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, DateTime scheduledAt, CancellationToken cancellationToken)
     {
-        if (Failure is not null) throw Failure;
+        if (Failure is not null)
+        {
+            throw Failure;
+        }
 
         Scheduled.Add((exchange, queue, body.ToArray(), headers, scheduledAt));
 

@@ -24,7 +24,10 @@ public sealed class RequeueProbe
     {
         int attempt = Interlocked.Increment(ref _invocations);
 
-        if (attempt == 2) _succeeded.TrySetResult();
+        if (attempt == 2)
+        {
+            _succeeded.TrySetResult();
+        }
 
         return attempt;
     }

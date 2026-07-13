@@ -80,7 +80,10 @@ internal static class Broker
                 {
                     BasicGetResult? result = await channel.BasicGetAsync(queue, autoAck: true, cancellationToken);
 
-                    if (result is not null) return result;
+                    if (result is not null)
+                    {
+                        return result;
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -108,7 +111,10 @@ internal static class Broker
     /// <returns>The header text, or <see langword="null"/> when the header is absent.</returns>
     public static string? Header(BasicGetResult result, string key)
     {
-        if (result.BasicProperties.Headers is null || !result.BasicProperties.Headers.TryGetValue(key, out object? value) || value is null) return null;
+        if (result.BasicProperties.Headers is null || !result.BasicProperties.Headers.TryGetValue(key, out object? value) || value is null)
+        {
+            return null;
+        }
 
         return value is byte[] bytes
             ? System.Text.Encoding.UTF8.GetString(bytes)

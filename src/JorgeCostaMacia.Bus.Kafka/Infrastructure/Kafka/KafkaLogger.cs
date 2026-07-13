@@ -56,7 +56,10 @@ internal static class KafkaLogger
             // crit-facility internal logs are informational, not fatal (ordering is
             // Trace < Debug < Information < Warning < Error < Critical): cap them at Error so Critical
             // stays reserved for the host dying, while leaving the None sentinel untouched.
-            if (level > LogLevel.Error && level != LogLevel.None) level = LogLevel.Error;
+            if (level > LogLevel.Error && level != LogLevel.None)
+            {
+                level = LogLevel.Error;
+            }
 
             logger.Log(level, "Kafka log.");
         }

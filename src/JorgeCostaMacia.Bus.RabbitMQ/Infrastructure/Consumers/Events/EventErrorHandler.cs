@@ -63,7 +63,10 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
             {
                 await ParkError(context, cancellationToken);
 
-                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToErrorQueue)) _logger.LogError(context.Error, "Subscriber failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToErrorQueue))
+                {
+                    _logger.LogError(context.Error, "Subscriber failed.");
+                }
 
                 Result = ErrorResult.Parked;
 
@@ -80,13 +83,19 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
         }
         catch (RabbitMQClientException produce)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogError(produce, "Producer failed.");
+            }
 
             Result = ErrorResult.Unhandled;
         }
         catch (Exception broken)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Error handler failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.HandedToFaultHandler))
+            {
+                _logger.LogError(broken, "Error handler failed.");
+            }
 
             Result = ErrorResult.Faulted;
         }
@@ -119,7 +128,10 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
         {
             await ParkError(context, cancellationToken);
 
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Subscriber failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RetrySchedulerMissing))
+            {
+                _logger.LogError(context.Error, "Subscriber failed.");
+            }
 
             return ErrorResult.Parked;
         }
@@ -140,7 +152,10 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
         }
         catch (Exception schedule)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ScheduleFailed)) _logger.LogError(schedule, "Retry failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ScheduleFailed))
+            {
+                _logger.LogError(schedule, "Retry failed.");
+            }
 
             return ErrorResult.Unhandled;
         }

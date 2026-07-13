@@ -52,7 +52,10 @@ internal sealed class Connection : Domain.IConnection
     /// <summary>Returns the open connection, opening (or re-opening) it under the gate when needed.</summary>
     private async Task<global::RabbitMQ.Client.IConnection> OpenAsync(CancellationToken cancellationToken)
     {
-        if (_connection is { IsOpen: true }) return _connection;
+        if (_connection is { IsOpen: true })
+        {
+            return _connection;
+        }
 
         await _gate.WaitAsync(cancellationToken);
 
@@ -60,9 +63,15 @@ internal sealed class Connection : Domain.IConnection
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            if (_connection is { IsOpen: true }) return _connection;
+            if (_connection is { IsOpen: true })
+            {
+                return _connection;
+            }
 
-            if (_connection is not null) await _connection.DisposeAsync();
+            if (_connection is not null)
+            {
+                await _connection.DisposeAsync();
+            }
 
             _connection = await _factory.CreateConnectionAsync(cancellationToken);
 
@@ -122,7 +131,10 @@ internal sealed class Connection : Domain.IConnection
         {
             _disposed = true;
 
-            if (_connection is not null) await _connection.DisposeAsync();
+            if (_connection is not null)
+            {
+                await _connection.DisposeAsync();
+            }
 
             _connection = null;
         }

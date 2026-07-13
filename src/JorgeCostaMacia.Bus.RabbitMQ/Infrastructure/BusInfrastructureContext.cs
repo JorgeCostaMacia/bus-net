@@ -59,9 +59,20 @@ internal static class BusInfrastructureContext
         ConnectionConfiguration connectionConfiguration = configuration.GetSection(CONNECTION_SECTION).Get<ConnectionConfiguration>()
             ?? throw new InvalidOperationException($"'{CONNECTION_SECTION}' is null.");
 
-        if (string.IsNullOrWhiteSpace(connectionConfiguration.HostName)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.HostName)}' is null.");
-        if (string.IsNullOrWhiteSpace(connectionConfiguration.UserName)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.UserName)}' is null.");
-        if (string.IsNullOrWhiteSpace(connectionConfiguration.Password)) throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.Password)}' is null.");
+        if (string.IsNullOrWhiteSpace(connectionConfiguration.HostName))
+        {
+            throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.HostName)}' is null.");
+        }
+
+        if (string.IsNullOrWhiteSpace(connectionConfiguration.UserName))
+        {
+            throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.UserName)}' is null.");
+        }
+
+        if (string.IsNullOrWhiteSpace(connectionConfiguration.Password))
+        {
+            throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.Password)}' is null.");
+        }
 
         return connectionConfiguration;
     }

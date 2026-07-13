@@ -12,7 +12,10 @@ public class ProducerTests
     private readonly ConnectionFake _connection;
     private readonly RecordingLogger<RabbitProducer> _logger = new RecordingLogger<RabbitProducer>();
 
-    public ProducerTests() => _connection = new ConnectionFake(_channel);
+    public ProducerTests()
+    {
+        _connection = new ConnectionFake(_channel);
+    }
 
     private RabbitProducer Sut() => new(_connection, _logger);
 

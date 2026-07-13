@@ -35,7 +35,10 @@ internal sealed class RetryScheduler : IRetryScheduler
 
     /// <summary>Creates the scheduler over the Quartz scheduler factory.</summary>
     /// <param name="schedulerFactory">The factory resolving the configured Quartz scheduler.</param>
-    public RetryScheduler(ISchedulerFactory schedulerFactory) => _schedulerFactory = schedulerFactory;
+    public RetryScheduler(ISchedulerFactory schedulerFactory)
+    {
+        _schedulerFactory = schedulerFactory;
+    }
 
     /// <inheritdoc />
     public async Task Schedule(string exchange, string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, DateTime scheduledAt, CancellationToken cancellationToken)

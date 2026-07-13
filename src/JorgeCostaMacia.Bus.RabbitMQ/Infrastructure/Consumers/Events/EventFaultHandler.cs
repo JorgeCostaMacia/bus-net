@@ -45,7 +45,10 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
 
             await _producer.Park(_queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), FaultHeaders(context), cancellationToken);
 
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultQueue)) _logger.LogError(context.Error, "Delivery faulted.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultQueue))
+            {
+                _logger.LogError(context.Error, "Delivery faulted.");
+            }
 
             Result = FaultResult.Parked;
         }
@@ -55,7 +58,10 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
         }
         catch (Exception park)
         {
-            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogError(park, "Parking failed.");
+            }
 
             Result = FaultResult.Unhandled;
         }
