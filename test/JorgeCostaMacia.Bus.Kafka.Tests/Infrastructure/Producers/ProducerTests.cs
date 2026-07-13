@@ -10,12 +10,12 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Producers;
 
 public class ProducerTests
 {
-    private readonly KafkaProducerFake _kafka = new();
-    private readonly BusHealth _health = new();
+    private readonly KafkaProducerFake _kafka = new KafkaProducerFake();
+    private readonly BusHealth _health = new BusHealth();
 
     private KafkaProducer Sut() => new(_kafka, _health, NullLogger<KafkaProducer>.Instance);
 
-    private static Message<Null, byte[]> Message(string value = "{}") => new() { Value = Encoding.UTF8.GetBytes(value) };
+    private static Message<Null, byte[]> Message(string value = "{}") => new Message<Null, byte[]>() { Value = Encoding.UTF8.GetBytes(value) };
 
     [Fact]
     public async Task Produce_Success_ForwardsToTheClient()
@@ -80,7 +80,7 @@ public class ProducerTests
     public async Task Produce_ReStampsTheHost_OverAClonedEnvelope()
     {
         Message<Null, byte[]> message = Message();
-        message.Headers = [new Header(TransportHeaders.HostMachineName, "another-host"u8.ToArray())];
+        message.Headers = new Headers { new Header(TransportHeaders.HostMachineName, "another-host"u8.ToArray()) };
 
         await Sut().Produce("orders", message, TestContext.Current.CancellationToken);
 
@@ -92,15 +92,15 @@ public class ProducerTests
     [Fact]
     public async Task Produce_Batch_ProducesEveryPairInOrder()
     {
-        List<KeyValuePair<string, Message<Null, byte[]>>> messages =
-        [
+        List<KeyValuePair<string, Message<Null, byte[]>>> messages = new List<KeyValuePair<string, Message<Null, byte[]>>>
+        {
             new("orders", Message("a")),
             new("payments", Message("b"))
-        ];
+        };
 
         await Sut().Produce(messages, TestContext.Current.CancellationToken);
 
-        Assert.Equal(["orders", "payments"], _kafka.Produced.Select(produced => produced.Topic));
+        Assert.Equal(new[] { "orders", "payments" }, _kafka.Produced.Select(produced => produced.Topic));
     }
 
     [Fact]
@@ -111,15 +111,15 @@ public class ProducerTests
         // produced — a partial batch failure does not roll back nor stop the rest.
         _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
         _kafka.FailingTopics.Add("payments");
-        List<KeyValuePair<string, Message<Null, byte[]>>> messages =
-        [
+        List<KeyValuePair<string, Message<Null, byte[]>>> messages = new List<KeyValuePair<string, Message<Null, byte[]>>>
+        {
             new("orders", Message("a")),
             new("payments", Message("b")),
             new("shipping", Message("c"))
-        ];
+        };
 
         await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce(messages, TestContext.Current.CancellationToken));
 
-        Assert.Equal(["orders", "shipping"], _kafka.Produced.Select(produced => produced.Topic));
+        Assert.Equal(new[] { "orders", "shipping" }, _kafka.Produced.Select(produced => produced.Topic));
     }
 }

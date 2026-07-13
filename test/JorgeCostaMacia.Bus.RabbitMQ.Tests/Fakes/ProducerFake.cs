@@ -9,7 +9,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 internal sealed class ProducerFake : IProducer
 {
     /// <summary>The publishes handed to <see cref="Produce"/>, in order.</summary>
-    public List<(string Exchange, string RoutingKey, byte[] Body, IReadOnlyDictionary<string, string> Headers)> Produced { get; } = [];
+    public List<(string Exchange, string RoutingKey, byte[] Body, IReadOnlyDictionary<string, string> Headers)> Produced { get; } = new List<(string Exchange, string RoutingKey, byte[] Body, IReadOnlyDictionary<string, string> Headers)>();
 
     /// <summary>An exception to fail every publish with, or <see langword="null"/> to succeed.</summary>
     public Exception? Failure { get; set; }

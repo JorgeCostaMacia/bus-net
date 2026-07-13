@@ -41,19 +41,14 @@ internal static class TransportHeaders
     public const string HostOperatingSystemVersion = Prefix + "host-operating-system-version";
 
     /// <summary>The keys whose canonical text is a dashed <see cref="Guid"/> — the reader materializes them back with <c>Guid.TryParse</c>.</summary>
-    public static readonly ImmutableList<string> GuidHeaders =
-    [
+    public static readonly ImmutableList<string> GuidHeaders = ImmutableList.Create(
         MessageId,
         ConversationId,
         AggregateId,
-        AggregateCorrelationId
-    ];
+        AggregateCorrelationId);
 
     /// <summary>The keys whose canonical text is invariant integer digits (the resilience counter).</summary>
-    public static readonly ImmutableList<string> IntHeaders =
-    [
-        RetryCount
-    ];
+    public static readonly ImmutableList<string> IntHeaders = ImmutableList.Create(RetryCount);
 
     /// <summary>Renders a text value to its header text (itself).</summary>
     public static string ToHeader(string value) => value;

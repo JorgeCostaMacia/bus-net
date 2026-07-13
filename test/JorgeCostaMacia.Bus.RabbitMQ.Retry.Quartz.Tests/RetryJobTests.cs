@@ -10,13 +10,13 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests;
 
 public class RetryJobTests
 {
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private static string EncodeHeaders(params (string Key, string Value)[] headers)
         => JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Value)));
 
     private static JobDataMap Data(string exchange = "orders", byte[]? body = null, string? headers = null)
-        => new()
+        => new JobDataMap()
         {
             [RetryJob.EXCHANGE_KEY] = exchange,
             [RetryJob.BODY_KEY] = Convert.ToBase64String(body ?? "body"u8.ToArray()),

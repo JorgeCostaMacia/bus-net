@@ -13,7 +13,7 @@ public class BusTests
 {
     private sealed record ForeignTransport : ITransport;
 
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private KafkaBus CreateSut(params (Type Type, string Topic)[] messages)
         => new(_producer, messages.ToDictionary(e => e.Type, e => e.Topic));
@@ -64,7 +64,7 @@ public class BusTests
         Guid inboundMessageId = Guid.NewGuid();
         Guid conversationId = Guid.NewGuid();
 
-        Headers inbound = new()
+        Headers inbound = new Headers()
         {
             { TransportHeaders.MessageId, inboundMessageId.ToByteArray() },
             { TransportHeaders.MessageType, "Inbound"u8.ToArray() },
@@ -132,19 +132,19 @@ public class BusTests
     [Fact]
     public async Task Publish_Batch_ProducesEveryEventInOrder()
     {
-        TestEvent[] events = [new("a"), new("b"), new("c")];
+        TestEvent[] events = new TestEvent[] { new("a"), new("b"), new("c") };
 
         await CreateSut((typeof(TestEvent), "orders.created")).Publish(events, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced => Assert.Equal("orders.created", produced.Topic));
-        Assert.Equal(["a", "b", "c"], _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Message.Value).GetProperty("name").GetString()));
+        Assert.Equal(new[] { "a", "b", "c" }, _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Message.Value).GetProperty("name").GetString()));
     }
 
     [Fact]
     public async Task Send_Batch_ProducesEveryCommand()
     {
-        TestCommand[] commands = [new("x"), new("y")];
+        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
 
         await CreateSut((typeof(TestCommand), "orders")).Send(commands, TestContext.Current.CancellationToken);
 
@@ -157,7 +157,7 @@ public class BusTests
     {
         Guid conversationId = Guid.NewGuid();
 
-        Headers inbound = new()
+        Headers inbound = new Headers()
         {
             { TransportHeaders.MessageId, Guid.NewGuid().ToByteArray() },
             { TransportHeaders.MessageDestinationAddress, "orders"u8.ToArray() },
@@ -172,7 +172,7 @@ public class BusTests
         };
 
         Transport transport = new(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
-        TestCommand[] commands = [new("x"), new("y")];
+        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
 
         await CreateSut((typeof(TestCommand), "payments")).Send(commands, transport, TestContext.Current.CancellationToken);
 

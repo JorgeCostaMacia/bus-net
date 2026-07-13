@@ -13,7 +13,7 @@ public class CommandContextTests
 
     private static Transport Transport()
     {
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, object?> headers = new Dictionary<string, object?>()
         {
             [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(CONVERSATION_ID),
             [TransportHeaders.ConversationAddress] = TransportHeaders.ToHeader("orders"),

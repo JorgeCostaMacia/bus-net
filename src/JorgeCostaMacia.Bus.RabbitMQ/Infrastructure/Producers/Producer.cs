@@ -27,7 +27,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     private readonly Domain.IConnection _connection;
     private readonly ILogger<Producer> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly ConcurrentDictionary<string, IChannel> _channels = new();
+    private readonly ConcurrentDictionary<string, IChannel> _channels = new ConcurrentDictionary<string, IChannel>();
 
     /// <summary>Creates the producer over the shared connection and the logger a failed produce is written through.</summary>
     /// <param name="connection">The shared RabbitMQ connection the destination channels are opened on.</param>
@@ -110,7 +110,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 
         foreach (KeyValuePair<string, string> header in stamped) table[header.Key] = header.Value;
 
-        BasicProperties properties = new()
+        BasicProperties properties = new BasicProperties()
         {
             Persistent = true,
             ContentType = "application/json",
@@ -184,15 +184,15 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     {
         AssemblyName? entry = Assembly.GetEntryAssembly()?.GetName();
 
-        return
-        [
+        return new KeyValuePair<string, string>[]
+        {
             new(TransportHeaders.HostMachineName, TransportHeaders.ToHeader(Environment.MachineName)),
             new(TransportHeaders.HostAssembly, TransportHeaders.ToHeader(entry?.Name ?? "unknown")),
             new(TransportHeaders.HostAssemblyVersion, TransportHeaders.ToHeader(entry?.Version?.ToString() ?? "0.0.0")),
             new(TransportHeaders.HostFrameworkVersion, TransportHeaders.ToHeader(Environment.Version.ToString())),
             new(TransportHeaders.HostBusVersion, TransportHeaders.ToHeader(typeof(Producer).Assembly.GetName().Version?.ToString() ?? "0.0.0")),
             new(TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader(Environment.OSVersion.ToString()))
-        ];
+        };
     }
 
     /// <summary>Closes every destination channel — the container disposes the singleton at shutdown.</summary>

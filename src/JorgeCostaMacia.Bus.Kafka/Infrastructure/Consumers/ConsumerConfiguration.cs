@@ -90,7 +90,7 @@ public sealed record ConsumerConfiguration
     /// <param name="groupId">The consumer group id.</param>
     /// <returns>The assembled consumer configuration.</returns>
     public ConsumerConfig ConsumerConfig(string groupId)
-        => new()
+        => new ConsumerConfig()
         {
             BootstrapServers = BootstrapServers,
             SecurityProtocol = SecurityProtocol ?? ConsumerConfigurationDefaults.SECURITY_PROTOCOL,

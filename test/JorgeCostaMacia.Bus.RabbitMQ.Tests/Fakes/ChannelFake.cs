@@ -14,18 +14,18 @@ internal sealed class ChannelFake : IChannel
     public sealed record Publish(string Exchange, string RoutingKey, bool Persistent, string? MessageId, string? CorrelationId, string? Type, string? AppId, string? ContentType, long Timestamp, IReadOnlyDictionary<string, object?>? Headers, ReadOnlyMemory<byte> Body, bool Mandatory);
 
     /// <summary>The queues declared through the channel, in order.</summary>
-    public List<(string Queue, bool Durable, bool Exclusive, bool AutoDelete)> QueuesDeclared { get; } = [];
+    public List<(string Queue, bool Durable, bool Exclusive, bool AutoDelete)> QueuesDeclared { get; } = new List<(string Queue, bool Durable, bool Exclusive, bool AutoDelete)>();
 
     /// <summary>The publishes handed to the channel, in order. Captured under a lock so concurrent produces record safely.</summary>
-    public List<Publish> Published { get; } = [];
+    public List<Publish> Published { get; } = new List<Publish>();
 
-    private readonly object _publishGate = new();
+    private readonly object _publishGate = new object();
 
     /// <summary>An exception to fail every publish with, or <see langword="null"/> to succeed.</summary>
     public Exception? PublishFailure { get; set; }
 
     /// <summary>The exchanges declared through the channel, in order.</summary>
-    public List<(string Exchange, string Type, bool Durable, bool AutoDelete)> ExchangesDeclared { get; } = [];
+    public List<(string Exchange, string Type, bool Durable, bool AutoDelete)> ExchangesDeclared { get; } = new List<(string Exchange, string Type, bool Durable, bool AutoDelete)>();
 
     /// <summary>Whether the channel was disposed.</summary>
     public bool Disposed { get; private set; }

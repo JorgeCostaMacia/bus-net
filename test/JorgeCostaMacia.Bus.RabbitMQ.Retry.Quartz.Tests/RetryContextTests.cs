@@ -9,7 +9,7 @@ public class RetryContextTests
     [Fact]
     public void AddRetryContext_RegistersTheQuartzRetryScheduler_AsSingleton()
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddRetryContext();
 

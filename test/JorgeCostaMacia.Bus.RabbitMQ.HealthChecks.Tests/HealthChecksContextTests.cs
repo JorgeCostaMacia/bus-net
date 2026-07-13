@@ -11,7 +11,7 @@ public class HealthChecksContextTests
 {
     private static ServiceProvider Provider(Action<IHealthChecksBuilder> add)
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddSingleton<IConnection>(new ConnectionFake());
         add(services.AddHealthChecks());
@@ -36,7 +36,7 @@ public class HealthChecksContextTests
     [Fact]
     public void AddRabbitMQBus_Custom_RegistersTheNameStatusAndTags()
     {
-        ServiceProvider provider = Provider(builder => builder.AddRabbitMQBus("orders-bus", HealthStatus.Degraded, ["ready"]));
+        ServiceProvider provider = Provider(builder => builder.AddRabbitMQBus("orders-bus", HealthStatus.Degraded, new[] { "ready" }));
 
         HealthCheckRegistration registration = Registration(provider);
         Assert.Equal("orders-bus", registration.Name);

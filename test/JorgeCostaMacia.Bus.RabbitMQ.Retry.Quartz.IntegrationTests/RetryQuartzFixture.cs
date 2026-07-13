@@ -58,7 +58,7 @@ public sealed class RetryQuartzFixture : IAsyncLifetime
         Uri uri = new(_rabbitMq.GetConnectionString());
         string[] userInfo = uri.UserInfo.Split(':');
 
-        Dictionary<string, string?> settings = new()
+        Dictionary<string, string?> settings = new Dictionary<string, string?>()
         {
             ["Bus:Connection:HostName"] = _rabbitMq.Hostname,
             ["Bus:Connection:UserName"] = userInfo[0],

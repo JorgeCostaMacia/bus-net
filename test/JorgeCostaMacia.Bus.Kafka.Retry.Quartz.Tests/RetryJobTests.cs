@@ -11,13 +11,13 @@ namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests;
 
 public class RetryJobTests
 {
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private static string EncodeHeaders(params (string Key, byte[]? Value)[] headers)
         => JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.Value)));
 
     private static JobDataMap Data(string topic = "orders", byte[]? body = null, string? headers = null)
-        => new()
+        => new JobDataMap()
         {
             [RetryJob.TOPIC_KEY] = topic,
             [RetryJob.BODY_KEY] = Convert.ToBase64String(body ?? "body"u8.ToArray()),

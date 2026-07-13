@@ -16,8 +16,8 @@ public class EventErrorHandlerTests
 
     private sealed class DerivedFailure : BaseFailure;
 
-    private readonly ProducerFake _producer = new();
-    private readonly RetrySchedulerFake _scheduler = new();
+    private readonly ProducerFake _producer = new ProducerFake();
+    private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
     private EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
         => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], excludes ?? []);
@@ -95,7 +95,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task ZeroInterval_RequeuesToTopicTail_RetargetedToItsGroup()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero));
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -110,7 +110,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_ParksThroughScheduler_RetargetedToItsGroup()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)));
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -126,7 +126,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task LadderExhausted_Parks()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero, TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero));
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -137,7 +137,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task ExcludedException_Parks_InheritanceAware()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero], [typeof(BaseFailure)]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero), ImmutableList.Create(typeof(BaseFailure)));
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
 
@@ -148,7 +148,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_WithoutScheduler_ParksAsTerminal()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)], scheduler: false);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)), scheduler: false);
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -161,7 +161,7 @@ public class EventErrorHandlerTests
     public async Task SchedulerFails_LeavesUnhandled()
     {
         _scheduler.Failure = new InvalidOperationException("scheduler down");
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.FromMinutes(5)]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)));
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -173,7 +173,7 @@ public class EventErrorHandlerTests
     public async Task RequeueProduceFails_LeavesUnhandled()
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero));
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
@@ -183,7 +183,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task SecondRetry_ContinuesTheCumulativeCount()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError([TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero));
 
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(retryCount: 1), new InvalidOperationException()), TestContext.Current.CancellationToken);
 

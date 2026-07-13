@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure;
 /// </summary>
 public class BusLoggerDescriptionsTests
 {
-    private static readonly Dictionary<string, string> Expected = new()
+    private static readonly Dictionary<string, string> Expected = new Dictionary<string, string>()
     {
         ["RequeuedToRetry"] = "Requeued to retry.",
         ["ScheduledToRetry"] = "Scheduled to retry.",
@@ -51,7 +51,7 @@ public class BusLoggerDescriptionsTests
     [Fact]
     public void Descriptions_AreDistinct()
     {
-        string[] values = [.. Descriptions().Values];
+        string[] values = Descriptions().Values.ToArray();
 
         Assert.Equal(values.Length, values.Distinct().Count());
     }

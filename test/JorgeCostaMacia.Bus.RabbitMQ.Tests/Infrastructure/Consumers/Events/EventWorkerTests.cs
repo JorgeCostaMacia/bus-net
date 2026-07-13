@@ -14,15 +14,15 @@ public class EventWorkerTests
 {
     private sealed class BrokerFailure() : RabbitMQClientException("broker down");
 
-    private readonly ProducerFake _producer = new();
-    private readonly RecordingEventSubscriber _subscriber = new();
+    private readonly ProducerFake _producer = new ProducerFake();
+    private readonly RecordingEventSubscriber _subscriber = new RecordingEventSubscriber();
 
     private EventWorker<TestEvent, RecordingEventSubscriber> Worker(ConsumerChannelFake channel, ImmutableList<TimeSpan>? intervals = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
             .AddScoped<ErrorHandlerBase>(_ =>
-                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, null, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], []))
+                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, null, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
             .AddScoped<FaultHandlerBase>(_ =>
                 new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.QUEUE))
             .BuildServiceProvider();
@@ -48,7 +48,7 @@ public class EventWorkerTests
     [Fact]
     public async Task SubscriberSucceeds_AcksAndProducesNothing()
     {
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
         await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe")));
 
@@ -65,7 +65,7 @@ public class EventWorkerTests
     public async Task SubscriberThrows_NoLadder_ParksToErrorQueue_AndAcks()
     {
         _subscriber.Failure = new InvalidOperationException("boom");
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
         await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe")));
 
@@ -80,9 +80,9 @@ public class EventWorkerTests
     public async Task SubscriberThrows_ZeroInterval_RepublishesToExchange_AndAcks()
     {
         _subscriber.Failure = new InvalidOperationException("boom");
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel, [TimeSpan.Zero]), Deliveries.Delivery(new TestEvent("pepe")));
+        await Deliver(channel, Worker(channel, ImmutableList.Create(TimeSpan.Zero)), Deliveries.Delivery(new TestEvent("pepe")));
 
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
         Assert.Equal(Deliveries.EXCHANGE, exchange);
@@ -95,9 +95,9 @@ public class EventWorkerTests
     {
         _subscriber.Failure = new InvalidOperationException("boom");
         _producer.Failure = new BrokerFailure();
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel, [TimeSpan.Zero]), Deliveries.Delivery(new TestEvent("pepe")));
+        await Deliver(channel, Worker(channel, ImmutableList.Create(TimeSpan.Zero)), Deliveries.Delivery(new TestEvent("pepe")));
 
         Assert.Empty(channel.Acked);
         (ulong deliveryTag, bool requeue) = Assert.Single(channel.Nacked);
@@ -108,7 +108,7 @@ public class EventWorkerTests
     [Fact]
     public async Task MalformedBody_ParksToFaultQueue_AndAcks()
     {
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
         await Deliver(channel, Worker(channel), Deliveries.Garbage());
 
@@ -120,7 +120,7 @@ public class EventWorkerTests
     [Fact]
     public async Task NullBody_ParksToFaultQueue_AndAcks()
     {
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
         await Deliver(channel, Worker(channel), Deliveries.NullBody());
 
@@ -132,7 +132,7 @@ public class EventWorkerTests
     [Fact]
     public async Task TargetedToOtherConsumers_SkipsAndAcks()
     {
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
         await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe"), consumers: "other.subscriber"));
 
@@ -144,7 +144,7 @@ public class EventWorkerTests
     [Fact]
     public async Task TargetedToThisQueue_Processes()
     {
-        ConsumerChannelFake channel = new();
+        ConsumerChannelFake channel = new ConsumerChannelFake();
 
         await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber, {Deliveries.QUEUE}"));
 

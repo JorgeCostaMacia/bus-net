@@ -11,18 +11,18 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Events;
 
 public class EventWorkerTests
 {
-    private readonly ProducerFake _producer = new();
-    private readonly RetrySchedulerFake _scheduler = new();
-    private readonly LifetimeFake _lifetime = new();
-    private readonly BusHealth _health = new();
-    private readonly RecordingEventSubscriber _subscriber = new();
+    private readonly ProducerFake _producer = new ProducerFake();
+    private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
+    private readonly LifetimeFake _lifetime = new LifetimeFake();
+    private readonly BusHealth _health = new BusHealth();
+    private readonly RecordingEventSubscriber _subscriber = new RecordingEventSubscriber();
 
     private EventWorker<TestEvent, RecordingEventSubscriber> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
             .AddScoped<EventErrorHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
-                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], []))
+                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
             .AddScoped<EventFaultHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
                 new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
             .BuildServiceProvider();
@@ -98,7 +98,7 @@ public class EventWorkerTests
         _subscriber.Failure = new InvalidOperationException("boom");
         ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe")));
 
-        await Drive(Worker(consumer, [TimeSpan.Zero]), consumer);
+        await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
         Assert.Equal(Deliveries.TOPIC, topic);
@@ -139,7 +139,7 @@ public class EventWorkerTests
         await Drive(Worker(consumer), consumer);
 
         Assert.Equal("b", _subscriber.Received?.Name);
-        Assert.Equal([10L, 11L], consumer.Stored.Select(offset => offset.Offset.Value));
+        Assert.Equal(new[] { 10L, 11L }, consumer.Stored.Select(offset => offset.Offset.Value));
     }
 
     [Fact]

@@ -6,10 +6,10 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.Tests.Infrastructure;
 
 public class BusHealthCheckTests
 {
-    private readonly ConnectionFake _connection = new();
+    private readonly ConnectionFake _connection = new ConnectionFake();
 
     private static HealthCheckContext Context(IHealthCheck check, HealthStatus? failureStatus = null)
-        => new() { Registration = new HealthCheckRegistration("bus-rabbitmq", check, failureStatus, tags: null) };
+        => new HealthCheckContext() { Registration = new HealthCheckRegistration("bus-rabbitmq", check, failureStatus, tags: null) };
 
     [Fact]
     public async Task CheckHealthAsync_ConnectionOpen_ReportsHealthy()

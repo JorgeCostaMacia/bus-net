@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Producers;
 
 public class ProducerWorkerTests
 {
-    private readonly KafkaProducerFake _kafka = new();
+    private readonly KafkaProducerFake _kafka = new KafkaProducerFake();
 
     private ProducerWorker Sut() => new(_kafka, NullLogger<ProducerWorker>.Instance);
 

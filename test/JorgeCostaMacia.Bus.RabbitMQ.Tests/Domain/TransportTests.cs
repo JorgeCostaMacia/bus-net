@@ -25,7 +25,7 @@ public class TransportTests
     [Fact]
     public void Create_WithoutHeaders_YieldsAnEmptyTable()
     {
-        Transport transport = Transport.Create(Deliveries.Args("{}"u8.ToArray(), []));
+        Transport transport = Transport.Create(Deliveries.Args("{}"u8.ToArray(), new Dictionary<string, object?>()));
 
         Assert.Empty(transport.Headers);
     }
@@ -109,7 +109,7 @@ public class TransportTests
 
     [Fact]
     public void GetStringList_TrimsAndSkipsEmptyEntries()
-        => Assert.Equal(["a", "b", "c"], CreateSut(("list", " a, b ,,c "u8.ToArray())).GetHeaderStringList("list"));
+        => Assert.Equal(new[] { "a", "b", "c" }, CreateSut(("list", " a, b ,,c "u8.ToArray())).GetHeaderStringList("list"));
 
     [Fact]
     public void GetInt_Digits_Parses()

@@ -15,8 +15,8 @@ public class CommandContextTests
 
     private static Transport Transport()
     {
-        Headers headers =
-        [
+        Headers headers = new Headers
+        {
             new Header(TransportHeaders.ConversationId, TransportHeaders.ToHeader(CONVERSATION_ID)),
             new Header(TransportHeaders.ConversationAddress, TransportHeaders.ToHeader("orders")),
             new Header(TransportHeaders.ConversationOccurredAt, TransportHeaders.ToHeader(OCCURRED_AT.ToString("O"))),
@@ -30,7 +30,7 @@ public class CommandContextTests
             new Header(TransportHeaders.HostFrameworkVersion, TransportHeaders.ToHeader("10.0.8")),
             new Header(TransportHeaders.HostBusVersion, TransportHeaders.ToHeader("2.0.0.0")),
             new Header(TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader("Unix 6.8"))
-        ];
+        };
 
         return new Transport(headers.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(OCCURRED_AT));
     }

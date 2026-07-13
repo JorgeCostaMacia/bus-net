@@ -85,7 +85,7 @@ public sealed record ProducerConfiguration
     public bool? SocketKeepaliveEnable { get; init; }
 
     /// <summary>The Kafka producer configuration — supplied values, defaults for the rest.</summary>
-    public ProducerConfig ProducerConfig => new()
+    public ProducerConfig ProducerConfig => new ProducerConfig()
     {
         BootstrapServers = BootstrapServers,
         SecurityProtocol = SecurityProtocol ?? ProducerConfigurationDefaults.SECURITY_PROTOCOL,

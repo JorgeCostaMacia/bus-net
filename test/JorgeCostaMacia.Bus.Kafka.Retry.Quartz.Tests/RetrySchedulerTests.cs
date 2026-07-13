@@ -31,7 +31,7 @@ public class RetrySchedulerTests
 
     private static Headers Headers(Guid? messageId = null, int? retryCount = null, params (string Key, byte[]? Value)[] extra)
     {
-        Headers headers = [];
+        Headers headers = new Headers();
 
         if (messageId is Guid id) headers.Add(TransportHeaders.MessageId, id.ToByteArray());
         if (retryCount is int count) headers.Add(TransportHeaders.RetryCount, Encoding.UTF8.GetBytes(count.ToString()));
