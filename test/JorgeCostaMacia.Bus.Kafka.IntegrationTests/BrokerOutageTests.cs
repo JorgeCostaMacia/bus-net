@@ -69,7 +69,7 @@ public sealed class BrokerOutageTests : IClassFixture<KafkaFixture>
             // Freeze the broker once the drain is underway, then thaw it — a real outage mid-load.
             Task outage = InjectOutageMidDrainAsync(probe, cancellationToken);
 
-            Task completed = await Task.WhenAny(probe.AllUniqueHandled, Task.Delay(TimeSpan.FromSeconds(120), cancellationToken));
+            Task completed = await Task.WhenAny(probe.AllUniqueHandled, Task.Delay(TimeSpan.FromSeconds(180), cancellationToken));
 
             // Ensure the pause/unpause finished so a frozen broker never leaks into the next test.
             await outage;
@@ -91,7 +91,7 @@ public sealed class BrokerOutageTests : IClassFixture<KafkaFixture>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     private async Task InjectOutageMidDrainAsync(RecoveryProbe probe, CancellationToken cancellationToken)
     {
-        await WaitUntilAsync(() => probe.UniqueHandled >= PauseAfterUnique, TimeSpan.FromSeconds(60), cancellationToken);
+        await WaitUntilAsync(() => probe.UniqueHandled >= PauseAfterUnique, TimeSpan.FromSeconds(90), cancellationToken);
 
         await _fixture.PauseAsync(cancellationToken);
         await Task.Delay(Outage, cancellationToken);

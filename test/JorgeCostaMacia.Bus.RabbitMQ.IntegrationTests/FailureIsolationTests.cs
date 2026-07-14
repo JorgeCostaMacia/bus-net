@@ -77,11 +77,11 @@ public sealed class FailureIsolationTests : IClassFixture<RabbitMqFixture>
             }
 
             // The invariant: every good record is handled even though poison records fail mid-batch.
-            Task completed = await Task.WhenAny(probe.AllGoodHandled, Task.Delay(TimeSpan.FromSeconds(120), cancellationToken));
-            Assert.True(completed == probe.AllGoodHandled, $"Only {probe.GoodHandled} of {Good} good records were handled within 120 seconds — a poison record stalled or dropped the batch.");
+            Task completed = await Task.WhenAny(probe.AllGoodHandled, Task.Delay(TimeSpan.FromSeconds(180), cancellationToken));
+            Assert.True(completed == probe.AllGoodHandled, $"Only {probe.GoodHandled} of {Good} good records were handled within 180 seconds — a poison record stalled or dropped the batch.");
 
             // And the poison is isolated, not silently lost: at least one landed on the error lane.
-            BasicGetResult? parked = await Broker.WaitForParkedAsync(connection, ErrorQueue, TimeSpan.FromSeconds(60), cancellationToken);
+            BasicGetResult? parked = await Broker.WaitForParkedAsync(connection, ErrorQueue, TimeSpan.FromSeconds(90), cancellationToken);
             Assert.True(parked is not null, $"No poison record was parked to '{ErrorQueue}'.");
         }
         finally

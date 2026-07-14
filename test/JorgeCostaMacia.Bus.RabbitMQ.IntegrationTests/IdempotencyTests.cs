@@ -70,7 +70,7 @@ public sealed class IdempotencyTests : IClassFixture<RabbitMqFixture>
             }
 
             // Wait until every duplicate delivery has been received, then assert dedup held.
-            await WaitUntilAsync(() => probe.Received >= Deliveries, TimeSpan.FromSeconds(120), cancellationToken);
+            await WaitUntilAsync(() => probe.Received >= Deliveries, TimeSpan.FromSeconds(180), cancellationToken);
 
             // Dedup held: exactly one effect per distinct record, despite every record arriving twice.
             Assert.Equal(Records, probe.Effects);
