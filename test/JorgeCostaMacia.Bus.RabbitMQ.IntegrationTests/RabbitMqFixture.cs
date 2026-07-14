@@ -26,6 +26,20 @@ public sealed class RabbitMqFixture : IAsyncLifetime
         => _container.DisposeAsync();
 
     /// <summary>
+    /// Freezes the broker (Docker pause) so it stops answering while keeping its mapped port — the chaos
+    /// tests use this to simulate a broker outage mid-load without the port remapping a stop/start would
+    /// cause. Pair every pause with an <see cref="UnpauseAsync"/>.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task PauseAsync(CancellationToken cancellationToken)
+        => _container.PauseAsync(cancellationToken);
+
+    /// <summary>Thaws the broker (Docker unpause) so it answers again on the same mapped port.</summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task UnpauseAsync(CancellationToken cancellationToken)
+        => _container.UnpauseAsync(cancellationToken);
+
+    /// <summary>
     /// Builds the bus configuration for the running container's <c>Bus:Connection</c> section: the
     /// mapped plain-AMQP endpoint and the module's provisioned credentials, with <c>Ssl</c> forced
     /// <see langword="false"/> — the container speaks plain AMQP while the bus defaults to TLS on
