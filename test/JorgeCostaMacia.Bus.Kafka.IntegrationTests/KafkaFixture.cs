@@ -27,6 +27,20 @@ public sealed class KafkaFixture : IAsyncLifetime
         => _container.DisposeAsync();
 
     /// <summary>
+    /// Freezes the broker (Docker pause) so it stops answering while keeping its mapped port — the chaos
+    /// tests use this to simulate a broker outage mid-load without the port remapping a stop/start would
+    /// cause. Pair every pause with an <see cref="UnpauseAsync"/>.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task PauseAsync(CancellationToken cancellationToken)
+        => _container.PauseAsync(cancellationToken);
+
+    /// <summary>Thaws the broker (Docker unpause) so it answers again on the same mapped port.</summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public Task UnpauseAsync(CancellationToken cancellationToken)
+        => _container.UnpauseAsync(cancellationToken);
+
+    /// <summary>
     /// Builds the bus configuration for the running container's <c>Bus:Producer</c> and
     /// <c>Bus:Consumer</c> sections: the mapped bootstrap endpoint with <c>SecurityProtocol</c> forced
     /// to <c>Plaintext</c> — the container speaks plain, unauthenticated Kafka while the bus defaults to
