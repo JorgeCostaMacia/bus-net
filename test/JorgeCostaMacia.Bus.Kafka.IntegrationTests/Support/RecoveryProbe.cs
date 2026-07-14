@@ -3,13 +3,12 @@ using System.Collections.Concurrent;
 namespace JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
 
 /// <summary>
-/// Shared, deduplicating counter for the recovery / idempotency chaos tests: the handler calls
+/// Shared, deduplicating counter for the broker-outage recovery test: the handler calls
 /// <see cref="Signal"/> with each record's identity on every delivery. <see cref="UniqueHandled"/>
 /// counts distinct records (so it never regresses on a redelivery) while <see cref="TotalHandled"/>
-/// counts every delivery — their difference is the at-least-once duplicates a broker outage or a
-/// redelivery produced. <see cref="AllUniqueHandled"/> resolves once every expected distinct record has
-/// been seen at least once (proof of no loss). Registered as a singleton so the consumer and the test
-/// share it.
+/// counts every delivery — their difference is the at-least-once redeliveries the outage produced.
+/// <see cref="AllUniqueHandled"/> resolves once every expected distinct record has been seen at least
+/// once (proof of no loss). Registered as a singleton so the consumer and the test share it.
 /// </summary>
 public sealed class RecoveryProbe
 {
@@ -24,7 +23,7 @@ public sealed class RecoveryProbe
     /// <summary>The number of distinct records handled so far — never regresses on a redelivery.</summary>
     public int UniqueHandled => _unique.Count;
 
-    /// <summary>Every delivery counted, redeliveries included — the excess over <see cref="UniqueHandled"/> is the at-least-once duplicates.</summary>
+    /// <summary>Every delivery counted, redeliveries included — the excess over <see cref="UniqueHandled"/> is the at-least-once redeliveries.</summary>
     public long TotalHandled => Interlocked.Read(ref _total);
 
     /// <summary>Arms the probe to complete once <paramref name="expected"/> distinct records have been handled.</summary>
