@@ -2,6 +2,9 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\JorgeCostaMacia.Bus.Kafka.Retry.Quartz\JorgeCostaMacia.Bus.Kafka.Retry.Quartz.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
 	</ItemGroup>
 

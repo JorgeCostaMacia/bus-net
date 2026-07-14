@@ -1,20 +1,25 @@
 using System.Text;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
+using Microsoft.Extensions.Logging;
 using RabbitProducer = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers.Producer;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Producers;
 
 public class ProducerTests
 {
-    private readonly ChannelFake _channel = new();
+    private readonly ChannelFake _channel = new ChannelFake();
     private readonly ConnectionFake _connection;
+    private readonly RecordingLogger<RabbitProducer> _logger = new RecordingLogger<RabbitProducer>();
 
-    public ProducerTests() => _connection = new ConnectionFake(_channel);
+    public ProducerTests()
+    {
+        _connection = new ConnectionFake(_channel);
+    }
 
-    private RabbitProducer Sut() => new(_connection);
+    private RabbitProducer Sut() => new(_connection, _logger);
 
-    private static Dictionary<string, object?> Headers() => [];
+    private static Dictionary<string, string> Headers() => new Dictionary<string, string>();
 
     [Fact]
     public async Task Produce_PublishesToTheExchangeWithTheRoutingKey()
@@ -36,11 +41,96 @@ public class ProducerTests
     }
 
     [Fact]
-    public async Task Produce_Failure_Rethrows()
+    public async Task Produce_SameExchangeTwice_ReusesTheDestinationChannel()
+    {
+        // one long-lived channel per destination: the second publish to the same exchange rides the
+        // cached channel instead of opening another.
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _connection.Created);
+    }
+
+    [Fact]
+    public async Task Produce_DifferentExchanges_OpenOneChannelEach()
+    {
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.Produce("orders.created", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _connection.Created);
+    }
+
+    [Fact]
+    public async Task Produce_ChannelDied_ReopensInsteadOfReusingTheDeadOne()
+    {
+        // an async publish error closes the channel broker-side: the next produce to that exchange
+        // must replace it instead of handing out the dead cached one for the application's lifetime.
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _connection.Created);
+
+        _channel.IsOpen = false;
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _connection.Created);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_ClosesEveryDestinationChannel()
+    {
+        RabbitProducer sut = Sut();
+
+        await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.DisposeAsync();
+
+        Assert.True(_channel.Disposed);
+    }
+
+    [Fact]
+    public async Task Park_RedeclaresTheDurableQueue_AndPublishesMandatoryThroughTheDefaultExchange()
+    {
+        // the loss-proof park: the idempotent declare recreates a park queue deleted at runtime
+        // (the consumers' exact options), and mandatory makes an unroutable park throw instead of
+        // being dropped — and confirmed — silently.
+        await Sut().Park("orders.handler.error", "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        (string queue, bool durable, bool exclusive, bool autoDelete) = Assert.Single(_channel.QueuesDeclared);
+        Assert.Equal("orders.handler.error", queue);
+        Assert.True(durable);
+        Assert.False(exclusive);
+        Assert.False(autoDelete);
+
+        ChannelFake.Publish publish = Assert.Single(_channel.Published);
+        Assert.Equal(string.Empty, publish.Exchange);
+        Assert.Equal("orders.handler.error", publish.RoutingKey);
+        Assert.True(publish.Mandatory);
+    }
+
+    [Fact]
+    public async Task Produce_PublishesWithoutMandatory()
+    {
+        // an unroutable normal publish is legitimate (a fanout with no subscribers) — only parks trip.
+        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+
+        Assert.False(Assert.Single(_channel.Published).Mandatory);
+    }
+
+    [Fact]
+    public async Task Produce_Failure_LogsAndRethrows()
     {
         _channel.PublishFailure = new InvalidOperationException("broker down");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken));
+
+        (LogLevel level, string message) = Assert.Single(_logger.Logged);
+        Assert.Equal(LogLevel.Error, level);
+        Assert.Equal("Producer failed.", message);
     }
 
     [Fact]
@@ -58,9 +148,9 @@ public class ProducerTests
     [Fact]
     public async Task Produce_ReStampsTheHost_OverGivenHeaders()
     {
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, string> headers = new Dictionary<string, string>()
         {
-            [TransportHeaders.HostMachineName] = "another-host"u8.ToArray()
+            [TransportHeaders.HostMachineName] = "another-host"
         };
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
@@ -72,14 +162,14 @@ public class ProducerTests
     public async Task Produce_CarriesTheGivenEnvelopeHeaders()
     {
         Guid messageId = Guid.NewGuid();
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, string> headers = new Dictionary<string, string>()
         {
-            [TransportHeaders.MessageId] = messageId.ToByteArray()
+            [TransportHeaders.MessageId] = messageId.ToString()
         };
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
 
-        Assert.Equal(messageId, new Guid((byte[])Assert.Single(_channel.Published).Headers![TransportHeaders.MessageId]!));
+        Assert.Equal(messageId.ToString(), (string)Assert.Single(_channel.Published).Headers![TransportHeaders.MessageId]!);
     }
 
     [Fact]
@@ -89,12 +179,12 @@ public class ProducerTests
         Guid conversationId = Guid.NewGuid();
         DateTime occurredAt = new(2026, 7, 7, 12, 30, 45, DateTimeKind.Utc);
 
-        Dictionary<string, object?> headers = new()
+        Dictionary<string, string> headers = new Dictionary<string, string>()
         {
-            [TransportHeaders.MessageId] = messageId.ToByteArray(),
-            [TransportHeaders.ConversationId] = conversationId.ToByteArray(),
-            [TransportHeaders.MessageType] = "Orders.PlaceOrder"u8.ToArray(),
-            [TransportHeaders.MessageOccurredAt] = Encoding.UTF8.GetBytes(occurredAt.ToString("O"))
+            [TransportHeaders.MessageId] = messageId.ToString(),
+            [TransportHeaders.ConversationId] = conversationId.ToString(),
+            [TransportHeaders.MessageType] = "Orders.PlaceOrder",
+            [TransportHeaders.MessageOccurredAt] = occurredAt.ToString("O")
         };
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
@@ -108,6 +198,41 @@ public class ProducerTests
         Assert.False(string.IsNullOrWhiteSpace(publish.AppId)); // the host assembly, stamped by the producer
     }
 
+    [Fact]
+    public async Task Produce_NonGuidMessageId_LeavesTheNativeMessageIdUnset()
+    {
+        // the native mirroring is best-effort: an undecodable jcm-message-id leaves BasicProperties
+        // .MessageId unset rather than stamping garbage. The valid-guid case is covered by
+        // Produce_MapsTheEnvelopeToNativeAmqpProperties.
+        Dictionary<string, string> headers = new Dictionary<string, string>()
+        {
+            [TransportHeaders.MessageId] = "not-a-guid"
+        };
+
+        await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
+
+        Assert.Null(Assert.Single(_channel.Published).MessageId);
+    }
+
+    [Fact]
+    public async Task Produce_ConcurrentAcrossExchanges_OpensExactlyOneChannelPerExchange()
+    {
+        // the singleton's per-exchange channel map + gate under real contention: many concurrent
+        // produces spread across several exchanges (several per exchange) open exactly one channel
+        // per distinct exchange and never double-open. Outcome asserted after WhenAll, not timing.
+        RabbitProducer sut = Sut();
+        string[] exchanges = new[] { "orders", "orders.created", "billing", "shipping" };
+
+        Task[] produces = Enumerable.Range(0, 200).Select(i =>
+            Task.Run(() => sut.Produce(exchanges[i % exchanges.Length], string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)).ToArray();
+
+        await Task.WhenAll(produces);
+
+        Assert.Equal(exchanges.Length, _connection.Created);
+    }
+
+    // the client's header table is object?-typed at the AMQP edge, but the producer copies the
+    // envelope's canonical text straight in, so each value arrives as a string (encoded longstr).
     private static string? Header(IReadOnlyDictionary<string, object?> headers, string key)
-        => headers.TryGetValue(key, out object? value) && value is byte[] bytes ? Encoding.UTF8.GetString(bytes) : null;
+        => headers.TryGetValue(key, out object? value) && value is string text ? text : null;
 }

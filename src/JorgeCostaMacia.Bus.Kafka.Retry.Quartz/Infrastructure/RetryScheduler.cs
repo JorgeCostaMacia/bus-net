@@ -8,33 +8,46 @@ using Quartz;
 namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Infrastructure;
 
 /// <summary>
-/// The Quartz-backed <see cref="IRetryScheduler"/>: it does not produce the delayed retry itself — it
-/// writes a one-shot <see cref="RetryJob"/> to the scheduler's store to be fired at its time by any
-/// node in the cluster, which then re-produces the message. It uses whichever
-/// <see cref="ISchedulerFactory"/> the application registered; the store, clustering and serialization
-/// are the application's Quartz configuration, not this package's — but they must be persistent and
-/// shared with the executing fleet, because scheduling commits to the store and the delivery is then
-/// acked, so an in-memory store would drop the retry on a restart of the scheduling process. Each
-/// parked retry is a one-shot job grouped under its topic and named <c>messageId:retryCount</c> — so a
-/// job maps back to the message being retried, and scheduling is idempotent: an at-least-once duplicate
-/// of the same failure collides on that key and is ignored rather than parking a second job. Recovery is
-/// requested so a node that dies mid-fire re-runs it (at-least-once, a rare duplicate is preferred over
-/// a loss).
+/// The Quartz-backed retry scheduler: parks the delivery as a durable <see cref="RetryJob"/> with a
+/// single repeating trigger — the first fire exactly at the scheduled time, then one repetition
+/// every five minutes while the produce keeps failing: <see cref="ATTEMPTS"/> re-executions after
+/// the first fire, the same semantics as the bus's retries.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The failure path is write-free — pure Quartz lifecycle: the trigger repeats the produce on its
+/// own and counts its fires, so a failed produce has nothing to schedule and nothing to persist;
+/// and when the last repetition fails, Quartz completes the trigger and the job — durable — stays
+/// parked in the store as the dead-letter, with no conversion write (see <see cref="RetryJob"/>).
+/// </para>
+/// <para>
+/// The job is keyed <c>{messageId}:{retryCount}</c> in the topic's group and parked with
+/// <c>replace</c> — last write wins: an at-least-once duplicate delivery of the same failure
+/// re-parks the same key, overwriting job and trigger with a fresh ladder (and reviving a
+/// dead-letter parked under that key instead of silently skipping it).
+/// </para>
+/// </remarks>
 internal sealed class RetryScheduler : IRetryScheduler
 {
+    private const int ATTEMPTS = 4;
+
+    private static readonly TimeSpan INTERVAL = TimeSpan.FromMinutes(5);
+
     private readonly ISchedulerFactory _schedulerFactory;
 
-    /// <summary>Creates the scheduler over the application's Quartz scheduler factory.</summary>
-    /// <param name="schedulerFactory">The Quartz scheduler factory the application registered — its store is where parked retries are written.</param>
-    public RetryScheduler(ISchedulerFactory schedulerFactory) => _schedulerFactory = schedulerFactory;
+    /// <summary>Creates the scheduler over the Quartz scheduler factory.</summary>
+    /// <param name="schedulerFactory">The factory resolving the configured Quartz scheduler.</param>
+    public RetryScheduler(ISchedulerFactory schedulerFactory)
+    {
+        _schedulerFactory = schedulerFactory;
+    }
 
     /// <inheritdoc />
     public async Task Schedule(string topic, string groupId, byte[] body, Headers headers, DateTime scheduledAt, CancellationToken cancellationToken)
     {
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
 
-        string identity = $"{MessageId(headers):N}:{RetryCount(headers)}";
+        string identity = $"{MessageId(headers)}:{RetryCount(headers)}";
 
         IJobDetail job = JobBuilder.Create<RetryJob>()
             .WithIdentity(identity, topic)
@@ -42,6 +55,7 @@ internal sealed class RetryScheduler : IRetryScheduler
             .UsingJobData(RetryJob.TOPIC_KEY, topic)
             .UsingJobData(RetryJob.BODY_KEY, Convert.ToBase64String(body))
             .UsingJobData(RetryJob.HEADERS_KEY, JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.GetValueBytes()))))
+            .StoreDurably()
             .RequestRecovery()
             .Build();
 
@@ -49,28 +63,27 @@ internal sealed class RetryScheduler : IRetryScheduler
             .WithIdentity(identity, topic)
             .WithDescription(groupId)
             .StartAt(new DateTimeOffset(DateTime.SpecifyKind(scheduledAt, DateTimeKind.Utc)))
+            // Misfire left to Quartz's default (smart policy): for a finite-repeat simple trigger it
+            // reschedules now with the existing repeat count, so a fire missed while the scheduler was
+            // down (e.g. a maintenance window) runs on recovery instead of being skipped — no delivery
+            // silently dropped. Left implicit on purpose; stated here so it reads as a choice, not an oversight.
+            .WithSimpleSchedule(schedule => schedule.WithInterval(INTERVAL).WithRepeatCount(ATTEMPTS))
             .Build();
 
-        try
-        {
-            await scheduler.ScheduleJob(job, trigger, cancellationToken);
-        }
-        catch (ObjectAlreadyExistsException)
-        {
-            // Idempotent: this message at this retry count is already parked (an at-least-once duplicate
-            // delivery of the same failure) — the retry is scheduled, so there is nothing more to do.
-        }
+        // last write wins: an at-least-once duplicate of the same failure re-parks the same key —
+        // job and trigger overwritten, the ladder restarts fresh — and a dead-letter parked under
+        // that key is revived by the new ladder instead of blocking the park.
+        await scheduler.ScheduleJob(job, new[] { trigger }, replace: true, cancellationToken);
     }
 
-    /// <summary>The retried message's id — the store job maps back to the very message (traceable), and the same delivery scheduled twice collides instead of parking two jobs (deduplicated). Falls back to a fresh id if the envelope carries none.</summary>
     private static Guid MessageId(Headers headers)
         => headers.TryGetLastBytes(TransportHeaders.MessageId, out byte[] id)
             ? new Guid(id)
             : GuidFactory.Domain.GuidFactory.Create();
 
-    /// <summary>The retry number this delivery represents — the envelope's already-incremented retry count (0 when absent).</summary>
     private static int RetryCount(Headers headers)
         => headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry)
-            ? int.Parse(Encoding.UTF8.GetString(retry), CultureInfo.InvariantCulture)
+            && int.TryParse(Encoding.UTF8.GetString(retry), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+            ? value
             : 0;
 }

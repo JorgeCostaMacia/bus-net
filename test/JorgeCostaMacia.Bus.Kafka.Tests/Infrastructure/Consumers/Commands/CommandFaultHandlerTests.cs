@@ -2,16 +2,17 @@ using System.Text.Json;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandFaultHandlerTests
 {
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
-    private Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
+    private CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
         => new(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID);
 
     [Fact]
@@ -19,7 +20,7 @@ public class CommandFaultHandlerTests
     {
         CommandFaultContext context = CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
 
-        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
+        CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Parked, sut.Result);
@@ -27,10 +28,10 @@ public class CommandFaultHandlerTests
         Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
-        Assert.Equal(typeof(InvalidCastException).FullName, body.GetProperty("Error").GetProperty("Type").GetString());
-        Assert.Equal("bad header", body.GetProperty("Error").GetProperty("Message").GetString());
-        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("GroupId").GetString());
-        Assert.Equal("not json", body.GetProperty("Message").GetString());
+        Assert.Equal(typeof(InvalidCastException).FullName, body.GetProperty("error").GetProperty("type").GetString());
+        Assert.Equal("bad header", body.GetProperty("error").GetProperty("message").GetString());
+        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("groupId").GetString());
+        Assert.Equal("not json", body.GetProperty("message").GetString());
     }
 
     [Fact]
@@ -43,11 +44,11 @@ public class CommandFaultHandlerTests
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Message.Value);
-        JsonElement error = body.GetProperty("Error");
-        Assert.Equal("the real cause", error.GetProperty("InnerError").GetProperty("Message").GetString());
-        Assert.Contains(nameof(FormatException), error.GetProperty("InnerError").GetProperty("Type").GetString());
-        Assert.Equal("required", error.GetProperty("Data").GetProperty("field").GetString());
-        Assert.Equal(Environment.MachineName, body.GetProperty("MachineName").GetString());
+        JsonElement error = body.GetProperty("error");
+        Assert.Equal("the real cause", error.GetProperty("innerError").GetProperty("message").GetString());
+        Assert.Contains(nameof(FormatException), error.GetProperty("innerError").GetProperty("type").GetString());
+        Assert.Equal("required", error.GetProperty("data").GetProperty("field").GetString());
+        Assert.Equal(Environment.MachineName, body.GetProperty("machineName").GetString());
     }
 
     [Fact]
@@ -68,7 +69,7 @@ public class CommandFaultHandlerTests
     {
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
 
-        Infrastructure.Consumers.Commands.CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
+        CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault();
         await sut.Handle(CommandFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);

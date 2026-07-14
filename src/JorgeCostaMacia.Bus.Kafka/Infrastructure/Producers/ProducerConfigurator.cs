@@ -17,14 +17,16 @@ public sealed class ProducerConfigurator
 {
     private const string PRODUCER_SECTION = "Bus:Producer";
 
-    private readonly Dictionary<Type, string> _messages = [];
+    private readonly Dictionary<Type, string> _messages = new Dictionary<Type, string>();
     private readonly ProducerConfiguration _producerConfiguration;
 
     /// <summary>Binds the producer configuration from the <c>Bus:Producer</c> section.</summary>
     /// <param name="configuration">The application configuration.</param>
     /// <exception cref="InvalidOperationException">The <c>Bus:Producer</c> section or one of its required values is missing.</exception>
     internal ProducerConfigurator(IConfiguration configuration)
-        => _producerConfiguration = CreateProducerConfiguration(configuration);
+    {
+        _producerConfiguration = CreateProducerConfiguration(configuration);
+    }
 
     /// <summary>The Kafka producer settings composed from the bound configuration.</summary>
     internal ProducerConfig ProducerConfig => _producerConfiguration.ProducerConfig;
@@ -39,7 +41,10 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddCommand<TCommand>(string topic)
         where TCommand : Command
     {
-        if (!_messages.TryAdd(typeof(TCommand), topic)) throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is already mapped to a topic.");
+        if (!_messages.TryAdd(typeof(TCommand), topic))
+        {
+            throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is already mapped to a topic.");
+        }
 
         return this;
     }
@@ -51,7 +56,10 @@ public sealed class ProducerConfigurator
     public ProducerConfigurator AddEvent<TEvent>(string topic)
         where TEvent : Event
     {
-        if (!_messages.TryAdd(typeof(TEvent), topic)) throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is already mapped to a topic.");
+        if (!_messages.TryAdd(typeof(TEvent), topic))
+        {
+            throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is already mapped to a topic.");
+        }
 
         return this;
     }
@@ -68,9 +76,20 @@ public sealed class ProducerConfigurator
         ProducerConfiguration producerConfiguration = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>()
             ?? throw new InvalidOperationException($"'{PRODUCER_SECTION}' is null.");
 
-        if (string.IsNullOrWhiteSpace(producerConfiguration.BootstrapServers)) throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
-        if (string.IsNullOrWhiteSpace(producerConfiguration.SaslUsername)) throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslUsername)}' is null.");
-        if (string.IsNullOrWhiteSpace(producerConfiguration.SaslPassword)) throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslPassword)}' is null.");
+        if (string.IsNullOrWhiteSpace(producerConfiguration.BootstrapServers))
+        {
+            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
+        }
+
+        if (string.IsNullOrWhiteSpace(producerConfiguration.SaslUsername))
+        {
+            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslUsername)}' is null.");
+        }
+
+        if (string.IsNullOrWhiteSpace(producerConfiguration.SaslPassword))
+        {
+            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslPassword)}' is null.");
+        }
 
         return producerConfiguration;
     }

@@ -11,17 +11,29 @@
 
 	<ItemGroup>
 		<PackageVersion Include="Confluent.Kafka" Version="2.15.0" />
-		<PackageVersion Include="JorgeCostaMacia.DomainEvent" Version="2.0.8" />
-		<PackageVersion Include="JorgeCostaMacia.GuidFactory" Version="2.0.8" />
+		<PackageVersion Include="JorgeCostaMacia.DomainEvent" Version="6.0.0" />
+		<PackageVersion Include="JorgeCostaMacia.GuidFactory" Version="6.0.0" />
 		<PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
 		<PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+		<PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.9" />
+		<PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.9" />
+		<PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
 		<PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
 		<PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
+		<PackageVersion Include="Npgsql" Version="8.0.9" />
 		<PackageVersion Include="Quartz" Version="3.18.2" />
+		<PackageVersion Include="Quartz.Extensions.DependencyInjection" Version="3.18.2" />
+		<PackageVersion Include="Quartz.Extensions.Hosting" Version="3.18.2" />
+		<PackageVersion Include="Quartz.Serialization.SystemTextJson" Version="3.18.2" />
 		<PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
+		<PackageVersion Include="Serilog" Version="4.4.0" />
+		<PackageVersion Include="Testcontainers" Version="4.13.0" />
+		<PackageVersion Include="Testcontainers.Kafka" Version="4.13.0" />
+		<PackageVersion Include="Testcontainers.PostgreSql" Version="4.13.0" />
+		<PackageVersion Include="Testcontainers.RabbitMq" Version="4.13.0" />
 		<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
 		<PackageVersion Include="xunit.v3" Version="3.2.2" />
 	</ItemGroup>

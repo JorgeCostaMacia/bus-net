@@ -35,9 +35,31 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     {
     }
 
+    /// <summary>
+    /// Consumer-side filtering: when the event targets specific consumers
+    /// (<c>AggregateConsumers</c> header non-empty — e.g. a retry re-targeted to the failing queue) and
+    /// this queue is not among them, the delivery is acked and skipped without deserializing the body.
+    /// </summary>
+    /// <param name="args">The delivered message.</param>
+    /// <returns>Whether the delivery is skipped.</returns>
+    protected override bool Filtered(BasicDeliverEventArgs args)
+    {
+        string? consumers = Transport.Create(args).GetHeaderStringOrDefault(TransportHeaders.AggregateConsumers);
+
+        if (string.IsNullOrWhiteSpace(consumers))
+        {
+            return false;
+        }
+
+        return !consumers
+            .Split(',')
+            .Select(consumer => consumer.Trim())
+            .Contains(Queue);
+    }
+
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(BasicDeliverEventArgs args)
-        => new(JsonSerializer.Deserialize<TEvent>(args.Body.Span) ?? throw new JsonException("The event body deserialized to null."), Transport.Create(args));
+        => new(JsonSerializer.Deserialize<TEvent>(args.Body.Span, BusSerializer.Options) ?? throw new JsonException("The event body deserialized to null."), Transport.Create(args));
 
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
@@ -46,7 +68,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber> handler = services.GetRequiredService<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>();
+        EventErrorHandlerBase<TEvent, TEventSubscriber> handler = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
 
         await handler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
 
@@ -56,7 +78,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<FaultResult> HandleFault(IServiceProvider services, ReadOnlyMemory<byte> body, Transport transport, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber> handler = services.GetRequiredService<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>();
+        EventFaultHandlerBase<TEvent, TEventSubscriber> handler = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
 
         await handler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
 

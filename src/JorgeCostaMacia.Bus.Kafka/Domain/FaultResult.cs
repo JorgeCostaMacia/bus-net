@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// </summary>
 internal enum FaultResult
 {
-    /// <summary>The handler could not park the delivery (a failed produce) — it stays unacked and redelivers.</summary>
+    /// <summary>The handler could not park the delivery (a failed produce) — nothing holds it: the worker logs it critical with its coordinates and the next commit on the partition buries it (recover by restarting before that, or re-injecting from the topic).</summary>
     Unhandled,
 
     /// <summary>Parked to the fault topic.</summary>

@@ -6,8 +6,17 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 /// </summary>
 public static class ConnectionConfigurationDefaults
 {
-    /// <summary>AMQP port. Default: <c>5672</c>.</summary>
-    public const int PORT = 5672;
+    /// <summary>
+    /// Whether TLS wraps the connection. Default: <c>true</c> — secure by default, matching the
+    /// Kafka transport's SaslSsl default.
+    /// </summary>
+    public const bool SSL = true;
+
+    /// <summary>
+    /// The AMQPS port. Default: <c>5671</c> — the only default port: the plain 5672 is never a
+    /// fallback, so turning TLS off also requires supplying the port explicitly.
+    /// </summary>
+    public const int PORT = 5671;
 
     /// <summary>Virtual host. Default: <c>/</c>.</summary>
     public const string VIRTUAL_HOST = "/";

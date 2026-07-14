@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<Description>Quartz-backed delayed retry for JorgeCostaMacia.Bus.Kafka — a persistent, clustered IRetryScheduler that parks a failed delivery as a one-shot Quartz job and re-produces it to its topic when the delay elapses. Bring your own Quartz store: register the scheduler on the sending service; the worker fleet just runs Quartz against the shared store.</Description>
+		<Description>Quartz-backed delayed retry for JorgeCostaMacia.Bus.Kafka — a persistent, clustered IRetryScheduler that parks a failed delivery as a durable Quartz job and re-produces it to its topic when the delay elapses, retrying every five minutes while the produce keeps failing and staying parked as a dead-letter when the attempts run out. Bring your own Quartz store: register the scheduler on the sending service; the worker fleet just runs Quartz against the shared store.</Description>
 		<PackageTags>bus,kafka,quartz,retry,scheduling,messaging</PackageTags>
 	</PropertyGroup>
 
@@ -11,10 +11,13 @@
 
 	<ItemGroup>
 		<ProjectReference Include="../JorgeCostaMacia.Bus.Kafka/JorgeCostaMacia.Bus.Kafka.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Confluent.Kafka" />
 		<PackageReference Include="JorgeCostaMacia.GuidFactory" />
-		<PackageReference Include="Quartz" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+		<PackageReference Include="Quartz" />
 	</ItemGroup>
 
 </Project>

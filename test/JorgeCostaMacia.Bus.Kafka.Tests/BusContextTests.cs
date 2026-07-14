@@ -1,6 +1,9 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
-using JorgeCostaMacia.Bus.Kafka.Infrastructure;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
+using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Configuration;
@@ -14,7 +17,7 @@ public class BusContextTests
 {
     private static IConfiguration Configuration(bool producer = true, bool consumer = false, string? producerBootstrap = "bus:9092", string? producerUser = "user")
     {
-        Dictionary<string, string?> values = [];
+        Dictionary<string, string?> values = new Dictionary<string, string?>();
 
         if (producer)
         {
@@ -63,7 +66,7 @@ public class BusContextTests
     [Fact]
     public void AddBusContext_ProducerOnly_RegistersTheSendSide_AndNeedsNoConsumerSection()
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddBusContext(Configuration(), _ => { });
 
@@ -77,7 +80,7 @@ public class BusContextTests
     [Fact]
     public void AddBusContext_ConsumerSectionWithoutBootstrap_Throws()
     {
-        Dictionary<string, string?> values = new()
+        Dictionary<string, string?> values = new Dictionary<string, string?>()
         {
             ["Bus:Producer:BootstrapServers"] = "bus:9092",
             ["Bus:Producer:SaslUsername"] = "user",
@@ -93,6 +96,25 @@ public class BusContextTests
     }
 
     [Fact]
+    public void AddBusContext_ConsumerMissingSaslPassword_Throws()
+    {
+        Dictionary<string, string?> values = new Dictionary<string, string?>()
+        {
+            ["Bus:Producer:BootstrapServers"] = "bus:9092",
+            ["Bus:Producer:SaslUsername"] = "user",
+            ["Bus:Producer:SaslPassword"] = "pass",
+            ["Bus:Consumer:BootstrapServers"] = "bus:9092",
+            ["Bus:Consumer:SaslUsername"] = "user"
+        };
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(configuration, _ => { }, _ => { }));
+
+        Assert.Contains("SaslPassword", exception.Message);
+    }
+
+    [Fact]
     public void AddCommand_DuplicateType_Throws()
     {
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddBusContext(Configuration(),
@@ -102,6 +124,18 @@ public class BusContextTests
             _ => { }));
 
         Assert.Contains(nameof(TestCommand), exception.Message);
+    }
+
+    [Fact]
+    public void AddEvent_DuplicateType_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddBusContext(Configuration(),
+            producer => producer
+                .AddEvent<TestEvent>("orders.created")
+                .AddEvent<TestEvent>("other"),
+            _ => { }));
+
+        Assert.Contains(nameof(TestEvent), exception.Message);
     }
 
     [Fact]
@@ -127,9 +161,25 @@ public class BusContextTests
     }
 
     [Fact]
+    public void AddCommandHandler_DuplicateGroupId_Throws()
+    {
+        // like the message → topic map, the group-id registry rejects duplicates at registration:
+        // two consumers sharing a group id also share the machine-name group.instance.id and fence
+        // each other out of the group at startup.
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(Configuration(consumer: true),
+                producer => producer.AddCommand<TestCommand>("orders"),
+                consumer => consumer
+                    .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")
+                    .AddCommandHandler<TestCommand, TestCommandHandler>("orders.handler")));
+
+        Assert.Contains("orders.handler", exception.Message);
+    }
+
+    [Fact]
     public void AddCommandHandler_RegistersTheHandlerAndItsWorker()
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddBusContext(Configuration(consumer: true),
             producer => producer.AddCommand<TestCommand>("orders"),
@@ -139,16 +189,16 @@ public class BusContextTests
         Assert.Equal(ServiceLifetime.Scoped, handler.Lifetime);
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
 
-        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Commands.Errors.CommandErrorHandler<TestCommand, TestCommandHandler>));
+        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(CommandErrorHandlerBase<TestCommand, TestCommandHandler>));
         Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
-        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Commands.Faults.CommandFaultHandler<TestCommand, TestCommandHandler>));
+        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(CommandFaultHandlerBase<TestCommand, TestCommandHandler>));
         Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
     }
 
     [Fact]
     public void AddEventSubscriber_RegistersTheSubscriberAndItsWorker()
     {
-        ServiceCollection services = [];
+        ServiceCollection services = new ServiceCollection();
 
         services.AddBusContext(Configuration(consumer: true),
             producer => producer.AddEvent<TestEvent>("orders.created"),
@@ -157,9 +207,9 @@ public class BusContextTests
         Assert.Single(services, e => e.ServiceType == typeof(TestEventSubscriber));
         Assert.Equal(2, services.Count(e => e.ServiceType == typeof(IHostedService)));
 
-        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Events.Errors.EventErrorHandler<TestEvent, TestEventSubscriber>));
+        ServiceDescriptor errorHandler = Assert.Single(services, e => e.ServiceType == typeof(EventErrorHandlerBase<TestEvent, TestEventSubscriber>));
         Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
-        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(Domain.Events.Faults.EventFaultHandler<TestEvent, TestEventSubscriber>));
+        ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(EventFaultHandlerBase<TestEvent, TestEventSubscriber>));
         Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
     }
 }

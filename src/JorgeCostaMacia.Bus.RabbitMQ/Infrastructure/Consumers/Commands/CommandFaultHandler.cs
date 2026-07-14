@@ -15,7 +15,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands;
 /// </summary>
 /// <typeparam name="TCommand">The command type.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler it is paired with.</typeparam>
-internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>
+internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : CommandFaultHandlerBase<TCommand, TCommandHandler>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
@@ -43,9 +43,12 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
         {
             CommandFault fault = CommandFault.Create(context, _queue);
 
-            await _producer.Produce(string.Empty, _queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault), FaultHeaders(context), cancellationToken);
+            await _producer.Park(_queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), FaultHeaders(context), cancellationToken);
 
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToFaultQueue)) _logger.LogError(context.Error, "Delivery faulted.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultQueue))
+            {
+                _logger.LogError(context.Error, "Delivery faulted.");
+            }
 
             Result = FaultResult.Parked;
         }
@@ -55,23 +58,21 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
         }
         catch (Exception park)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogError(park, "Parking failed.");
+            }
 
             Result = FaultResult.Unhandled;
         }
     }
 
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing queue, the UTC time) — filterable and reinjectable header-side.</summary>
-    private Dictionary<string, object?> FaultHeaders(CommandFaultContext context)
+    private Dictionary<string, string> FaultHeaders(CommandFaultContext context)
     {
-        Type type = context.Error.GetType();
+        Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
-        Dictionary<string, object?> headers = context.Transport.CloneHeaders();
-
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_queue));
-        TransportHeaders.Restamp(headers, TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.StampError(headers, context.Error, _queue);
 
         return headers;
     }

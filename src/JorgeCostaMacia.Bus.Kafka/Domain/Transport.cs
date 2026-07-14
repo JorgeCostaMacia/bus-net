@@ -105,9 +105,7 @@ public sealed record Transport : ITransport
     /// <exception cref="KeyNotFoundException">No header with <paramref name="key"/> is present.</exception>
     public byte[] GetHeader(string key)
     {
-        byte[]? header = Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes();
-
-        if (header is null) throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
+        byte[]? header = Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes() ?? throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
 
         return header;
     }
@@ -120,7 +118,10 @@ public sealed record Transport : ITransport
     {
         byte[] header = GetHeader(key);
 
-        if (header.Length != 16) throw new InvalidCastException($"The key '{key}' was not a valid Guid.");
+        if (header.Length != 16)
+        {
+            throw new InvalidCastException($"The key '{key}' was not a valid Guid.");
+        }
 
         return new Guid(header);
     }
@@ -187,7 +188,10 @@ public sealed record Transport : ITransport
     {
         string header = GetHeaderString(key);
 
-        if (int.TryParse(header, out int value)) return value;
+        if (int.TryParse(header, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value))
+        {
+            return value;
+        }
 
         throw new InvalidCastException($"The key '{key}' was not a valid int.");
     }

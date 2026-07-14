@@ -78,7 +78,7 @@ internal sealed class Bus : IBus
     {
         string exchange = Exchange(message);
 
-        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType()), Prepare(exchange, message), cancellationToken);
+        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message), cancellationToken);
     }
 
     /// <summary>Publishes a message continuing an inbound flow to its exchange.</summary>
@@ -87,29 +87,28 @@ internal sealed class Bus : IBus
     {
         string exchange = Exchange(message);
 
-        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType()), Prepare(exchange, message, transport), cancellationToken);
+        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message, transport), cancellationToken);
     }
 
-    /// <summary>Publishes a batch, each with a fresh envelope, to their exchanges — sequentially, as a channel is not safe for concurrent publish.</summary>
-    private async Task Produce<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
+    /// <summary>Publishes a batch, each with a fresh envelope, to their exchanges — concurrently: the destination channels pipeline the publishes and track each confirmation; awaited together, the first failure throws while the rest still publish.</summary>
+    private Task Produce<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
         where TMessage : ITracedMessage, IFilteredMessage
-    {
-        foreach (TMessage message in messages) await Produce(message, cancellationToken);
-    }
+        => Task.WhenAll(messages.Select(message => Produce(message, cancellationToken)));
 
-    /// <summary>Publishes a batch continuing an inbound flow to their exchanges — sequentially, as a channel is not safe for concurrent publish.</summary>
-    private async Task Produce<TMessage>(IEnumerable<TMessage> messages, ITransport transport, CancellationToken cancellationToken)
+    /// <summary>Publishes a batch continuing an inbound flow to their exchanges — concurrently: the destination channels pipeline the publishes and track each confirmation; awaited together, the first failure throws while the rest still publish.</summary>
+    private Task Produce<TMessage>(IEnumerable<TMessage> messages, ITransport transport, CancellationToken cancellationToken)
         where TMessage : ITracedMessage, IFilteredMessage
-    {
-        foreach (TMessage message in messages) await Produce(message, transport, cancellationToken);
-    }
+        => Task.WhenAll(messages.Select(message => Produce(message, transport, cancellationToken)));
 
     /// <summary>Resolves the exchange a message is routed to from the routing map.</summary>
     private string Exchange<TMessage>(TMessage message)
     {
         Type type = message!.GetType();
 
-        if (!_messages.TryGetValue(type, out string? exchange)) throw new InvalidOperationException($"'{type.FullName}' is not mapped to an exchange; map it with AddCommand/AddEvent first.");
+        if (!_messages.TryGetValue(type, out string? exchange))
+        {
+            throw new InvalidOperationException($"'{type.FullName}' is not mapped to an exchange; map it with AddCommand/AddEvent first.");
+        }
 
         return exchange;
     }
@@ -119,18 +118,17 @@ internal sealed class Bus : IBus
     /// here (its id/address/time mirror this message), no origin, the retry counter at zero. The domain
     /// trace comes from the message itself.
     /// </summary>
-    private static Dictionary<string, object?> Prepare<TMessage>(string exchange, TMessage message)
+    private static Dictionary<string, string> Prepare<TMessage>(string exchange, TMessage message)
         where TMessage : ITracedMessage, IFilteredMessage
     {
         Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         string occurredAt = DateTime.UtcNow.ToString("O");
         Type type = message.GetType();
 
-        return new Dictionary<string, object?>
+        return new Dictionary<string, string>
         {
             [TransportHeaders.MessageId] = TransportHeaders.ToHeader(messageId),
             [TransportHeaders.MessageType] = TransportHeaders.ToHeader(type.FullName ?? type.Name),
-            [TransportHeaders.MessageTypeUrn] = TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)),
             [TransportHeaders.MessageDestinationAddress] = TransportHeaders.ToHeader(exchange),
             [TransportHeaders.MessageOccurredAt] = TransportHeaders.ToHeader(occurredAt),
             [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(messageId),
@@ -147,21 +145,25 @@ internal sealed class Bus : IBus
     /// <summary>
     /// Builds the envelope continuing an inbound flow: the inbound envelope is cloned from the
     /// <paramref name="transport"/>, the message-level fields are re-stamped for this hop (new id/type/
-    /// urn/occurred-at, origin = the inbound destination, destination = this message's exchange, domain
-    /// trace from the message), and the conversation and the retry counter are carried over unchanged.
+    /// occurred-at, origin = the inbound destination, destination = this message's exchange, domain
+    /// trace from the message), and the conversation is carried over unchanged; the retry counter is
+    /// re-stamped to zero — a continuation is a new message with its own retry budget.
     /// </summary>
-    private static Dictionary<string, object?> Prepare<TMessage>(string exchange, TMessage message, ITransport transport)
+    private static Dictionary<string, string> Prepare<TMessage>(string exchange, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage
     {
+        if (transport is not Transport inbound)
+        {
+            throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the RabbitMQ transport; the RabbitMQ bus can only continue a delivery received over RabbitMQ.");
+        }
+
         Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         Type type = message.GetType();
-        Transport inbound = (Transport)transport;
 
-        Dictionary<string, object?> headers = inbound.CloneHeaders();
+        Dictionary<string, string> headers = inbound.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        TransportHeaders.Restamp(headers, TransportHeaders.MessageTypeUrn, TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageOriginAddress, TransportHeaders.ToHeader(inbound.GetHeaderString(TransportHeaders.MessageDestinationAddress)));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(exchange));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
@@ -169,6 +171,7 @@ internal sealed class Bus : IBus
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(message.AggregateCorrelationId));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(0));
 
         return headers;
     }

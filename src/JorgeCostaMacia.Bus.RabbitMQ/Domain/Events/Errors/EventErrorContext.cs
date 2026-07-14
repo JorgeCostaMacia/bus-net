@@ -22,5 +22,7 @@ public sealed record EventErrorContext<TEvent> :
     /// <param name="error">The failure that exhausted the delivery.</param>
     public EventErrorContext(TEvent message, Transport transport, Exception error)
         : base(message, transport)
-        => Error = error;
+    {
+        Error = error;
+    }
 }

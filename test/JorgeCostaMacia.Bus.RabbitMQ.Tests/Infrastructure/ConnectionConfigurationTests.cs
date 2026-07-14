@@ -1,7 +1,7 @@
 using JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 using RabbitMQ.Client;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure;
 
 public class ConnectionConfigurationTests
 {
@@ -13,10 +13,23 @@ public class ConnectionConfigurationTests
         Assert.Equal("bus", factory.HostName);
         Assert.Equal("user", factory.UserName);
         Assert.Equal("pass", factory.Password);
+        Assert.True(factory.Ssl.Enabled);
+        Assert.Equal("bus", factory.Ssl.ServerName);
         Assert.Equal(ConnectionConfigurationDefaults.PORT, factory.Port);
         Assert.Equal(ConnectionConfigurationDefaults.VIRTUAL_HOST, factory.VirtualHost);
         Assert.Equal(Environment.MachineName, factory.ClientProvidedName);
         Assert.Equal(ConnectionConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED, factory.AutomaticRecoveryEnabled);
+    }
+
+    [Fact]
+    public void ConnectionFactory_SslOff_KeepsTheSecurePortDefault()
+    {
+        // the plain 5672 is never a fallback: going plain is a fully explicit act — Ssl off AND the
+        // port supplied; forgetting the port fails loudly against 5671 instead of silently degrading.
+        ConnectionFactory factory = new ConnectionConfiguration { HostName = "bus", UserName = "user", Password = "pass", Ssl = false }.ConnectionFactory;
+
+        Assert.False(factory.Ssl.Enabled);
+        Assert.Equal(ConnectionConfigurationDefaults.PORT, factory.Port);
     }
 
     [Fact]

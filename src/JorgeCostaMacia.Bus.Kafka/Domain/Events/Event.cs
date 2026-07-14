@@ -37,7 +37,7 @@ public abstract record Event : IDomainEvent, ITracedMessage, IFilteredMessage
     /// <param name="aggregateConsumers">The target consumers, or <see langword="null"/> for none.</param>
     protected Event(Guid? aggregateId, Guid? aggregateCorrelationId, DateTime? aggregateOccurredAt, IEnumerable<string>? aggregateConsumers)
     {
-        AggregateId = aggregateId ?? JorgeCostaMacia.GuidFactory.Domain.GuidFactory.Create();
+        AggregateId = aggregateId ?? GuidFactory.Domain.GuidFactory.Create();
         AggregateCorrelationId = aggregateCorrelationId ?? AggregateId;
         AggregateOccurredAt = aggregateOccurredAt ?? DateTime.UtcNow;
         AggregateConsumers = aggregateConsumers?.ToImmutableList() ?? [];

@@ -124,11 +124,10 @@ internal sealed class Bus : IBus
         string occurredAt = DateTime.UtcNow.ToString("O");
         Type type = message.GetType();
 
-        Headers headers = new()
+        Headers headers = new Headers()
         {
             { TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId) },
             { TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name) },
-            { TransportHeaders.MessageTypeUrn, TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)) },
             { TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(topic) },
             { TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(occurredAt) },
             { TransportHeaders.ConversationId, TransportHeaders.ToHeader(messageId) },
@@ -141,27 +140,31 @@ internal sealed class Bus : IBus
             { TransportHeaders.RetryCount, TransportHeaders.ToHeader("0") }
         };
 
-        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
+        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options), Headers = headers };
     }
 
     /// <summary>
     /// Builds the message continuing an inbound flow: the inbound envelope is cloned from the
     /// <paramref name="transport"/>, the message-level fields are re-stamped for this hop (new id/type/
-    /// urn/occurred-at, origin = the inbound destination, destination = this message's topic, domain
-    /// trace from the message), and the conversation and the retry counter are carried over unchanged.
+    /// occurred-at, origin = the inbound destination, destination = this message's topic, domain
+    /// trace from the message), and the conversation is carried over unchanged; the retry counter is
+    /// re-stamped to zero — a continuation is a new message with its own retry budget.
     /// </summary>
     private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message, ITransport transport)
         where TMessage : ITracedMessage, IFilteredMessage
     {
+        if (transport is not Transport inbound)
+        {
+            throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the Kafka transport; the Kafka bus can only continue a delivery received over Kafka.");
+        }
+
         Guid messageId = GuidFactory.Domain.GuidFactory.Create();
         Type type = message.GetType();
-        Transport inbound = (Transport)transport;
 
         Headers headers = inbound.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        TransportHeaders.Restamp(headers, TransportHeaders.MessageTypeUrn, TransportHeaders.ToHeader(UrnFactory.Domain.UrnFactory.Create(type)));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageOriginAddress, TransportHeaders.ToHeader(inbound.GetHeaderString(TransportHeaders.MessageDestinationAddress)));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(topic));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
@@ -169,8 +172,9 @@ internal sealed class Bus : IBus
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(message.AggregateCorrelationId));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(0));
 
-        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type), Headers = headers };
+        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options), Headers = headers };
     }
 
     /// <summary>The (topic, message) pair for a message with a fresh envelope — the batch counterpart of a single Send/Publish.</summary>

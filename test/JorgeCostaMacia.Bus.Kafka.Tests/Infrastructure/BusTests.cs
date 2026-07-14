@@ -2,15 +2,18 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using KafkaBus = JorgeCostaMacia.Bus.Kafka.Infrastructure.Bus;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure;
 
 public class BusTests
 {
-    private readonly ProducerFake _producer = new();
+    private sealed record ForeignTransport : ITransport;
+
+    private readonly ProducerFake _producer = new ProducerFake();
 
     private KafkaBus CreateSut(params (Type Type, string Topic)[] messages)
         => new(_producer, messages.ToDictionary(e => e.Type, e => e.Topic));
@@ -52,7 +55,6 @@ public class BusTests
         Assert.Equal(command.AggregateCorrelationId, GuidHeader(message, TransportHeaders.AggregateCorrelationId));
         Assert.Equal("g1,g2", Header(message, TransportHeaders.AggregateConsumers));
         Assert.Equal("0", Header(message, TransportHeaders.RetryCount));
-        Assert.NotNull(Header(message, TransportHeaders.MessageTypeUrn));
         Assert.Contains("pepe", Encoding.UTF8.GetString(message.Value));
     }
 
@@ -62,11 +64,10 @@ public class BusTests
         Guid inboundMessageId = Guid.NewGuid();
         Guid conversationId = Guid.NewGuid();
 
-        Headers inbound = new()
+        Headers inbound = new Headers()
         {
             { TransportHeaders.MessageId, inboundMessageId.ToByteArray() },
             { TransportHeaders.MessageType, "Inbound"u8.ToArray() },
-            { TransportHeaders.MessageTypeUrn, "urn:message:Inbound"u8.ToArray() },
             { TransportHeaders.MessageDestinationAddress, "orders"u8.ToArray() },
             { TransportHeaders.MessageOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")) },
             { TransportHeaders.ConversationId, conversationId.ToByteArray() },
@@ -90,11 +91,23 @@ public class BusTests
         Assert.Equal("orders", Header(produced, TransportHeaders.ConversationAddress));
         Assert.Equal("orders", Header(produced, TransportHeaders.MessageOriginAddress));
         Assert.Equal("payments", Header(produced, TransportHeaders.MessageDestinationAddress));
-        Assert.Equal("2", Header(produced, TransportHeaders.RetryCount));
+        Assert.Equal("0", Header(produced, TransportHeaders.RetryCount));
         Assert.NotEqual(inboundMessageId, GuidHeader(produced, TransportHeaders.MessageId));
         Assert.Equal(typeof(TestEvent).FullName, Header(produced, TransportHeaders.MessageType));
         Assert.Equal(message.AggregateId, GuidHeader(produced, TransportHeaders.AggregateId));
         Assert.Equal("g1", Header(produced, TransportHeaders.AggregateConsumers));
+    }
+
+    [Fact]
+    public async Task Send_WithForeignTransport_ThrowsReadably()
+    {
+        // continuing over a transport from another bus is a wiring mistake: the failure names the
+        // foreign type and the transport this bus needs, instead of an opaque cast error.
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateSut((typeof(TestCommand), "payments")).Send(new TestCommand("pepe"), new ForeignTransport(), TestContext.Current.CancellationToken));
+
+        Assert.Contains(typeof(ForeignTransport).FullName!, exception.Message);
+        Assert.Contains("Kafka", exception.Message);
     }
 
     [Fact]
@@ -113,25 +126,25 @@ public class BusTests
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Message.Value);
 
-        Assert.Equal("pepe", body.GetProperty("Name").GetString());
+        Assert.Equal("pepe", body.GetProperty("name").GetString());
     }
 
     [Fact]
     public async Task Publish_Batch_ProducesEveryEventInOrder()
     {
-        TestEvent[] events = [new("a"), new("b"), new("c")];
+        TestEvent[] events = new TestEvent[] { new("a"), new("b"), new("c") };
 
         await CreateSut((typeof(TestEvent), "orders.created")).Publish(events, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced => Assert.Equal("orders.created", produced.Topic));
-        Assert.Equal(["a", "b", "c"], _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Message.Value).GetProperty("Name").GetString()));
+        Assert.Equal(new[] { "a", "b", "c" }, _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Message.Value).GetProperty("name").GetString()));
     }
 
     [Fact]
     public async Task Send_Batch_ProducesEveryCommand()
     {
-        TestCommand[] commands = [new("x"), new("y")];
+        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
 
         await CreateSut((typeof(TestCommand), "orders")).Send(commands, TestContext.Current.CancellationToken);
 
@@ -144,7 +157,7 @@ public class BusTests
     {
         Guid conversationId = Guid.NewGuid();
 
-        Headers inbound = new()
+        Headers inbound = new Headers()
         {
             { TransportHeaders.MessageId, Guid.NewGuid().ToByteArray() },
             { TransportHeaders.MessageDestinationAddress, "orders"u8.ToArray() },
@@ -159,7 +172,7 @@ public class BusTests
         };
 
         Transport transport = new(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
-        TestCommand[] commands = [new("x"), new("y")];
+        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
 
         await CreateSut((typeof(TestCommand), "payments")).Send(commands, transport, TestContext.Current.CancellationToken);
 
@@ -170,7 +183,7 @@ public class BusTests
             Assert.Equal(conversationId, GuidHeader(produced.Message, TransportHeaders.ConversationId));
             Assert.Equal("orders", Header(produced.Message, TransportHeaders.MessageOriginAddress));
             Assert.Equal("payments", Header(produced.Message, TransportHeaders.MessageDestinationAddress));
-            Assert.Equal("3", Header(produced.Message, TransportHeaders.RetryCount));
+            Assert.Equal("0", Header(produced.Message, TransportHeaders.RetryCount));
         });
 
         Assert.Equal(2, _producer.Produced.Select(produced => GuidHeader(produced.Message, TransportHeaders.MessageId)).Distinct().Count());

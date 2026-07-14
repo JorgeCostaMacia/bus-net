@@ -6,9 +6,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// Schedules a delayed retry: the parked delivery is produced back to its original topic at the
 /// given time — the envelope already carries the incremented retry count and the consumer targeting,
 /// so the normal consumers receive and route it with no extra machinery. Implementations own the
-/// parking mechanism (e.g. a Quartz one-shot job); registering one enables the positive intervals of
-/// the retry ladder — without it a positive interval cannot be delayed, so it is parked to the topic's
-/// <c>.error</c> as terminal.
+/// parking mechanism and its produce re-execution policy (e.g. a Quartz job whose trigger repeats
+/// until the produce lands or the attempts run out); registering one enables the positive intervals
+/// of the retry ladder — without it a positive interval cannot be delayed, so it is parked to the
+/// topic's <c>.error</c> as terminal.
 /// </summary>
 public interface IRetryScheduler
 {

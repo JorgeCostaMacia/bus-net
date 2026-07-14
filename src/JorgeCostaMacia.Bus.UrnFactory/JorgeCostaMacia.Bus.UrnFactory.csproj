@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<Description>URN factory for JorgeCostaMacia.Bus — builds the ordered MessageTypeUrn list (urn:message:{type}) from a message type's hierarchy and interfaces, for polymorphic routing and versioning. Shared by the transports.</Description>
-		<PackageTags>bus,urn,messaging,routing,versioning</PackageTags>
-	</PropertyGroup>
-
-</Project>

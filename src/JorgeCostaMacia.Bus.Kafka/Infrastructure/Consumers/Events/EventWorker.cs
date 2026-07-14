@@ -24,11 +24,12 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger and its contract — the subscriber and its error and fault handlers are resolved per delivery from the scope.</summary>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker and its contract — the subscriber and its error and fault handlers are resolved per delivery from the scope.</summary>
     /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
+    /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     public EventWorker(
@@ -36,15 +37,16 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
         IServiceScopeFactory scopeFactory,
         ILogger<EventWorker<TEvent, TEventSubscriber>> logger,
         IHostApplicationLifetime lifetime,
+        BusHealth health,
         string topic,
         string groupId)
-        : base(consumer, scopeFactory, logger, lifetime, topic, groupId)
+        : base(consumer, scopeFactory, logger, lifetime, health, topic, groupId)
     {
     }
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
-        => new(JsonSerializer.Deserialize<TEvent>(result.Message.Value) ?? throw new JsonException("The event body deserialized to null."), transport);
+        => new(JsonSerializer.Deserialize<TEvent>(result.Message.Value, BusSerializer.Options) ?? throw new JsonException("The event body deserialized to null."), transport);
 
     /// <inheritdoc />
     protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
@@ -53,7 +55,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber> errorHandler = services.GetRequiredService<Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>>();
+        EventErrorHandlerBase<TEvent, TEventSubscriber> errorHandler = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
 
         await errorHandler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
 
@@ -63,7 +65,7 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <inheritdoc />
     protected override async Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber> faultHandler = services.GetRequiredService<Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>>();
+        EventFaultHandlerBase<TEvent, TEventSubscriber> faultHandler = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
 
         await faultHandler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
 
@@ -79,11 +81,22 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <returns>Whether the delivery is skipped.</returns>
     protected override bool Filtered(ConsumeResult<Ignore, byte[]> result)
     {
-        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header)) return false;
+        if (result.Message.Headers is null)
+        {
+            return false;
+        }
+
+        if (!result.Message.Headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] header))
+        {
+            return false;
+        }
 
         string consumers = Encoding.UTF8.GetString(header);
 
-        if (string.IsNullOrWhiteSpace(consumers)) return false;
+        if (string.IsNullOrWhiteSpace(consumers))
+        {
+            return false;
+        }
 
         return !consumers
             .Split(',')

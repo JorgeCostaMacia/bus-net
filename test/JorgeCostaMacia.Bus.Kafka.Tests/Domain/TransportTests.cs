@@ -3,7 +3,7 @@ using System.Text;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain;
 
 public class TransportTests
 {
@@ -13,10 +13,10 @@ public class TransportTests
     [Fact]
     public void Create_FromConsumeResult_MapsTheDelivery()
     {
-        ConsumeResult<Ignore, byte[]> result = new()
+        ConsumeResult<Ignore, byte[]> result = new ConsumeResult<Ignore, byte[]>()
         {
             TopicPartitionOffset = new TopicPartitionOffset("orders", new Partition(3), new Offset(42)),
-            Message = new Message<Ignore, byte[]> { Value = [], Headers = new Headers { { "key", "value"u8.ToArray() } } }
+            Message = new Message<Ignore, byte[]> { Value = Array.Empty<byte>(), Headers = new Headers { { "key", "value"u8.ToArray() } } }
         };
 
         Transport transport = Transport.Create(result);
@@ -32,25 +32,25 @@ public class TransportTests
     {
         Guid value = Guid.NewGuid();
 
-        Assert.Equal(value, CreateSut([new Header("id", value.ToByteArray())]).GetHeaderGuid("id"));
+        Assert.Equal(value, CreateSut(new Headers { new Header("id", value.ToByteArray()) }).GetHeaderGuid("id"));
     }
 
     [Fact]
     public void GetGuid_WrongLength_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("id", [1, 2, 3])]).GetHeaderGuid("id"));
+        => Assert.Throws<InvalidCastException>(() => CreateSut(new Headers { new Header("id", new byte[] { 1, 2, 3 }) }).GetHeaderGuid("id"));
 
     [Fact]
     public void GetHeader_Missing_Throws()
-        => Assert.Throws<KeyNotFoundException>(() => CreateSut([]).GetHeaderString("missing"));
+        => Assert.Throws<KeyNotFoundException>(() => CreateSut(new Headers()).GetHeaderString("missing"));
 
     [Fact]
     public void GetHeader_DuplicateKey_LastWins()
-        => Assert.Equal("second", CreateSut([new Header("key", "first"u8.ToArray()), new Header("key", "second"u8.ToArray())]).GetHeaderString("key"));
+        => Assert.Equal("second", CreateSut(new Headers { new Header("key", "first"u8.ToArray()), new Header("key", "second"u8.ToArray()) }).GetHeaderString("key"));
 
     [Fact]
     public void GetStringOrDefault_Absent_ReturnsNull()
     {
-        Transport transport = CreateSut([new Header("present", "value"u8.ToArray())]);
+        Transport transport = CreateSut(new Headers { new Header("present", "value"u8.ToArray()) });
 
         Assert.Equal("value", transport.GetHeaderStringOrDefault("present"));
         Assert.Null(transport.GetHeaderStringOrDefault("absent"));
@@ -61,7 +61,7 @@ public class TransportTests
     {
         DateTime value = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
-        DateTime parsed = CreateSut([new Header("at", Encoding.UTF8.GetBytes(value.ToString("O")))]).GetHeaderDateTime("at");
+        DateTime parsed = CreateSut(new Headers { new Header("at", Encoding.UTF8.GetBytes(value.ToString("O"))) }).GetHeaderDateTime("at");
 
         Assert.Equal(value, parsed);
         Assert.Equal(DateTimeKind.Utc, parsed.Kind);
@@ -69,30 +69,30 @@ public class TransportTests
 
     [Fact]
     public void GetDateTime_Invalid_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("at", "nope"u8.ToArray())]).GetHeaderDateTime("at"));
+        => Assert.Throws<InvalidCastException>(() => CreateSut(new Headers { new Header("at", "nope"u8.ToArray()) }).GetHeaderDateTime("at"));
 
     [Fact]
     public void GetStringList_TrimsAndSkipsEmptyEntries()
-        => Assert.Equal(["a", "b", "c"], CreateSut([new Header("list", " a, b ,,c "u8.ToArray())]).GetHeaderStringList("list"));
+        => Assert.Equal(new[] { "a", "b", "c" }, CreateSut(new Headers { new Header("list", " a, b ,,c "u8.ToArray()) }).GetHeaderStringList("list"));
 
     [Fact]
     public void GetInt_Digits_Parses()
-        => Assert.Equal(7, CreateSut([new Header("count", "7"u8.ToArray())]).GetHeaderInt("count"));
+        => Assert.Equal(7, CreateSut(new Headers { new Header("count", "7"u8.ToArray()) }).GetHeaderInt("count"));
 
     [Fact]
     public void GetInt_Invalid_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut([new Header("count", "nope"u8.ToArray())]).GetHeaderInt("count"));
+        => Assert.Throws<InvalidCastException>(() => CreateSut(new Headers { new Header("count", "nope"u8.ToArray()) }).GetHeaderInt("count"));
 
     [Fact]
     public void DecodeHeaders_RendersGuidsAsGuid_TextOtherwise_PreservingOrderAndDuplicates()
     {
         Guid id = Guid.NewGuid();
-        Transport transport = CreateSut(
-        [
+        Transport transport = CreateSut(new Headers
+        {
             new Header(TransportHeaders.AggregateId, id.ToByteArray()),
             new Header("custom", "value"u8.ToArray()),
             new Header("custom", "again"u8.ToArray())
-        ]);
+        });
 
         ImmutableList<KeyValuePair<string, string>> decoded = transport.DecodeHeaders();
 
@@ -106,7 +106,7 @@ public class TransportTests
     public void CloneHeaders_DeepCopiesTheValues()
     {
         byte[] original = "value"u8.ToArray();
-        Transport transport = CreateSut([new Header("key", original)]);
+        Transport transport = CreateSut(new Headers { new Header("key", original) });
 
         Headers cloned = transport.CloneHeaders();
         cloned.TryGetLastBytes("key", out byte[] copy);

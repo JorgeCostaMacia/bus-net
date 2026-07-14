@@ -5,6 +5,7 @@ Messaging building blocks — CQRS **command** and **event** buses and message a
 ## Layout
 
 - `src/<Package>/` — one package per folder. `test/<Package>.Tests/` — its tests. `assets/` — icons + social preview.
+- **Internal visibility**: each project grants `InternalsVisibleTo` to its matching `.Tests`; the transports additionally grant it to their own satellite packages (`*.HealthChecks`, `*.Retry.Quartz`, and each satellite's `.Tests`) — deliberate, since those satellites extend the transport's internal seam and version in lockstep with it.
 - **3-tier `Directory.Build.props`**: **root** (repo identity + the single lockstep `VersionPrefix`; TFMs `net8.0;net9.0;net10.0`; ImplicitUsings, Nullable, AnalysisLevel, EnforceCodeStyleInBuild) → **`src/`** (package-output: icon / readme / license, SourceLink, symbols, `GenerateDocumentationFile`, pack of LICENSE/COPYRIGHT/icon/README) → **`test/`** (test settings). Each `src` csproj declares **only** `Description` / `PackageTags`; everything else is inherited.
 
 ## Architecture — concrete-first transports over agnostic contracts (locked)
@@ -13,12 +14,11 @@ Messaging building blocks — CQRS **command** and **event** buses and message a
 JorgeCostaMacia.Bus            root: transport- AND pattern-agnostic vocabulary — IMessage / ITracedMessage /
 │                              IFilteredMessage, ITransport, IContext + envelope facets, ISenderBus<T> /
 │                              IPublisherBus<T>, IHandler (NO requester / request-response, NO ICommand/IEvent)
-├─ Bus.UrnFactory             urn:message:{type} lists for MessageTypeUrn (polymorphic routing)
-├─ Bus.RabbitMq               own implementation on the official RabbitMQ.Client (NOT MassTransit)
+├─ Bus.RabbitMQ               own implementation on the official RabbitMQ.Client (NOT MassTransit)
 └─ Bus.Kafka                  own implementation on Confluent.Kafka
 ```
 
-- **Concrete-first**: the command/event distinction is defined BY EACH TRANSPORT, not the root — `Bus.Kafka` ships `Command` / `Event` abstract records (implementing the root message contracts; `Event` also `IDomainEvent`), `CommandHandler<T>` / `EventSubscriber<T>` bases (`: IHandler<T, …Context<T>>`) and `IBus : ISenderBus<Command>, IPublisherBus<Event>`. RabbitMq will mirror the same simple names in its own namespace; migrating transports is swapping a `global using`. Cross-transport shared code types against the root contracts (`ITracedMessage`, facets, `IHandler`), which both transports implement.
+- **Concrete-first**: the command/event distinction is defined BY EACH TRANSPORT, not the root — `Bus.Kafka` ships `Command` / `Event` abstract records (implementing the root message contracts; `Event` also `IDomainEvent`), `CommandHandler<T>` / `EventSubscriber<T>` bases (`: IHandler<T, …Context<T>>`) and `IBus : ISenderBus<Command>, IPublisherBus<Event>`. `Bus.RabbitMQ` mirrors the same simple names in its own namespace; migrating transports is swapping a `global using`. Cross-transport shared code types against the root contracts (`ITracedMessage`, facets, `IHandler`), which both transports implement.
 
 - **No requester** — the RabbitMQ-only request/response bus is dropped (it was the only hard-to-port piece). **No query bus** — dropped.
 - **Ordering is a non-concern by design**: Kafka partitions on its own (no message key); consumers resolve conflicts by **`ITracedMessage.AggregateOccurredAt`** (event-time last-writer-wins), so out-of-order / reprocessed messages never overwrite a newer applied one. `AggregateId` is internal domain/tracing metadata, **not** a partition key.
@@ -27,7 +27,7 @@ JorgeCostaMacia.Bus            root: transport- AND pattern-agnostic vocabulary 
 ## Dependencies
 
 - **Cross-repo, on shared-net**: the transports → `JorgeCostaMacia.DomainEvent` (their `Event` record implements `IDomainEvent`) — **`PackageReference`** to the published package, pinned in `Directory.Packages.props`. Never `ProjectReference` across repos.
-- **Intra-repo, between `Bus.*` packages** (`RabbitMq`/`Kafka` → `Bus` + `Bus.UrnFactory`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
+- **Intra-repo, between `Bus.*` packages** (`RabbitMQ`/`Kafka` → `Bus`): **`ProjectReference`** (lockstep; pack emits nuspec `<dependency>` at the shared version).
 - **Transport clients**: `RabbitMQ.Client`, `Confluent.Kafka` — third-party `PackageReference`, versioned in `Directory.Packages.props`.
 
 ## Dependencies — Central Package Management
@@ -37,6 +37,10 @@ Third-party **and** the cross-repo shared-net versions are centralized in **`Dir
 ## Versioning — lockstep
 
 A single **`<VersionPrefix>`** lives in the **root `Directory.Build.props`** — bump once, everything moves together. Never put `VersionPrefix` back in individual csproj.
+
+## Code style
+
+Source is **UTF-8 without BOM**; camelCase locals, PascalCase types, I-prefixed interfaces. **Explicit types everywhere — spell the type out.** Never `var`, never target-typed `new()`, never collection expressions `[]`: write `new Foo(...)`, `new byte[] { ... }`, `new List<T> { ... }`, `Array.Empty<T>()`. The `.editorconfig` sets all three to explicit, but only `var` is analyzer-enforced — `new()`/`[]` can't be flagged (the analyzer never reports the implicit form), so they are **convention, kept explicit by hand and by the IDE generating explicit**. Braces are **always** required — a single-line `if` body still gets braces (this one IS analyzer-enforced, IDE0011). Do not introduce `var` / `new()` / `[]` / brace-less bodies when editing.
 
 ## CI / publishing
 
@@ -61,23 +65,28 @@ Use the **`gitflow` skill** for any branch/release work.
 
 ## Relevant skills
 
-`gitflow` is from `jorgecostamacia-agent-skills`; the rest from `dotnet-agent-skills`.
+Skills that apply to this repo — let them trigger, or invoke explicitly. `gitflow`, `solid`, `clean-architecture`, `ddd`, `testing` and `logging-net` are from `jorgecostamacia-agent-skills`; the rest from `dotnet-agent-skills` (the `dotnet/skills` marketplace).
 
 - **`gitflow`** — all branch/release work.
+- **`solid`** — SOLID-principles design review; apply when shaping or reviewing the public surface (bus interfaces, worker/handler seams, transport options).
+- **`clean-architecture`** — layers and the inward dependency rule; these packages are the messaging Infrastructure/Presentation seam (bus consumers ARE driving adapters) consumed by the bounded contexts.
+- **`ddd`** — tactical DDD; here mainly **domain events vs integration events** (the `IDomainEvent` marker crossing into transport contracts is this repo's core concept) and typed domain errors.
+- **`testing`** — testing principles: done-means-tested, one test file per unit, names as specification, classicist doubles (the transport fakes), rule coverage.
+- **`logging-net`** — the logging style for every log statement: fixed low-cardinality messages as grouping keys, all variable data via the log context, correlation ids in every scope (the bus's `BusLogger` + description-context pattern follows it).
 - **`dotnet`** — C# language server + general .NET development (the transport implementations live here).
 - **`dotnet-msbuild`** — `Directory.Build.props`, project-file quality, CPM.
 - **`dotnet-nuget`** — dependency management.
 - **`dotnet-test`** / **`dotnet-test-migration`** — tests; the xUnit.v3 / MTP setup.
 - **`dotnet-upgrade`** — target-framework migrations.
 
-*(Not relevant here: `dotnet-aspnetcore` — that's http-net.)*
+Not relevant to this repo (skip): `validation-net` (no FluentValidation here — messages are primitive DTO contracts; boundary validation is the consuming app's job), `dotnet-aspnetcore` (that's http-net), `dotnet-ai`, `dotnet-maui`, `dotnet-blazor`, `dotnet-data`, `dotnet-template-engine`, `dotnet11`, `dotnet-diag`, `dotnet-advanced`.
 
 ## Build & test
 
 ```
 dotnet format bus-net.slnx                  # apply .editorconfig (using order, whitespace) — run before committing
 dotnet build  bus-net.slnx -c Release
-dotnet test   bus-net.slnx -c Release --logger "console;verbosity=minimal"
+dotnet test   bus-net.slnx -c Release       # MTP prints a per-assembly summary; --logger is VSTest-only (MTP0001)
 dotnet pack   bus-net.slnx -c Release        # packs all packable; tests are IsPackable=false
 ```
 

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Immutable;
+using System.Text.Json;
 
 namespace JorgeCostaMacia.Bus.Domain.Messages;
 
@@ -67,18 +68,46 @@ public sealed record ErrorInfo
             exception.InnerException is null ? null : Create(exception.InnerException));
     }
 
-    /// <summary>Captures the exception's <see cref="Exception.Data"/> as a serializable dictionary — keys as text, the last wins on a collision; empty when there is none.</summary>
+    /// <summary>Captures the exception's <see cref="Exception.Data"/> as a serializable dictionary — keys as text, the last wins on a collision, values sanitized through <see cref="Sanitize"/>; empty when there is none.</summary>
     private static ImmutableDictionary<string, object?> ExtractData(Exception exception)
     {
-        if (exception.Data.Count == 0) return ImmutableDictionary<string, object?>.Empty;
+        if (exception.Data.Count == 0)
+        {
+            return ImmutableDictionary<string, object?>.Empty;
+        }
 
         ImmutableDictionary<string, object?>.Builder data = ImmutableDictionary.CreateBuilder<string, object?>();
 
         foreach (DictionaryEntry entry in exception.Data)
         {
-            data[entry.Key.ToString()!] = entry.Value;
+            data[entry.Key.ToString()!] = Sanitize(entry.Value);
         }
 
         return data.ToImmutable();
+    }
+
+    /// <summary>
+    /// Keeps a value only if it survives JSON serialization; anything else (a reference cycle, a
+    /// <see cref="Type"/>, a delegate…) is captured as its text. The parked error travels serialized
+    /// through both failure lanes — a value that cannot serialize would poison them and turn the
+    /// failure into a hot redelivery loop.
+    /// </summary>
+    private static object? Sanitize(object? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            JsonSerializer.Serialize(value);
+
+            return value;
+        }
+        catch (Exception)
+        {
+            return value.ToString();
+        }
     }
 }

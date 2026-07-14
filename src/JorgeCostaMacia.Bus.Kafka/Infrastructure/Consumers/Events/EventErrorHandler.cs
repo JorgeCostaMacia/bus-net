@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 
 /// <summary>
-/// The default implementation of the event's error handler — manages <b>only</b> the error case of a
+/// The bus's implementation of the event's error handler — manages <b>only</b> the error case of a
 /// failed event delivery over the context the worker already built (the event deserialized once,
 /// reused here): a retryable failure follows the interval ladder (a <c>00:00</c> interval requeues
 /// to the topic's tail immediately, envelope cloned, <c>RetryCount</c> incremented and the retry
@@ -18,13 +18,13 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 /// its time — or, with no scheduler registered, parked to <c>.error</c> as terminal, since it cannot
 /// be delayed); a terminal failure parks an <see cref="EventError{TEvent}"/> to the topic's
 /// <c>.error</c>. It reports how it left the delivery through <c>Result</c>: a produce failure or a
-/// scheduler hiccup leaves it <see cref="ErrorResult.Unhandled"/> (unacked, redelivers); only
+/// scheduler hiccup leaves it <see cref="ErrorResult.Unhandled"/> (the worker escalates it to the fault handler); only
 /// an unreadable envelope reports <see cref="ErrorResult.Faulted"/>, handing the delivery to
 /// the fault handler.
 /// </summary>
 /// <typeparam name="TEvent">The event type this handler manages the failures of.</typeparam>
 /// <typeparam name="TEventSubscriber">The event subscriber it is paired with — ties this error handler to its event and subscriber.</typeparam>
-internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Events.Errors.EventErrorHandler<TEvent, TEventSubscriber>
+internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHandlerBase<TEvent, TEventSubscriber>
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
@@ -82,7 +82,10 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
             {
                 await ParkError(context, cancellationToken);
 
-                using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToErrorTopic)) _logger.LogError(context.Error, "Subscriber failed.");
+                using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToErrorTopic))
+                {
+                    _logger.LogError(context.Error, "Subscriber failed.");
+                }
 
                 Result = ErrorResult.Parked;
 
@@ -99,13 +102,19 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
         }
         catch (ProduceException<Null, byte[]> produce)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(produce, "Producer failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogError(produce, "Producer failed.");
+            }
 
             Result = ErrorResult.Unhandled;
         }
         catch (Exception broken)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.HandedToFaultHandler)) _logger.LogError(broken, "Subscriber failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.HandedToFaultHandler))
+            {
+                _logger.LogError(broken, "Subscriber failed.");
+            }
 
             Result = ErrorResult.Faulted;
         }
@@ -130,7 +139,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     /// <summary>
     /// Parks a delayed retry through the scheduler — produced back to the topic at its time. With no
     /// scheduler registered the failure cannot be delayed, so it parks to the error topic as terminal;
-    /// a scheduler that fails leaves the delivery unacked to redeliver.
+    /// a scheduler that fails reports <see cref="ErrorResult.Unhandled"/> — the worker escalates the delivery to the fault handler.
     /// </summary>
     private async Task<ErrorResult> Schedule(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
     {
@@ -138,7 +147,10 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
         {
             await ParkError(context, cancellationToken);
 
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.RetrySchedulerMissing)) _logger.LogError(context.Error, "Subscriber failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.RetrySchedulerMissing))
+            {
+                _logger.LogError(context.Error, "Subscriber failed.");
+            }
 
             return ErrorResult.Parked;
         }
@@ -159,7 +171,10 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
         }
         catch (Exception schedule)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ScheduleFailed)) _logger.LogError(schedule, "Retry failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ScheduleFailed))
+            {
+                _logger.LogError(schedule, "Retry failed.");
+            }
 
             return ErrorResult.Unhandled;
         }
@@ -170,19 +185,19 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     {
         EventError<TEvent> error = EventError<TEvent>.Create(context, _groupId);
 
-        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error), Headers = ErrorHeaders(context) }, cancellationToken);
+        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error, BusSerializer.Options), Headers = ErrorHeaders(context) }, cancellationToken);
     }
 
     /// <summary>The retry's body — the typed event re-serialized.</summary>
     private static byte[] Body(EventErrorContext<TEvent> context)
-        => JsonSerializer.SerializeToUtf8Bytes(context.Message);
+        => JsonSerializer.SerializeToUtf8Bytes(context.Message, BusSerializer.Options);
 
     /// <summary>The retry's headers — the envelope cloned, <c>RetryCount</c> incremented and the retry re-targeted to this group only.</summary>
     private Headers RetryHeaders(EventErrorContext<TEvent> context)
     {
         Headers headers = context.Transport.CloneHeaders();
 
-        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader((context.RetryCount + 1).ToString()));
+        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(context.RetryCount + 1));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(_groupId));
 
         return headers;
@@ -191,14 +206,9 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : Domain.Event
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing group, the UTC time) — filterable and reinjectable header-side.</summary>
     private Headers ErrorHeaders(EventErrorContext<TEvent> context)
     {
-        Type type = context.Error.GetType();
-
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Add(TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        headers.Add(TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
-        headers.Add(TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_groupId));
-        headers.Add(TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.StampError(headers, context.Error, _groupId);
 
         return headers;
     }

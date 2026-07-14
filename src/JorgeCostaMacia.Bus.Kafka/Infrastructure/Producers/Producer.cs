@@ -17,6 +17,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 internal sealed class Producer : IProducer
 {
     private readonly IProducer<Null, byte[]> _producer;
+    private readonly BusHealth _health;
     private readonly ILogger<Producer> _logger;
 
     private readonly string _hostMachineName;
@@ -26,12 +27,14 @@ internal sealed class Producer : IProducer
     private readonly string _hostBusVersion;
     private readonly string _hostOperatingSystemVersion;
 
-    /// <summary>Creates the gate over the shared Kafka producer and the logger, capturing the host once — it never changes while the process runs.</summary>
+    /// <summary>Creates the gate over the shared Kafka producer, the reachability tracker and the logger, capturing the host once — it never changes while the process runs.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
+    /// <param name="health">The broker-reachability tracker — every broker-acked produce reports the brokers up.</param>
     /// <param name="logger">The logger for produce failures.</param>
-    public Producer(IProducer<Null, byte[]> producer, ILogger<Producer> logger)
+    public Producer(IProducer<Null, byte[]> producer, BusHealth health, ILogger<Producer> logger)
     {
         _producer = producer;
+        _health = health;
         _logger = logger;
 
         AssemblyName? entry = Assembly.GetEntryAssembly()?.GetName();
@@ -52,11 +55,15 @@ internal sealed class Producer : IProducer
         try
         {
             await _producer.ProduceAsync(topic, message, cancellationToken);
+
+            // broker-acked: proof the brokers are reachable — the batch overload funnels through
+            // here pair by pair, so every successful delivery of either path reports up.
+            _health.Up();
         }
         catch (ProduceException<Null, byte[]> exception) when (exception.Error.Code == ErrorCode.Local_QueueFull)
         {
-            using (BusLogger.ProducerContext(_logger, topic, message))
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ProducerQueueFull))
+            using (BusLogger.ProducerContext(topic, message))
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ProducerQueueFull))
             {
                 _logger.LogError(exception, "Producer failed.");
             }
@@ -65,8 +72,8 @@ internal sealed class Producer : IProducer
         }
         catch (ProduceException<Null, byte[]> exception)
         {
-            using (BusLogger.ProducerContext(_logger, topic, message))
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.SendFaulted))
+            using (BusLogger.ProducerContext(topic, message))
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.SendFaulted))
             {
                 _logger.LogError(exception, "Producer failed.");
             }

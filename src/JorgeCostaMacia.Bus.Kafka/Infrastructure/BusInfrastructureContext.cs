@@ -5,6 +5,7 @@ using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -36,17 +37,21 @@ internal static class BusInfrastructureContext
     /// <returns>The same service collection, to allow method chaining.</returns>
     internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null)
     {
-        ProducerConfigurator producerConfigurator = new(configuration);
+        ProducerConfigurator producerConfigurator = new ProducerConfigurator(configuration);
 
         producer(producerConfigurator);
 
+        // the broker-reachability tracker the transport feeds and the health-check package reads —
+        // TryAdd, so registering both the bus and the check (in any order) shares the one instance.
+        services.TryAddSingleton<BusHealth>();
+
         services.AddSingleton(provider => CreateProducer(provider, producerConfigurator.ProducerConfig));
-        services.AddSingleton<IProducer>(provider => new Producer(provider.GetRequiredService<IProducer<Null, byte[]>>(), provider.GetRequiredService<ILogger<Producer>>()));
+        services.AddSingleton<IProducer>(provider => new Producer(provider.GetRequiredService<IProducer<Null, byte[]>>(), provider.GetRequiredService<BusHealth>(), provider.GetRequiredService<ILogger<Producer>>()));
         services.AddHostedService<ProducerWorker>();
 
         if (consumer is not null)
         {
-            ConsumerConfigurator consumerConfigurator = new(services, configuration, producerConfigurator.Messages);
+            ConsumerConfigurator consumerConfigurator = new ConsumerConfigurator(services, configuration, producerConfigurator.Messages);
 
             consumer(consumerConfigurator);
         }
@@ -59,22 +64,17 @@ internal static class BusInfrastructureContext
     /// <summary>
     /// Creates the shared producer — the container-owned singleton the bus produces through and the
     /// <c>ProducerWorker</c> flushes — with the error/log callbacks wired to the Kafka client logger.
-    /// A fatal error stops the application; every other error the client recovers from on its own.
+    /// A fatal error stops the application; every other error the client recovers from on its own —
+    /// an <c>AllBrokersDown</c> among them, which additionally flips the reachability tracker down.
     /// </summary>
     private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
     {
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
         IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
+        BusHealth health = provider.GetRequiredService<BusHealth>();
 
         return new ProducerBuilder<Null, byte[]>(configuration)
-            .SetErrorHandler((_, error) =>
-            {
-                KafkaLogger.LogError(kafkaLogger, error);
-
-                if (error.IsFatal) lifetime.StopApplication();
-            })
-            .SetLogHandler((_, log) => KafkaLogger.Log(kafkaLogger, log))
-            .SetStatisticsHandler((_, statistics) => KafkaLogger.LogStatistics(kafkaLogger, statistics))
+            .WithClientCallbacks(kafkaLogger, health, lifetime)
             .Build();
     }
 }

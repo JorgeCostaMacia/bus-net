@@ -16,7 +16,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 /// </summary>
 /// <typeparam name="TCommand">The command type.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler it is paired with.</typeparam>
-internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>
+internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : CommandFaultHandlerBase<TCommand, TCommandHandler>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
@@ -48,15 +48,12 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
         {
             CommandFault fault = CommandFault.Create(context, _groupId);
 
-            Message<Null, byte[]> message = new()
+            await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), Headers = FaultHeaders(context) }, cancellationToken);
+
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultTopic))
             {
-                Value = JsonSerializer.SerializeToUtf8Bytes(fault),
-                Headers = FaultHeaders(context)
-            };
-
-            await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, message, cancellationToken);
-
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToFaultTopic)) _logger.LogError(context.Error, "Delivery faulted.");
+                _logger.LogError(context.Error, "Delivery faulted.");
+            }
 
             Result = FaultResult.Parked;
         }
@@ -66,7 +63,10 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
         }
         catch (Exception park)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogError(park, "Parking failed.");
+            }
 
             Result = FaultResult.Unhandled;
         }
@@ -75,14 +75,9 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : Domain.Co
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing group, the UTC time) — filterable and reinjectable header-side.</summary>
     private Headers FaultHeaders(CommandFaultContext context)
     {
-        Type type = context.Error.GetType();
-
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Add(TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        headers.Add(TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
-        headers.Add(TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_groupId));
-        headers.Add(TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.StampError(headers, context.Error, _groupId);
 
         return headers;
     }

@@ -1,11 +1,20 @@
 <Solution>
   <Project Path="src/JorgeCostaMacia.Bus/JorgeCostaMacia.Bus.csproj" />
-  <Project Path="src/JorgeCostaMacia.Bus.UrnFactory/JorgeCostaMacia.Bus.UrnFactory.csproj" />
   <Project Path="src/JorgeCostaMacia.Bus.Kafka/JorgeCostaMacia.Bus.Kafka.csproj" />
   <Project Path="src/JorgeCostaMacia.Bus.Kafka.Retry.Quartz/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.csproj" />
+  <Project Path="src/JorgeCostaMacia.Bus.Kafka.HealthChecks/JorgeCostaMacia.Bus.Kafka.HealthChecks.csproj" />
   <Project Path="src/JorgeCostaMacia.Bus.RabbitMQ/JorgeCostaMacia.Bus.RabbitMQ.csproj" />
+  <Project Path="src/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.csproj" />
+  <Project Path="src/JorgeCostaMacia.Bus.RabbitMQ.HealthChecks/JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.Tests/JorgeCostaMacia.Bus.Tests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.Kafka.Tests/JorgeCostaMacia.Bus.Kafka.Tests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.Kafka.IntegrationTests/JorgeCostaMacia.Bus.Kafka.IntegrationTests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.IntegrationTests/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.IntegrationTests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.Tests/JorgeCostaMacia.Bus.RabbitMQ.Tests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests/JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.IntegrationTests/JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.IntegrationTests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.Tests/JorgeCostaMacia.Bus.RabbitMQ.HealthChecks.Tests.csproj" />
   <Project Path="test/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests/JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests.csproj" />
-  <Project Path="test/JorgeCostaMacia.Bus.UrnFactory.Tests/JorgeCostaMacia.Bus.UrnFactory.Tests.csproj" />
+  <Project Path="test/JorgeCostaMacia.Bus.Kafka.HealthChecks.Tests/JorgeCostaMacia.Bus.Kafka.HealthChecks.Tests.csproj" />
 </Solution>

@@ -1,13 +1,15 @@
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
+using Serilog.Core.Enrichers;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 
 /// <summary>
 /// The RabbitMQ client's logging — the connection-level callbacks (shutdown, automatic-recovery
-/// success and failure, and callback exceptions), routed to the logger with the details as scope
-/// properties. Everything logs under the dedicated <see cref="Category"/>, separate from the bus's own
-/// categories, so the client's noise is silenced independently. The mirror of the Kafka transport's
-/// client logger.
+/// success and failure, and callback exceptions), routed to the logger with the details as
+/// <see cref="LogContext"/> properties. Everything logs under the dedicated <see cref="Category"/>,
+/// separate from the bus's own categories, so the client's noise is silenced independently. The
+/// mirror of the Kafka transport's client logger.
 /// </summary>
 internal static class RabbitLogger
 {
@@ -24,11 +26,9 @@ internal static class RabbitLogger
     /// <param name="applicationInitiated">Whether the application initiated the shutdown (an orderly close) rather than the peer/library (a drop).</param>
     public static void LogShutdown(ILogger logger, ushort replyCode, string replyText, bool applicationInitiated)
     {
-        using (logger.BeginScope(new Dictionary<string, object?>
-        {
-            ["ReplyCode"] = replyCode,
-            ["ReplyText"] = replyText
-        }))
+        using (LogContext.Push(
+            new PropertyEnricher("ReplyCode", replyCode),
+            new PropertyEnricher("ReplyText", replyText)))
         {
             logger.Log(applicationInitiated ? LogLevel.Information : LogLevel.Warning, "Connection shut down.");
         }

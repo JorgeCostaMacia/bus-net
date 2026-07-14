@@ -23,11 +23,12 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
-    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger and its contract — the handler and its error and fault handlers are resolved per delivery from the scope.</summary>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker and its contract — the handler and its error and fault handlers are resolved per delivery from the scope.</summary>
     /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
+    /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandWorker(
@@ -35,15 +36,16 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
         IServiceScopeFactory scopeFactory,
         ILogger<CommandWorker<TCommand, TCommandHandler>> logger,
         IHostApplicationLifetime lifetime,
+        BusHealth health,
         string topic,
         string groupId)
-        : base(consumer, scopeFactory, logger, lifetime, topic, groupId)
+        : base(consumer, scopeFactory, logger, lifetime, health, topic, groupId)
     {
     }
 
     /// <inheritdoc />
     protected override CommandContext<TCommand> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
-        => new(JsonSerializer.Deserialize<TCommand>(result.Message.Value) ?? throw new JsonException("The command body deserialized to null."), transport);
+        => new(JsonSerializer.Deserialize<TCommand>(result.Message.Value, BusSerializer.Options) ?? throw new JsonException("The command body deserialized to null."), transport);
 
     /// <inheritdoc />
     protected override Task Handle(TCommandHandler handler, CommandContext<TCommand> context, CancellationToken cancellationToken)
@@ -52,7 +54,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <inheritdoc />
     protected override async Task<ErrorResult> HandleError(IServiceProvider services, CommandContext<TCommand> context, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler> errorHandler = services.GetRequiredService<Domain.Commands.Errors.CommandErrorHandler<TCommand, TCommandHandler>>();
+        CommandErrorHandlerBase<TCommand, TCommandHandler> errorHandler = services.GetRequiredService<CommandErrorHandlerBase<TCommand, TCommandHandler>>();
 
         await errorHandler.Handle(new CommandErrorContext<TCommand>(context.Message, context.Transport, exception), cancellationToken);
 
@@ -62,7 +64,7 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <inheritdoc />
     protected override async Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken)
     {
-        Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler> faultHandler = services.GetRequiredService<Domain.Commands.Faults.CommandFaultHandler<TCommand, TCommandHandler>>();
+        CommandFaultHandlerBase<TCommand, TCommandHandler> faultHandler = services.GetRequiredService<CommandFaultHandlerBase<TCommand, TCommandHandler>>();
 
         await faultHandler.Handle(CommandFaultContext.Create(body, transport, exception), cancellationToken);
 

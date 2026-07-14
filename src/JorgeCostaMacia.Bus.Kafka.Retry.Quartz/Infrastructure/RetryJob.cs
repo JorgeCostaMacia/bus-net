@@ -6,16 +6,19 @@ using Quartz;
 namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Infrastructure;
 
 /// <summary>
-/// The one-shot Quartz job a clustered node fires when a parked retry's delay elapses: it reads the
-/// topic, body and envelope from its own job data and re-produces the message to its topic through the
-/// bus's outbound gate — the envelope already carries the incremented retry count and the consumer
-/// targeting, so the normal consumers receive and route it with no extra machinery. It owns the job's
-/// data keys — the strings it travels under in a <c>UseProperties = true</c> store; the headers travel
-/// as a JSON list of key/value pairs (Confluent's headers cannot be serialized directly — their values
-/// live behind a method, not a property), each value base64, a null value kept as null. Instantiated by
-/// Quartz's dependency-injection job factory; a produce failure propagates so Quartz applies its
-/// misfire / recovery policy.
+/// The parked retry's job: produces the delivery back to its topic each time its repeating trigger
+/// fires (see <see cref="RetryScheduler"/>).
 /// </summary>
+/// <remarks>
+/// <para>
+/// A successful produce deletes the job — pending repetitions included. A failed produce writes and
+/// handles nothing: the exception just bubbles — Quartz wraps it and hands it to any job listeners —
+/// and the trigger repeats the produce on its own. The dead-letter needs no code at all: with the
+/// attempts exhausted Quartz completes the trigger, and the job — durable — stays parked in the
+/// store, trigger-less and visible, re-firable with <c>IScheduler.TriggerJob</c> (a re-fire that
+/// fails again just stays parked; one that finally succeeds deletes the job).
+/// </para>
+/// </remarks>
 internal sealed class RetryJob : IJob
 {
     public const string TOPIC_KEY = "topic";
@@ -24,50 +27,61 @@ internal sealed class RetryJob : IJob
 
     private readonly IProducer _producer;
 
-    /// <summary>Creates the job over the bus's outbound producer gate.</summary>
-    /// <param name="producer">The outbound gate the parked retry is re-produced through.</param>
+    /// <summary>Creates the job over the outbound producer.</summary>
+    /// <param name="producer">The outbound gate — the retry is produced through it.</param>
     public RetryJob(IProducer producer)
     {
         _producer = producer;
     }
 
-    /// <summary>Reads the parked retry and re-produces it to its original topic.</summary>
-    /// <param name="context">The Quartz execution context carrying the job's data map.</param>
+    /// <inheritdoc />
     public async Task Execute(IJobExecutionContext context)
     {
         string topic = Topic(context.MergedJobDataMap);
         byte[] body = Body(context.MergedJobDataMap);
         Headers headers = Headers(context.MergedJobDataMap);
 
+        // a failed produce just throws: Quartz wraps it and hands it to the job listeners, and the
+        // trigger repeats the produce on its own until the attempts run out — nothing to do here.
         await _producer.Produce(topic, new Message<Null, byte[]> { Value = body, Headers = headers }, context.CancellationToken);
+
+        // produced: the job is done for good — deleting the durable job takes any pending
+        // repetition with it (and cleans up a re-fired dead-letter).
+        await context.Scheduler.DeleteJob(context.JobDetail.Key, context.CancellationToken);
     }
 
-    /// <summary>The destination topic — the route the parked retry is re-produced to.</summary>
     private static string Topic(JobDataMap data)
     {
         string? value = data.GetString(TOPIC_KEY);
 
-        if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{TOPIC_KEY}'.");
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException($"Retry job data is empty '{TOPIC_KEY}'.");
+        }
 
         return value;
     }
 
-    /// <summary>The raw message body, decoded from base64.</summary>
     private static byte[] Body(JobDataMap data)
     {
         string? value = data.GetString(BODY_KEY);
 
-        if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{BODY_KEY}'.");
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException($"Retry job data is empty '{BODY_KEY}'.");
+        }
 
         return Convert.FromBase64String(value);
     }
 
-    /// <summary>The envelope headers, decoded from their JSON list — the scheduler always writes it (an empty list when there are none).</summary>
     private static Headers Headers(JobDataMap data)
     {
         string? value = data.GetString(HEADERS_KEY);
 
-        if (string.IsNullOrEmpty(value)) throw new InvalidOperationException($"Retry job data is empty '{HEADERS_KEY}'.");
+        if (string.IsNullOrEmpty(value))
+        {
+            throw new InvalidOperationException($"Retry job data is empty '{HEADERS_KEY}'.");
+        }
 
         Headers headers = new Headers();
 

@@ -16,7 +16,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 /// </summary>
 /// <typeparam name="TEvent">The event type.</typeparam>
 /// <typeparam name="TEventSubscriber">The event subscriber it is paired with.</typeparam>
-internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Events.Faults.EventFaultHandler<TEvent, TEventSubscriber>
+internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHandlerBase<TEvent, TEventSubscriber>
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
@@ -48,15 +48,12 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
         {
             EventFault fault = EventFault.Create(context, _groupId);
 
-            Message<Null, byte[]> message = new()
+            await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), Headers = FaultHeaders(context) }, cancellationToken);
+
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultTopic))
             {
-                Value = JsonSerializer.SerializeToUtf8Bytes(fault),
-                Headers = FaultHeaders(context)
-            };
-
-            await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, message, cancellationToken);
-
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.ParkedToFaultTopic)) _logger.LogError(context.Error, "Delivery faulted.");
+                _logger.LogError(context.Error, "Delivery faulted.");
+            }
 
             Result = FaultResult.Parked;
         }
@@ -66,7 +63,10 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
         }
         catch (Exception park)
         {
-            using (BusLogger.DescriptionContext(_logger, BusLoggerDescriptions.DeliveryNotAcked)) _logger.LogError(park, "Parking failed.");
+            using (BusLogger.DescriptionContext(BusLoggerDescriptions.DeliveryNotAcked))
+            {
+                _logger.LogError(park, "Parking failed.");
+            }
 
             Result = FaultResult.Unhandled;
         }
@@ -75,14 +75,9 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : Domain.Event
     /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing group, the UTC time) — filterable and reinjectable header-side.</summary>
     private Headers FaultHeaders(EventFaultContext context)
     {
-        Type type = context.Error.GetType();
-
         Headers headers = context.Transport.CloneHeaders();
 
-        headers.Add(TransportHeaders.ErrorType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        headers.Add(TransportHeaders.ErrorMessage, TransportHeaders.ToHeader(context.Error.Message));
-        headers.Add(TransportHeaders.ErrorGroupId, TransportHeaders.ToHeader(_groupId));
-        headers.Add(TransportHeaders.ErrorOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.StampError(headers, context.Error, _groupId);
 
         return headers;
     }

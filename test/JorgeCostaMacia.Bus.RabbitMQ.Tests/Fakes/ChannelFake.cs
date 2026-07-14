@@ -11,21 +11,40 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 internal sealed class ChannelFake : IChannel
 {
     /// <summary>A captured publish.</summary>
-    public sealed record Publish(string Exchange, string RoutingKey, bool Persistent, string? MessageId, string? CorrelationId, string? Type, string? AppId, string? ContentType, long Timestamp, IReadOnlyDictionary<string, object?>? Headers, ReadOnlyMemory<byte> Body);
+    public sealed record Publish(string Exchange, string RoutingKey, bool Persistent, string? MessageId, string? CorrelationId, string? Type, string? AppId, string? ContentType, long Timestamp, IReadOnlyDictionary<string, object?>? Headers, ReadOnlyMemory<byte> Body, bool Mandatory);
 
-    /// <summary>The publishes handed to the channel, in order.</summary>
-    public List<Publish> Published { get; } = [];
+    /// <summary>The queues declared through the channel, in order.</summary>
+    public List<(string Queue, bool Durable, bool Exclusive, bool AutoDelete)> QueuesDeclared { get; } = new List<(string Queue, bool Durable, bool Exclusive, bool AutoDelete)>();
+
+    /// <summary>The publishes handed to the channel, in order. Captured under a lock so concurrent produces record safely.</summary>
+    public List<Publish> Published { get; } = new List<Publish>();
+
+    private readonly object _publishGate = new object();
 
     /// <summary>An exception to fail every publish with, or <see langword="null"/> to succeed.</summary>
     public Exception? PublishFailure { get; set; }
+
+    /// <summary>The exchanges declared through the channel, in order.</summary>
+    public List<(string Exchange, string Type, bool Durable, bool AutoDelete)> ExchangesDeclared { get; } = new List<(string Exchange, string Type, bool Durable, bool AutoDelete)>();
+
+    /// <summary>Whether the channel was disposed.</summary>
+    public bool Disposed { get; private set; }
 
     // Explicit implementations — the generic constraint (incl. v7's `allows ref struct`) is inherited from the interface, not restated.
 
     ValueTask IChannel.BasicPublishAsync<TProperties>(string exchange, string routingKey, bool mandatory, TProperties basicProperties, ReadOnlyMemory<byte> body, CancellationToken cancellationToken)
     {
-        if (PublishFailure is not null) return ValueTask.FromException(PublishFailure);
+        if (PublishFailure is not null)
+        {
+            return ValueTask.FromException(PublishFailure);
+        }
 
-        Published.Add(new Publish(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body));
+        Publish publish = new(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body, mandatory);
+
+        lock (_publishGate)
+        {
+            Published.Add(publish);
+        }
 
         return ValueTask.CompletedTask;
     }
@@ -39,7 +58,9 @@ internal sealed class ChannelFake : IChannel
     public ShutdownEventArgs? CloseReason => throw new NotSupportedException();
     public IAsyncBasicConsumer? DefaultConsumer { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
     public bool IsClosed => throw new NotSupportedException();
-    public bool IsOpen => throw new NotSupportedException();
+
+    /// <summary>Whether the channel is open — set it false to drive the producer's dead-channel replacement.</summary>
+    public bool IsOpen { get; set; } = true;
     public string? CurrentQueue => throw new NotSupportedException();
     public TimeSpan ContinuationTimeout { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
@@ -62,14 +83,24 @@ internal sealed class ChannelFake : IChannel
     public Task CloseAsync(ShutdownEventArgs reason, bool abort) => throw new NotSupportedException();
     public Task<uint> ConsumerCountAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task ExchangeBindAsync(string destination, string source, string routingKey, IDictionary<string, object?>? arguments, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task ExchangeDeclareAsync(string exchange, string type, bool durable, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task ExchangeDeclareAsync(string exchange, string type, bool durable, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default)
+    {
+        ExchangesDeclared.Add((exchange, type, durable, autoDelete));
+
+        return Task.CompletedTask;
+    }
     public Task ExchangeDeclarePassiveAsync(string exchange, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task ExchangeDeleteAsync(string exchange, bool ifUnused, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task ExchangeUnbindAsync(string destination, string source, string routingKey, IDictionary<string, object?>? arguments, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public ValueTask<ulong> GetNextPublishSequenceNumberAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<uint> MessageCountAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task QueueBindAsync(string queue, string exchange, string routingKey, IDictionary<string, object?>? arguments, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<QueueDeclareOk> QueueDeclareAsync(string queue, bool durable, bool exclusive, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<QueueDeclareOk> QueueDeclareAsync(string queue, bool durable, bool exclusive, bool autoDelete, IDictionary<string, object?>? arguments, bool passive, bool noWait, CancellationToken cancellationToken = default)
+    {
+        QueuesDeclared.Add((queue, durable, exclusive, autoDelete));
+
+        return Task.FromResult(new QueueDeclareOk(queue, 0, 0));
+    }
     public Task<QueueDeclareOk> QueueDeclarePassiveAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<uint> QueueDeleteAsync(string queue, bool ifUnused, bool ifEmpty, bool noWait, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<uint> QueuePurgeAsync(string queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -78,6 +109,12 @@ internal sealed class ChannelFake : IChannel
     public Task TxRollbackAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task TxSelectAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    public void Dispose() { }
+    public ValueTask DisposeAsync()
+    {
+        Disposed = true;
+
+        return ValueTask.CompletedTask;
+    }
+
+    public void Dispose() => Disposed = true;
 }

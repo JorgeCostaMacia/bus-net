@@ -38,10 +38,10 @@ public sealed record CommandFaultContext :
     }
 
     /// <summary>Builds the context for a broken delivery, decoding the raw body as UTF-8 text.</summary>
-    /// <param name="body">The delivered message's raw body.</param>
+    /// <param name="body">The delivered message's raw body — <see langword="null"/> for a tombstone, kept as an empty body.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <returns>The context handed to the fault handler.</returns>
-    internal static CommandFaultContext Create(byte[] body, Transport transport, Exception exception)
-        => new(Encoding.UTF8.GetString(body), transport, exception);
+    internal static CommandFaultContext Create(byte[]? body, Transport transport, Exception exception)
+        => new(body is null ? string.Empty : Encoding.UTF8.GetString(body), transport, exception);
 }

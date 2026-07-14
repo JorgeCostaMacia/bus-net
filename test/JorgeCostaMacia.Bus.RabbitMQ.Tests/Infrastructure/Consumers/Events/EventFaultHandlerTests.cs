@@ -3,14 +3,15 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Faults;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using FaultHandler = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Events.EventFaultHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestEvent, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestEventSubscriber>;
 
-namespace JorgeCostaMacia.Bus.RabbitMQ.Tests;
+namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Events;
 
 public class EventFaultHandlerTests
 {
-    private readonly ProducerFake _producer = new();
+    private readonly ProducerFake _producer = new ProducerFake();
 
-    private Infrastructure.Consumers.Events.EventFaultHandler<TestEvent, TestEventSubscriber> Fault()
+    private FaultHandler Fault()
         => new(_producer, NullLogger.Instance, Deliveries.QUEUE);
 
     [Fact]
@@ -18,7 +19,7 @@ public class EventFaultHandlerTests
     {
         EventFaultContext context = EventFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
 
-        Infrastructure.Consumers.Events.EventFaultHandler<TestEvent, TestEventSubscriber> sut = Fault();
+        FaultHandler sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Parked, sut.Result);
@@ -27,10 +28,10 @@ public class EventFaultHandlerTests
         Assert.Equal($"{Deliveries.QUEUE}.fault", routingKey);
 
         JsonElement parked = JsonSerializer.Deserialize<JsonElement>(body);
-        Assert.Equal(typeof(InvalidCastException).FullName, parked.GetProperty("Error").GetProperty("Type").GetString());
-        Assert.Equal("bad header", parked.GetProperty("Error").GetProperty("Message").GetString());
-        Assert.Equal(Deliveries.QUEUE, parked.GetProperty("Queue").GetString());
-        Assert.Equal("not json", parked.GetProperty("Message").GetString());
+        Assert.Equal(typeof(InvalidCastException).FullName, parked.GetProperty("error").GetProperty("type").GetString());
+        Assert.Equal("bad header", parked.GetProperty("error").GetProperty("message").GetString());
+        Assert.Equal(Deliveries.QUEUE, parked.GetProperty("queue").GetString());
+        Assert.Equal("not json", parked.GetProperty("message").GetString());
     }
 
     [Fact]
@@ -43,11 +44,11 @@ public class EventFaultHandlerTests
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Body);
-        JsonElement error = body.GetProperty("Error");
-        Assert.Equal("the real cause", error.GetProperty("InnerError").GetProperty("Message").GetString());
-        Assert.Contains(nameof(FormatException), error.GetProperty("InnerError").GetProperty("Type").GetString());
-        Assert.Equal("required", error.GetProperty("Data").GetProperty("field").GetString());
-        Assert.Equal(Environment.MachineName, body.GetProperty("MachineName").GetString());
+        JsonElement error = body.GetProperty("error");
+        Assert.Equal("the real cause", error.GetProperty("innerError").GetProperty("message").GetString());
+        Assert.Contains(nameof(FormatException), error.GetProperty("innerError").GetProperty("type").GetString());
+        Assert.Equal("required", error.GetProperty("data").GetProperty("field").GetString());
+        Assert.Equal(Environment.MachineName, body.GetProperty("machineName").GetString());
     }
 
     [Fact]
@@ -57,7 +58,7 @@ public class EventFaultHandlerTests
 
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
-        IReadOnlyDictionary<string, object?> headers = Assert.Single(_producer.Produced).Headers;
+        IReadOnlyDictionary<string, string> headers = Assert.Single(_producer.Produced).Headers;
         Assert.Equal(typeof(InvalidCastException).FullName, Deliveries.Header(headers, TransportHeaders.ErrorType));
         Assert.Equal("bad header", Deliveries.Header(headers, TransportHeaders.ErrorMessage));
         Assert.Equal(Deliveries.QUEUE, Deliveries.Header(headers, TransportHeaders.ErrorGroupId));
@@ -68,7 +69,7 @@ public class EventFaultHandlerTests
     {
         _producer.Failure = new InvalidOperationException("broker down");
 
-        Infrastructure.Consumers.Events.EventFaultHandler<TestEvent, TestEventSubscriber> sut = Fault();
+        FaultHandler sut = Fault();
         await sut.Handle(EventFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);

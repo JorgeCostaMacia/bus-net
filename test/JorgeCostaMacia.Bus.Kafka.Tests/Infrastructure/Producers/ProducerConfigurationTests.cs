@@ -1,7 +1,7 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Producers;
 
 public class ProducerConfigurationTests
 {
@@ -18,7 +18,7 @@ public class ProducerConfigurationTests
         Assert.Equal(CompressionType.Lz4, config.CompressionType);
         Assert.Equal(50, config.LingerMs);
         Assert.Equal(int.MaxValue, config.MessageSendMaxRetries);
-        Assert.Equal(2_097_152, config.MessageMaxBytes);
+        Assert.Equal(1_048_576, config.MessageMaxBytes);
         Assert.Equal(Environment.MachineName, config.ClientId);
         Assert.True(config.SocketKeepaliveEnable);
     }
