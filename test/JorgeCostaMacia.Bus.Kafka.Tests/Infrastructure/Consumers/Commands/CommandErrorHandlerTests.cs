@@ -20,7 +20,7 @@ public class CommandErrorHandlerTests
     private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
     private CommandErrorHandler<TestCommand, RecordingCommandHandler> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
-        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? [], excludes ?? []);
+        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? [], excludes ?? []);
 
     [Fact]
     public async Task MissingRetryCountHeader_ReportsFaulted()
@@ -46,19 +46,19 @@ public class CommandErrorHandlerTests
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.error", topic);
+        Assert.Equal($"{Deliveries.Topic}.error", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
         Assert.Equal(typeof(InvalidOperationException).FullName, body.GetProperty("error").GetProperty("type").GetString());
         Assert.Equal("boom", body.GetProperty("error").GetProperty("message").GetString());
-        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("groupId").GetString());
-        Assert.Equal(Deliveries.TOPIC, body.GetProperty("topic").GetString());
+        Assert.Equal(Deliveries.GroupId, body.GetProperty("groupId").GetString());
+        Assert.Equal(Deliveries.Topic, body.GetProperty("topic").GetString());
         Assert.Equal(0, body.GetProperty("partition").GetInt32());
         Assert.Equal(10, body.GetProperty("offset").GetInt64());
         Assert.Equal("pepe", body.GetProperty("message").GetProperty("name").GetString());
 
         Assert.Equal(typeof(InvalidOperationException).FullName, Deliveries.Header(message, TransportHeaders.ErrorType));
-        Assert.Equal(Deliveries.GROUP_ID, Deliveries.Header(message, TransportHeaders.ErrorGroupId));
+        Assert.Equal(Deliveries.GroupId, Deliveries.Header(message, TransportHeaders.ErrorGroupId));
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class CommandErrorHandlerTests
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
-        Assert.Equal(Deliveries.TOPIC, topic);
+        Assert.Equal(Deliveries.Topic, topic);
         Assert.Equal("1", Deliveries.Header(message, TransportHeaders.RetryCount));
         Assert.Empty(_scheduler.Scheduled);
     }
@@ -116,8 +116,8 @@ public class CommandErrorHandlerTests
         Assert.Equal(ErrorResult.Scheduled, sut.Result);
         Assert.Empty(_producer.Produced);
         (string topic, string groupId, _, Headers headers, _) = Assert.Single(_scheduler.Scheduled);
-        Assert.Equal(Deliveries.TOPIC, topic);
-        Assert.Equal(Deliveries.GROUP_ID, groupId);
+        Assert.Equal(Deliveries.Topic, topic);
+        Assert.Equal(Deliveries.GroupId, groupId);
         Assert.True(headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry) && Encoding.UTF8.GetString(retry) == "1");
     }
 
@@ -129,7 +129,7 @@ public class CommandErrorHandlerTests
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
-        Assert.Equal($"{Deliveries.TOPIC}.error", Assert.Single(_producer.Produced).Topic);
+        Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public class CommandErrorHandlerTests
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
-        Assert.Equal($"{Deliveries.TOPIC}.error", Assert.Single(_producer.Produced).Topic);
+        Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class CommandErrorHandlerTests
         await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
-        Assert.Equal($"{Deliveries.TOPIC}.error", Assert.Single(_producer.Produced).Topic);
+        Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
         Assert.Empty(_scheduler.Scheduled);
     }
 

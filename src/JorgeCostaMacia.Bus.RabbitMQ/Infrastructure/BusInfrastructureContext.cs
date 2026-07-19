@@ -18,7 +18,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 /// </summary>
 internal static class BusInfrastructureContext
 {
-    private const string CONNECTION_SECTION = "Bus:Connection";
+    private const string ConnectionSection = "Bus:Connection";
 
     /// <summary>Registers the bus over the application configuration.</summary>
     /// <param name="services">The service collection.</param>
@@ -56,22 +56,22 @@ internal static class BusInfrastructureContext
     /// <summary>Binds and validates the <c>Bus:Connection</c> section onto a <see cref="ConnectionConfiguration"/>.</summary>
     private static ConnectionConfiguration CreateConnectionConfiguration(IConfiguration configuration)
     {
-        ConnectionConfiguration connectionConfiguration = configuration.GetSection(CONNECTION_SECTION).Get<ConnectionConfiguration>()
-            ?? throw new InvalidOperationException($"'{CONNECTION_SECTION}' is null.");
+        ConnectionConfiguration connectionConfiguration = configuration.GetSection(ConnectionSection).Get<ConnectionConfiguration>()
+            ?? throw new InvalidOperationException($"'{ConnectionSection}' is null.");
 
         if (string.IsNullOrWhiteSpace(connectionConfiguration.HostName))
         {
-            throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.HostName)}' is null.");
+            throw new InvalidOperationException($"'{ConnectionSection}:{nameof(connectionConfiguration.HostName)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(connectionConfiguration.UserName))
         {
-            throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.UserName)}' is null.");
+            throw new InvalidOperationException($"'{ConnectionSection}:{nameof(connectionConfiguration.UserName)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(connectionConfiguration.Password))
         {
-            throw new InvalidOperationException($"'{CONNECTION_SECTION}:{nameof(connectionConfiguration.Password)}' is null.");
+            throw new InvalidOperationException($"'{ConnectionSection}:{nameof(connectionConfiguration.Password)}' is null.");
         }
 
         return connectionConfiguration;

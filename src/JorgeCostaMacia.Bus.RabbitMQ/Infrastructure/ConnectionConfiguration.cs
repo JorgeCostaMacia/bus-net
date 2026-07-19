@@ -38,7 +38,7 @@ public sealed record ConnectionConfiguration
     {
         get
         {
-            bool ssl = Ssl ?? ConnectionConfigurationDefaults.SSL;
+            bool ssl = Ssl ?? ConnectionConfigurationDefaults.Ssl;
 
             return new ConnectionFactory
             {
@@ -46,10 +46,10 @@ public sealed record ConnectionConfiguration
                 UserName = UserName,
                 Password = Password,
                 Ssl = new SslOption { Enabled = ssl, ServerName = HostName },
-                Port = Port ?? ConnectionConfigurationDefaults.PORT,
-                VirtualHost = VirtualHost ?? ConnectionConfigurationDefaults.VIRTUAL_HOST,
-                ClientProvidedName = ClientProvidedName ?? ConnectionConfigurationDefaults.CLIENT_PROVIDED_NAME,
-                AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? ConnectionConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED
+                Port = Port ?? ConnectionConfigurationDefaults.Port,
+                VirtualHost = VirtualHost ?? ConnectionConfigurationDefaults.VirtualHost,
+                ClientProvidedName = ClientProvidedName ?? ConnectionConfigurationDefaults.ClientProvidedName,
+                AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? ConnectionConfigurationDefaults.AutomaticRecoveryEnabled
             };
         }
     }

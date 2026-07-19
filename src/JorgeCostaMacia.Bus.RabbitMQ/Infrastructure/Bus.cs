@@ -18,7 +18,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure;
 /// </summary>
 internal sealed class Bus : IBus
 {
-    private const string ROUTING_KEY = "";
+    private const string RoutingKey = "";
 
     private readonly IProducer _producer;
     private readonly IReadOnlyDictionary<Type, string> _messages;
@@ -78,7 +78,7 @@ internal sealed class Bus : IBus
     {
         string exchange = Exchange(message);
 
-        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message), cancellationToken);
+        return _producer.Produce(exchange, RoutingKey, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message), cancellationToken);
     }
 
     /// <summary>Publishes a message continuing an inbound flow to its exchange.</summary>
@@ -87,7 +87,7 @@ internal sealed class Bus : IBus
     {
         string exchange = Exchange(message);
 
-        return _producer.Produce(exchange, ROUTING_KEY, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message, transport), cancellationToken);
+        return _producer.Produce(exchange, RoutingKey, JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), BusSerializer.Options), Prepare(exchange, message, transport), cancellationToken);
     }
 
     /// <summary>Publishes a batch, each with a fresh envelope, to their exchanges — concurrently: the destination channels pipeline the publishes and track each confirmation; awaited together, the first failure throws while the rest still publish.</summary>

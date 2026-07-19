@@ -19,7 +19,7 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : CommandFa
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
-    private const string FAULT_QUEUE_SUFFIX = ".fault";
+    private const string FaultQueueSuffix = ".fault";
 
     private readonly IProducer _producer;
     private readonly ILogger _logger;
@@ -43,7 +43,7 @@ internal sealed class CommandFaultHandler<TCommand, TCommandHandler> : CommandFa
         {
             CommandFault fault = CommandFault.Create(context, _queue);
 
-            await _producer.Park(_queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), FaultHeaders(context), cancellationToken);
+            await _producer.Park(_queue + FaultQueueSuffix, JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), FaultHeaders(context), cancellationToken);
 
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultQueue))
             {

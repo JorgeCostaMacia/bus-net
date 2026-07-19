@@ -13,7 +13,7 @@ public class EventFaultHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private EventFaultHandler<TestEvent, TestEventSubscriber> Fault()
-        => new(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID);
+        => new(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId);
 
     [Fact]
     public async Task ParksToFaultTopic_WithTheBodyAsText()
@@ -25,12 +25,12 @@ public class EventFaultHandlerTests
 
         Assert.Equal(FaultResult.Parked, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
         Assert.Equal(typeof(InvalidCastException).FullName, body.GetProperty("error").GetProperty("type").GetString());
         Assert.Equal("bad header", body.GetProperty("error").GetProperty("message").GetString());
-        Assert.Equal(Deliveries.GROUP_ID, body.GetProperty("groupId").GetString());
+        Assert.Equal(Deliveries.GroupId, body.GetProperty("groupId").GetString());
         Assert.Equal("not json", body.GetProperty("message").GetString());
     }
 
@@ -61,7 +61,7 @@ public class EventFaultHandlerTests
         Message<Null, byte[]> message = Assert.Single(_producer.Produced).Message;
         Assert.Equal(typeof(InvalidCastException).FullName, Deliveries.Header(message, TransportHeaders.ErrorType));
         Assert.Equal("bad header", Deliveries.Header(message, TransportHeaders.ErrorMessage));
-        Assert.Equal(Deliveries.GROUP_ID, Deliveries.Header(message, TransportHeaders.ErrorGroupId));
+        Assert.Equal(Deliveries.GroupId, Deliveries.Header(message, TransportHeaders.ErrorGroupId));
     }
 
     [Fact]

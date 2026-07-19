@@ -28,7 +28,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    private const string ERROR_TOPIC_SUFFIX = ".error";
+    private const string ErrorTopicSuffix = ".error";
 
     private readonly IProducer _producer;
     private readonly IRetryScheduler? _retryScheduler;
@@ -185,7 +185,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
     {
         EventError<TEvent> error = EventError<TEvent>.Create(context, _groupId);
 
-        await _producer.Produce(_topic + ERROR_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error, BusSerializer.Options), Headers = ErrorHeaders(context) }, cancellationToken);
+        await _producer.Produce(_topic + ErrorTopicSuffix, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(error, BusSerializer.Options), Headers = ErrorHeaders(context) }, cancellationToken);
     }
 
     /// <summary>The retry's body — the typed event re-serialized.</summary>

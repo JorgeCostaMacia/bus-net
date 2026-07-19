@@ -15,7 +15,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 /// </summary>
 public sealed class ProducerConfigurator
 {
-    private const string PRODUCER_SECTION = "Bus:Producer";
+    private const string ProducerSection = "Bus:Producer";
 
     private readonly Dictionary<Type, string> _messages = new Dictionary<Type, string>();
     private readonly ProducerConfiguration _producerConfiguration;
@@ -73,22 +73,22 @@ public sealed class ProducerConfigurator
     /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
     private static ProducerConfiguration CreateProducerConfiguration(IConfiguration configuration)
     {
-        ProducerConfiguration producerConfiguration = configuration.GetSection(PRODUCER_SECTION).Get<ProducerConfiguration>()
-            ?? throw new InvalidOperationException($"'{PRODUCER_SECTION}' is null.");
+        ProducerConfiguration producerConfiguration = configuration.GetSection(ProducerSection).Get<ProducerConfiguration>()
+            ?? throw new InvalidOperationException($"'{ProducerSection}' is null.");
 
         if (string.IsNullOrWhiteSpace(producerConfiguration.BootstrapServers))
         {
-            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
+            throw new InvalidOperationException($"'{ProducerSection}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(producerConfiguration.SaslUsername))
         {
-            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslUsername)}' is null.");
+            throw new InvalidOperationException($"'{ProducerSection}:{nameof(producerConfiguration.SaslUsername)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(producerConfiguration.SaslPassword))
         {
-            throw new InvalidOperationException($"'{PRODUCER_SECTION}:{nameof(producerConfiguration.SaslPassword)}' is null.");
+            throw new InvalidOperationException($"'{ProducerSection}:{nameof(producerConfiguration.SaslPassword)}' is null.");
         }
 
         return producerConfiguration;

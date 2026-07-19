@@ -26,7 +26,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 /// </summary>
 public sealed class ConsumerConfigurator
 {
-    private const string CONSUMER_SECTION = "Bus:Consumer";
+    private const string ConsumerSection = "Bus:Consumer";
 
     private readonly IServiceCollection _services;
     private readonly IReadOnlyDictionary<Type, string> _messages;
@@ -70,8 +70,8 @@ public sealed class ConsumerConfigurator
             ? mapped
             : throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
-        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
-        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
+        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RetryIntervals;
+        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RetryExcludeExceptionTypes;
 
         _services.AddScoped<TCommandHandler>();
 
@@ -136,8 +136,8 @@ public sealed class ConsumerConfigurator
             ? mapped
             : throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
-        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
-        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
+        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RetryIntervals;
+        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RetryExcludeExceptionTypes;
 
         _services.AddScoped<TEventSubscriber>();
 
@@ -202,22 +202,22 @@ public sealed class ConsumerConfigurator
     /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
     private static ConsumerConfiguration CreateConsumerConfiguration(IConfiguration configuration)
     {
-        ConsumerConfiguration consumerConfiguration = configuration.GetSection(CONSUMER_SECTION).Get<ConsumerConfiguration>()
-            ?? throw new InvalidOperationException($"'{CONSUMER_SECTION}' is null.");
+        ConsumerConfiguration consumerConfiguration = configuration.GetSection(ConsumerSection).Get<ConsumerConfiguration>()
+            ?? throw new InvalidOperationException($"'{ConsumerSection}' is null.");
 
         if (string.IsNullOrWhiteSpace(consumerConfiguration.BootstrapServers))
         {
-            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
+            throw new InvalidOperationException($"'{ConsumerSection}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslUsername))
         {
-            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslUsername)}' is null.");
+            throw new InvalidOperationException($"'{ConsumerSection}:{nameof(consumerConfiguration.SaslUsername)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslPassword))
         {
-            throw new InvalidOperationException($"'{CONSUMER_SECTION}:{nameof(consumerConfiguration.SaslPassword)}' is null.");
+            throw new InvalidOperationException($"'{ConsumerSection}:{nameof(consumerConfiguration.SaslPassword)}' is null.");
         }
 
         return consumerConfiguration;

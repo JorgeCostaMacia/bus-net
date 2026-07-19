@@ -17,10 +17,10 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 internal static class Deliveries
 {
     /// <summary>The exchange the tests publish and consume on.</summary>
-    public const string EXCHANGE = "orders";
+    public const string Exchange = "orders";
 
     /// <summary>The queue the tests consume from — the failing "group" stamped on parked failures.</summary>
-    public const string QUEUE = "orders.handler";
+    public const string Queue = "orders.handler";
 
     /// <summary>A transport over a minimal envelope (retry count + aggregate trace) — for the error/fault handler tests that only need the transport.</summary>
     public static Transport Transport(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
@@ -55,7 +55,7 @@ internal static class Deliveries
             consumerTag: "consumer-tag",
             deliveryTag: deliveryTag,
             redelivered: false,
-            exchange: EXCHANGE,
+            exchange: Exchange,
             routingKey: string.Empty,
             properties: new BasicProperties { Headers = headers! },
             body: body);

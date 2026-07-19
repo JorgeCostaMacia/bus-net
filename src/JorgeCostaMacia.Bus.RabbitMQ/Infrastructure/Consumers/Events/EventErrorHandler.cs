@@ -25,7 +25,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    private const string ERROR_QUEUE_SUFFIX = ".error";
+    private const string ErrorQueueSuffix = ".error";
 
     private readonly IProducer _producer;
     private readonly IRetryScheduler? _retryScheduler;
@@ -163,7 +163,7 @@ internal sealed class EventErrorHandler<TEvent, TEventSubscriber> : EventErrorHa
 
     /// <summary>Parks the subscriber failure to the error queue: an <see cref="EventError{TEvent}"/> built from the context, published via the default exchange to <c>{queue}.error</c>.</summary>
     private Task ParkError(EventErrorContext<TEvent> context, CancellationToken cancellationToken)
-        => _producer.Park(_queue + ERROR_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(EventError<TEvent>.Create(context, _queue), BusSerializer.Options), ErrorHeaders(context), cancellationToken);
+        => _producer.Park(_queue + ErrorQueueSuffix, JsonSerializer.SerializeToUtf8Bytes(EventError<TEvent>.Create(context, _queue), BusSerializer.Options), ErrorHeaders(context), cancellationToken);
 
     /// <summary>The retry's body — the typed event re-serialized.</summary>
     private static byte[] Body(EventErrorContext<TEvent> context)
