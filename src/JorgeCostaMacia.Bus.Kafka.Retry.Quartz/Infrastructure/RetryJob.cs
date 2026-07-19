@@ -21,9 +21,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Infrastructure;
 /// </remarks>
 internal sealed class RetryJob : IJob
 {
-    public const string TOPIC_KEY = "topic";
-    public const string BODY_KEY = "body";
-    public const string HEADERS_KEY = "headers";
+    public const string TopicKey = "topic";
+    public const string BodyKey = "body";
+    public const string HeadersKey = "headers";
 
     private readonly IProducer _producer;
 
@@ -52,11 +52,11 @@ internal sealed class RetryJob : IJob
 
     private static string Topic(JobDataMap data)
     {
-        string? value = data.GetString(TOPIC_KEY);
+        string? value = data.GetString(TopicKey);
 
         if (string.IsNullOrEmpty(value))
         {
-            throw new InvalidOperationException($"Retry job data is empty '{TOPIC_KEY}'.");
+            throw new InvalidOperationException($"Retry job data is empty '{TopicKey}'.");
         }
 
         return value;
@@ -64,11 +64,11 @@ internal sealed class RetryJob : IJob
 
     private static byte[] Body(JobDataMap data)
     {
-        string? value = data.GetString(BODY_KEY);
+        string? value = data.GetString(BodyKey);
 
         if (string.IsNullOrEmpty(value))
         {
-            throw new InvalidOperationException($"Retry job data is empty '{BODY_KEY}'.");
+            throw new InvalidOperationException($"Retry job data is empty '{BodyKey}'.");
         }
 
         return Convert.FromBase64String(value);
@@ -76,11 +76,11 @@ internal sealed class RetryJob : IJob
 
     private static Headers Headers(JobDataMap data)
     {
-        string? value = data.GetString(HEADERS_KEY);
+        string? value = data.GetString(HeadersKey);
 
         if (string.IsNullOrEmpty(value))
         {
-            throw new InvalidOperationException($"Retry job data is empty '{HEADERS_KEY}'.");
+            throw new InvalidOperationException($"Retry job data is empty '{HeadersKey}'.");
         }
 
         Headers headers = new Headers();

@@ -30,17 +30,17 @@ public class CommandWorkerTests
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<ErrorHandlerBase>(_ =>
-                errorHandler ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, scheduler, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
+                errorHandler ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, scheduler, NullLogger.Instance, Deliveries.Exchange, Deliveries.Queue, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
             .AddScoped<FaultHandlerBase>(_ =>
-                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.QUEUE))
+                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.Queue))
             .BuildServiceProvider();
 
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
             channel,
             provider.GetRequiredService<IServiceScopeFactory>(),
             logger ?? NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
-            Deliveries.EXCHANGE,
-            Deliveries.QUEUE,
+            Deliveries.Exchange,
+            Deliveries.Queue,
             prefetchCount: 10);
     }
 
@@ -76,7 +76,7 @@ public class CommandWorkerTests
 
         Assert.Equal("pepe", _handler.Received?.Name);
         Assert.True(channel.Declared);
-        Assert.Equal(Deliveries.QUEUE, channel.ConsumedQueue);
+        Assert.Equal(Deliveries.Queue, channel.ConsumedQueue);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
         Assert.Empty(channel.Nacked);
         Assert.Empty(_producer.Produced);
@@ -138,7 +138,7 @@ public class CommandWorkerTests
 
         await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestCommand("pepe")));
 
-        Assert.Equal($"{Deliveries.QUEUE}.error", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Equal($"{Deliveries.Queue}.error", Assert.Single(_producer.Produced).RoutingKey);
         Assert.Empty(channel.Nacked);
     }
 
@@ -150,7 +150,7 @@ public class CommandWorkerTests
 
         await Deliver(channel, Worker(channel), Deliveries.Garbage());
 
-        Assert.Equal($"{Deliveries.QUEUE}.fault", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Equal($"{Deliveries.Queue}.fault", Assert.Single(_producer.Produced).RoutingKey);
         Assert.Empty(channel.Nacked);
     }
 
@@ -164,7 +164,7 @@ public class CommandWorkerTests
 
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
-        Assert.Equal($"{Deliveries.QUEUE}.error", routingKey);
+        Assert.Equal($"{Deliveries.Queue}.error", routingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
         Assert.Empty(channel.Nacked);
     }
@@ -178,7 +178,7 @@ public class CommandWorkerTests
         await Deliver(channel, Worker(channel, ImmutableList.Create(TimeSpan.Zero)), Deliveries.Delivery(new TestCommand("pepe")));
 
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
-        Assert.Equal(Deliveries.EXCHANGE, exchange);
+        Assert.Equal(Deliveries.Exchange, exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
     }
@@ -225,7 +225,7 @@ public class CommandWorkerTests
         Assert.Null(_handler.Received);
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
-        Assert.Equal($"{Deliveries.QUEUE}.fault", routingKey);
+        Assert.Equal($"{Deliveries.Queue}.fault", routingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
     }
 
@@ -237,7 +237,7 @@ public class CommandWorkerTests
         await Deliver(channel, Worker(channel), Deliveries.NullBody());
 
         Assert.Null(_handler.Received);
-        Assert.Equal($"{Deliveries.QUEUE}.fault", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Equal($"{Deliveries.Queue}.fault", Assert.Single(_producer.Produced).RoutingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
     }
 
@@ -341,7 +341,7 @@ public class CommandWorkerTests
 
         Assert.Equal(2, channel.Created);
         Assert.True(replacement.Declared);
-        Assert.Equal(Deliveries.QUEUE, replacement.ConsumedQueue);
+        Assert.Equal(Deliveries.Queue, replacement.ConsumedQueue);
         Assert.Contains((LogLevel.Information, "Channel restored."), logger.Logged);
         Assert.False(replacement.Disposed);
 
@@ -407,7 +407,7 @@ public class CommandWorkerTests
         Assert.True(channel.IsOpen);   // the deaf channel really was open the whole time
         Assert.Equal(2, channel.Created);
         Assert.True(replacement.Declared);
-        Assert.Equal(Deliveries.QUEUE, replacement.ConsumedQueue);
+        Assert.Equal(Deliveries.Queue, replacement.ConsumedQueue);
 
         await replacement.DeliverAsync(Deliveries.Delivery(new TestCommand("pepe")));
 

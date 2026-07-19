@@ -19,9 +19,9 @@ public class RetryJobTests
     private static JobDataMap Data(string topic = "orders", byte[]? body = null, string? headers = null)
         => new JobDataMap()
         {
-            [RetryJob.TOPIC_KEY] = topic,
-            [RetryJob.BODY_KEY] = Convert.ToBase64String(body ?? "body"u8.ToArray()),
-            [RetryJob.HEADERS_KEY] = headers ?? "[]"
+            [RetryJob.TopicKey] = topic,
+            [RetryJob.BodyKey] = Convert.ToBase64String(body ?? "body"u8.ToArray()),
+            [RetryJob.HeadersKey] = headers ?? "[]"
         };
 
     [Fact]
@@ -58,7 +58,7 @@ public class RetryJobTests
     public async Task Execute_MissingTopic_ThrowsAndProducesNothing()
     {
         JobDataMap data = Data();
-        data.Remove(RetryJob.TOPIC_KEY);
+        data.Remove(RetryJob.TopicKey);
 
         await Assert.ThrowsAnyAsync<Exception>(() => Execute(data));
         Assert.Empty(_producer.Produced);
@@ -68,7 +68,7 @@ public class RetryJobTests
     public async Task Execute_MissingBody_ThrowsAndProducesNothing()
     {
         JobDataMap data = Data();
-        data.Remove(RetryJob.BODY_KEY);
+        data.Remove(RetryJob.BodyKey);
 
         await Assert.ThrowsAnyAsync<Exception>(() => Execute(data));
         Assert.Empty(_producer.Produced);

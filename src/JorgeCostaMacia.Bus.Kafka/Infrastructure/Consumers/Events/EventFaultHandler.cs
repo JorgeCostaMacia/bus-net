@@ -20,7 +20,7 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    private const string FAULT_TOPIC_SUFFIX = ".fault";
+    private const string FaultTopicSuffix = ".fault";
 
     private readonly IProducer _producer;
     private readonly ILogger _logger;
@@ -48,7 +48,7 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
         {
             EventFault fault = EventFault.Create(context, _groupId);
 
-            await _producer.Produce(_topic + FAULT_TOPIC_SUFFIX, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), Headers = FaultHeaders(context) }, cancellationToken);
+            await _producer.Produce(_topic + FaultTopicSuffix, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), Headers = FaultHeaders(context) }, cancellationToken);
 
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultTopic))
             {

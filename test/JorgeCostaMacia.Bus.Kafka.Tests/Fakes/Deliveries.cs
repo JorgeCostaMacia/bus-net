@@ -13,10 +13,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 internal static class Deliveries
 {
     /// <summary>The topic the tests produce and consume on.</summary>
-    public const string TOPIC = "orders";
+    public const string Topic = "orders";
 
     /// <summary>The consumer group id the tests run under.</summary>
-    public const string GROUP_ID = "orders.handler";
+    public const string GroupId = "orders.handler";
 
     /// <summary>A transport over a minimal envelope (retry count + aggregate trace) — for the error/fault handler tests that only need the transport.</summary>
     public static Transport Transport(int retryCount = 0, Guid? aggregateId = null, Guid? aggregateCorrelationId = null)
@@ -66,7 +66,7 @@ internal static class Deliveries
     private static ConsumeResult<Ignore, byte[]> Result(byte[] value, Headers headers, long offset = 10)
         => new ConsumeResult<Ignore, byte[]>()
         {
-            TopicPartitionOffset = new TopicPartitionOffset(TOPIC, new Partition(0), new Offset(offset)),
+            TopicPartitionOffset = new TopicPartitionOffset(Topic, new Partition(0), new Offset(offset)),
             Message = new Message<Ignore, byte[]> { Value = value, Headers = headers }
         };
 }

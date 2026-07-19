@@ -9,8 +9,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 public static class ConsumerWorkerDefaults
 {
     /// <summary>Delays before each retry — <c>00:00</c> re-publishes to the exchange immediately. Default: empty (no retries).</summary>
-    public static ImmutableList<TimeSpan> RETRY_INTERVALS => ImmutableList<TimeSpan>.Empty;
+    public static ImmutableList<TimeSpan> RetryIntervals => ImmutableList<TimeSpan>.Empty;
 
     /// <summary>Exception types excluded from retry. Default: empty.</summary>
-    public static ImmutableList<Type> RETRY_EXCLUDE_EXCEPTION_TYPES => ImmutableList<Type>.Empty;
+    public static ImmutableList<Type> RetryExcludeExceptionTypes => ImmutableList<Type>.Empty;
 }

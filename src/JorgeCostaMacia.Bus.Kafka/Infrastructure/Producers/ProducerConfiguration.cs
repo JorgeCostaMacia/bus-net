@@ -69,7 +69,7 @@ public sealed record ProducerConfiguration
     /// <summary>Maximum kbytes in the producer's local queue (takes priority over the message count), or <see langword="null"/> for the client default (1048576).</summary>
     public int? QueueBufferingMaxKbytes { get; init; }
 
-    /// <summary>Delivery report fields to marshal back (e.g. <c>none</c> when only the error is checked), or <see langword="null"/> for the default (<see cref="ProducerConfigurationDefaults.DELIVERY_REPORT_FIELDS"/> — <c>all</c>; the client rejects null, so the default is set explicitly).</summary>
+    /// <summary>Delivery report fields to marshal back (e.g. <c>none</c> when only the error is checked), or <see langword="null"/> for the default (<see cref="ProducerConfigurationDefaults.DeliveryReportFields"/> — <c>all</c>; the client rejects null, so the default is set explicitly).</summary>
     public string? DeliveryReportFields { get; init; }
 
     /// <summary>Interval (ms) between statistics emissions (logged at Debug under the Kafka category), or <see langword="null"/> for none.</summary>
@@ -88,29 +88,29 @@ public sealed record ProducerConfiguration
     public ProducerConfig ProducerConfig => new ProducerConfig()
     {
         BootstrapServers = BootstrapServers,
-        SecurityProtocol = SecurityProtocol ?? ProducerConfigurationDefaults.SECURITY_PROTOCOL,
-        SaslMechanism = SaslMechanism ?? ProducerConfigurationDefaults.SASL_MECHANISM,
+        SecurityProtocol = SecurityProtocol ?? ProducerConfigurationDefaults.SecurityProtocol,
+        SaslMechanism = SaslMechanism ?? ProducerConfigurationDefaults.SaslMechanism,
         SaslUsername = SaslUsername,
         SaslPassword = SaslPassword,
-        Acks = Acks ?? ProducerConfigurationDefaults.ACKS,
-        AllowAutoCreateTopics = AllowAutoCreateTopics ?? ProducerConfigurationDefaults.ALLOW_AUTO_CREATE_TOPICS,
-        EnableIdempotence = EnableIdempotence ?? ProducerConfigurationDefaults.ENABLE_IDEMPOTENCE,
-        CompressionType = CompressionType ?? ProducerConfigurationDefaults.COMPRESSION_TYPE,
-        MessageTimeoutMs = MessageTimeoutMs ?? ProducerConfigurationDefaults.MESSAGE_TIMEOUT_MS,
-        LingerMs = LingerMs ?? ProducerConfigurationDefaults.LINGER_MS,
-        BatchNumMessages = BatchNumMessages ?? ProducerConfigurationDefaults.BATCH_NUM_MESSAGES,
-        BatchSize = BatchSize ?? ProducerConfigurationDefaults.BATCH_SIZE,
-        MessageMaxBytes = MessageMaxBytes ?? ProducerConfigurationDefaults.MESSAGE_MAX_BYTES,
-        MessageSendMaxRetries = MessageSendMaxRetries ?? ProducerConfigurationDefaults.MESSAGE_SEND_MAX_RETRIES,
-        RetryBackoffMs = RetryBackoffMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MS,
-        RetryBackoffMaxMs = RetryBackoffMaxMs ?? ProducerConfigurationDefaults.RETRY_BACKOFF_MAX_MS,
-        ClientId = ClientId ?? ProducerConfigurationDefaults.CLIENT_ID,
+        Acks = Acks ?? ProducerConfigurationDefaults.Acks,
+        AllowAutoCreateTopics = AllowAutoCreateTopics ?? ProducerConfigurationDefaults.AllowAutoCreateTopics,
+        EnableIdempotence = EnableIdempotence ?? ProducerConfigurationDefaults.EnableIdempotence,
+        CompressionType = CompressionType ?? ProducerConfigurationDefaults.CompressionType,
+        MessageTimeoutMs = MessageTimeoutMs ?? ProducerConfigurationDefaults.MessageTimeoutMs,
+        LingerMs = LingerMs ?? ProducerConfigurationDefaults.LingerMs,
+        BatchNumMessages = BatchNumMessages ?? ProducerConfigurationDefaults.BatchNumMessages,
+        BatchSize = BatchSize ?? ProducerConfigurationDefaults.BatchSize,
+        MessageMaxBytes = MessageMaxBytes ?? ProducerConfigurationDefaults.MessageMaxBytes,
+        MessageSendMaxRetries = MessageSendMaxRetries ?? ProducerConfigurationDefaults.MessageSendMaxRetries,
+        RetryBackoffMs = RetryBackoffMs ?? ProducerConfigurationDefaults.RetryBackoffMs,
+        RetryBackoffMaxMs = RetryBackoffMaxMs ?? ProducerConfigurationDefaults.RetryBackoffMaxMs,
+        ClientId = ClientId ?? ProducerConfigurationDefaults.ClientId,
         QueueBufferingMaxMessages = QueueBufferingMaxMessages,
         QueueBufferingMaxKbytes = QueueBufferingMaxKbytes,
-        DeliveryReportFields = DeliveryReportFields ?? ProducerConfigurationDefaults.DELIVERY_REPORT_FIELDS,
+        DeliveryReportFields = DeliveryReportFields ?? ProducerConfigurationDefaults.DeliveryReportFields,
         StatisticsIntervalMs = StatisticsIntervalMs,
         Debug = Debug,
         LogConnectionClose = LogConnectionClose,
-        SocketKeepaliveEnable = SocketKeepaliveEnable ?? ProducerConfigurationDefaults.SOCKET_KEEPALIVE_ENABLE
+        SocketKeepaliveEnable = SocketKeepaliveEnable ?? ProducerConfigurationDefaults.SocketKeepaliveEnable
     };
 }

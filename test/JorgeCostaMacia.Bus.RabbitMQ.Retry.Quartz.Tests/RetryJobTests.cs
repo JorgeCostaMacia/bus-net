@@ -18,9 +18,9 @@ public class RetryJobTests
     private static JobDataMap Data(string exchange = "orders", byte[]? body = null, string? headers = null)
         => new JobDataMap()
         {
-            [RetryJob.EXCHANGE_KEY] = exchange,
-            [RetryJob.BODY_KEY] = Convert.ToBase64String(body ?? "body"u8.ToArray()),
-            [RetryJob.HEADERS_KEY] = headers ?? "[]"
+            [RetryJob.ExchangeKey] = exchange,
+            [RetryJob.BodyKey] = Convert.ToBase64String(body ?? "body"u8.ToArray()),
+            [RetryJob.HeadersKey] = headers ?? "[]"
         };
 
     [Fact]
@@ -67,7 +67,7 @@ public class RetryJobTests
     public async Task Execute_MissingExchange_ThrowsAndProducesNothing()
     {
         JobDataMap data = Data();
-        data.Remove(RetryJob.EXCHANGE_KEY);
+        data.Remove(RetryJob.ExchangeKey);
 
         await Assert.ThrowsAnyAsync<Exception>(() => Execute(data));
         Assert.Empty(_producer.Produced);
@@ -77,7 +77,7 @@ public class RetryJobTests
     public async Task Execute_MissingBody_ThrowsAndProducesNothing()
     {
         JobDataMap data = Data();
-        data.Remove(RetryJob.BODY_KEY);
+        data.Remove(RetryJob.BodyKey);
 
         await Assert.ThrowsAnyAsync<Exception>(() => Execute(data));
         Assert.Empty(_producer.Produced);

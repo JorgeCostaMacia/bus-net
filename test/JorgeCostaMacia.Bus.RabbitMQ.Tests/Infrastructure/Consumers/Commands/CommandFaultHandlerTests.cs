@@ -12,7 +12,7 @@ public class CommandFaultHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private FaultHandler Fault()
-        => new(_producer, NullLogger.Instance, Deliveries.QUEUE);
+        => new(_producer, NullLogger.Instance, Deliveries.Queue);
 
     [Fact]
     public async Task ParksToFaultQueue_WithTheBodyAsText()
@@ -25,12 +25,12 @@ public class CommandFaultHandlerTests
         Assert.Equal(FaultResult.Parked, sut.Result);
         (string exchange, string routingKey, byte[] body, _) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
-        Assert.Equal($"{Deliveries.QUEUE}.fault", routingKey);
+        Assert.Equal($"{Deliveries.Queue}.fault", routingKey);
 
         JsonElement parked = JsonSerializer.Deserialize<JsonElement>(body);
         Assert.Equal(typeof(InvalidCastException).FullName, parked.GetProperty("error").GetProperty("type").GetString());
         Assert.Equal("bad header", parked.GetProperty("error").GetProperty("message").GetString());
-        Assert.Equal(Deliveries.QUEUE, parked.GetProperty("queue").GetString());
+        Assert.Equal(Deliveries.Queue, parked.GetProperty("queue").GetString());
         Assert.Equal("not json", parked.GetProperty("message").GetString());
     }
 
@@ -61,7 +61,7 @@ public class CommandFaultHandlerTests
         IReadOnlyDictionary<string, string> headers = Assert.Single(_producer.Produced).Headers;
         Assert.Equal(typeof(InvalidCastException).FullName, Deliveries.Header(headers, TransportHeaders.ErrorType));
         Assert.Equal("bad header", Deliveries.Header(headers, TransportHeaders.ErrorMessage));
-        Assert.Equal(Deliveries.QUEUE, Deliveries.Header(headers, TransportHeaders.ErrorGroupId));
+        Assert.Equal(Deliveries.Queue, Deliveries.Header(headers, TransportHeaders.ErrorGroupId));
     }
 
     [Fact]

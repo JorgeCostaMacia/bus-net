@@ -15,7 +15,7 @@ public class TransportTests
     {
         Transport transport = Transport.Create(Deliveries.Args("{}"u8.ToArray(), new Dictionary<string, object?> { ["key"] = "value"u8.ToArray() }, deliveryTag: 42));
 
-        Assert.Equal(Deliveries.EXCHANGE, transport.Exchange);
+        Assert.Equal(Deliveries.Exchange, transport.Exchange);
         Assert.Equal(string.Empty, transport.RoutingKey);
         Assert.Equal(42ul, transport.DeliveryTag);
         Assert.False(transport.Redelivered);

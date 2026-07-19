@@ -8,21 +8,21 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain.Events;
 
 public class EventContextTests
 {
-    private static readonly Guid CONVERSATION_ID = Guid.NewGuid();
-    private static readonly Guid AGGREGATE_ID = Guid.NewGuid();
-    private static readonly Guid AGGREGATE_CORRELATION_ID = Guid.NewGuid();
-    private static readonly DateTime OCCURRED_AT = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
+    private static readonly Guid ConversationId = Guid.NewGuid();
+    private static readonly Guid AggregateId = Guid.NewGuid();
+    private static readonly Guid AggregateCorrelationId = Guid.NewGuid();
+    private static readonly DateTime OccurredAt = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
     private static Transport Transport()
     {
         Headers headers = new Headers
         {
-            new Header(TransportHeaders.ConversationId, TransportHeaders.ToHeader(CONVERSATION_ID)),
+            new Header(TransportHeaders.ConversationId, TransportHeaders.ToHeader(ConversationId)),
             new Header(TransportHeaders.ConversationAddress, TransportHeaders.ToHeader("orders.created")),
-            new Header(TransportHeaders.ConversationOccurredAt, TransportHeaders.ToHeader(OCCURRED_AT.ToString("O"))),
-            new Header(TransportHeaders.AggregateId, TransportHeaders.ToHeader(AGGREGATE_ID)),
-            new Header(TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(AGGREGATE_CORRELATION_ID)),
-            new Header(TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(OCCURRED_AT.ToString("O"))),
+            new Header(TransportHeaders.ConversationOccurredAt, TransportHeaders.ToHeader(OccurredAt.ToString("O"))),
+            new Header(TransportHeaders.AggregateId, TransportHeaders.ToHeader(AggregateId)),
+            new Header(TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(AggregateCorrelationId)),
+            new Header(TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(OccurredAt.ToString("O"))),
             new Header(TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(new[] { "g1", "g2" })),
             new Header(TransportHeaders.RetryCount, TransportHeaders.ToHeader(3)),
             new Header(TransportHeaders.HostMachineName, TransportHeaders.ToHeader("box-1")),
@@ -33,7 +33,7 @@ public class EventContextTests
             new Header(TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader("Unix 6.8"))
         };
 
-        return new Transport(headers.ToImmutableList(), "orders.created", new Partition(0), new Offset(10), null, new Timestamp(OCCURRED_AT));
+        return new Transport(headers.ToImmutableList(), "orders.created", new Partition(0), new Offset(10), null, new Timestamp(OccurredAt));
     }
 
     private static EventContext<TestEvent> CreateSut() => new(new TestEvent("pepe"), Transport());
@@ -55,9 +55,9 @@ public class EventContextTests
     {
         EventContext<TestEvent> context = CreateSut();
 
-        Assert.Equal(AGGREGATE_ID, context.AggregateId);
-        Assert.Equal(AGGREGATE_CORRELATION_ID, context.AggregateCorrelationId);
-        Assert.Equal(OCCURRED_AT, context.AggregateOccurredAt);
+        Assert.Equal(AggregateId, context.AggregateId);
+        Assert.Equal(AggregateCorrelationId, context.AggregateCorrelationId);
+        Assert.Equal(OccurredAt, context.AggregateOccurredAt);
     }
 
     [Fact]
@@ -65,9 +65,9 @@ public class EventContextTests
     {
         EventContext<TestEvent> context = CreateSut();
 
-        Assert.Equal(CONVERSATION_ID, context.ConversationId);
+        Assert.Equal(ConversationId, context.ConversationId);
         Assert.Equal("orders.created", context.ConversationAddress);
-        Assert.Equal(OCCURRED_AT, context.ConversationOccurredAt);
+        Assert.Equal(OccurredAt, context.ConversationOccurredAt);
     }
 
     [Fact]
