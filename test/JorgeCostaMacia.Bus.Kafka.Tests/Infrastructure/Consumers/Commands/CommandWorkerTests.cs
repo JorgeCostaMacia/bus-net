@@ -23,9 +23,9 @@ public class CommandWorkerTests
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<CommandErrorHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
-                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
+                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
             .AddScoped<CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
-                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
+                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId))
             .BuildServiceProvider();
 
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
@@ -34,8 +34,8 @@ public class CommandWorkerTests
             NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
             _lifetime,
             _health,
-            Deliveries.TOPIC,
-            Deliveries.GROUP_ID);
+            Deliveries.Topic,
+            Deliveries.GroupId);
     }
 
     private async Task Drive(CommandWorker<TestCommand, RecordingCommandHandler> worker, ConsumerFake consumer)
@@ -53,7 +53,7 @@ public class CommandWorkerTests
         await Drive(Worker(consumer), consumer);
 
         Assert.Equal("pepe", _handler.Received?.Name);
-        Assert.Equal(Deliveries.TOPIC, consumer.SubscribedTopic);
+        Assert.Equal(Deliveries.Topic, consumer.SubscribedTopic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
         Assert.Empty(_producer.Produced);
         Assert.True(consumer.Closed);
@@ -82,7 +82,7 @@ public class CommandWorkerTests
         await Drive(Worker(consumer), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.error", topic);
+        Assert.Equal($"{Deliveries.Topic}.error", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -95,7 +95,7 @@ public class CommandWorkerTests
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal(Deliveries.TOPIC, topic);
+        Assert.Equal(Deliveries.Topic, topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -109,7 +109,7 @@ public class CommandWorkerTests
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal(Deliveries.TOPIC, topic);
+        Assert.Equal(Deliveries.Topic, topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -122,7 +122,7 @@ public class CommandWorkerTests
 
         Assert.Null(_handler.Received);
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -135,7 +135,7 @@ public class CommandWorkerTests
 
         Assert.Null(_handler.Received);
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -146,13 +146,13 @@ public class CommandWorkerTests
         // reports Unhandled and the worker escalates — the valid message must end parked to .fault.
         _handler.Failure = new InvalidOperationException("boom");
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
-        _producer.FailingTopics.Add(Deliveries.TOPIC);
+        _producer.FailingTopics.Add(Deliveries.Topic);
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -164,8 +164,8 @@ public class CommandWorkerTests
         // recovery signal) and the loop must survive to keep processing the partition.
         _handler.Failure = new InvalidOperationException("boom");
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
-        _producer.FailingTopics.Add(Deliveries.TOPIC);
-        _producer.FailingTopics.Add($"{Deliveries.TOPIC}.fault");
+        _producer.FailingTopics.Add(Deliveries.Topic);
+        _producer.FailingTopics.Add($"{Deliveries.Topic}.fault");
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
@@ -182,7 +182,7 @@ public class CommandWorkerTests
         // kill the consume loop — the Critical log carries the coordinates for manual recovery.
         _handler.Failure = new InvalidOperationException("boom");
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
-        _producer.FailingTopics.Add(Deliveries.TOPIC);
+        _producer.FailingTopics.Add(Deliveries.Topic);
         ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero), new ThrowingCommandFaultHandler()), consumer);
@@ -306,7 +306,7 @@ public class CommandWorkerTests
         await Drive(Worker(consumer), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -319,7 +319,7 @@ public class CommandWorkerTests
 
         Assert.Null(_handler.Received);
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 

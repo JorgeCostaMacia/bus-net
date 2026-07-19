@@ -18,7 +18,7 @@ internal sealed class Connection : Domain.IConnection
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    private global::RabbitMQ.Client.IConnection? _connection;
+    private IConnection? _connection;
     private bool _disposed;
 
     /// <summary>Creates the connection wrapper over the configured factory.</summary>
@@ -33,7 +33,7 @@ internal sealed class Connection : Domain.IConnection
     /// <inheritdoc />
     public async Task<IChannel> CreateChannelAsync(CancellationToken cancellationToken = default)
     {
-        global::RabbitMQ.Client.IConnection connection = await OpenAsync(cancellationToken);
+        IConnection connection = await OpenAsync(cancellationToken);
 
         // confirmations on: BasicPublishAsync completes when the broker accepts the message, not
         // when the frame hits the socket — the ack protocol of the failure lanes depends on it.
@@ -50,7 +50,7 @@ internal sealed class Connection : Domain.IConnection
     public bool IsOpen => _connection is not { IsOpen: false };
 
     /// <summary>Returns the open connection, opening (or re-opening) it under the gate when needed.</summary>
-    private async Task<global::RabbitMQ.Client.IConnection> OpenAsync(CancellationToken cancellationToken)
+    private async Task<IConnection> OpenAsync(CancellationToken cancellationToken)
     {
         if (_connection is { IsOpen: true })
         {
@@ -86,7 +86,7 @@ internal sealed class Connection : Domain.IConnection
     }
 
     /// <summary>Routes the connection's client callbacks (shutdown, automatic recovery, callback exceptions) to the client logger.</summary>
-    private void Wire(global::RabbitMQ.Client.IConnection connection)
+    private void Wire(IConnection connection)
     {
         connection.ConnectionShutdownAsync += (_, args) =>
         {

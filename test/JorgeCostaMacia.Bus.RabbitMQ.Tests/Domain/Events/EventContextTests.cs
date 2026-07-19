@@ -6,21 +6,21 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Domain.Events;
 
 public class EventContextTests
 {
-    private static readonly Guid CONVERSATION_ID = Guid.NewGuid();
-    private static readonly Guid AGGREGATE_ID = Guid.NewGuid();
-    private static readonly Guid AGGREGATE_CORRELATION_ID = Guid.NewGuid();
-    private static readonly DateTime OCCURRED_AT = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
+    private static readonly Guid ConversationId = Guid.NewGuid();
+    private static readonly Guid AggregateId = Guid.NewGuid();
+    private static readonly Guid AggregateCorrelationId = Guid.NewGuid();
+    private static readonly DateTime OccurredAt = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
     private static Transport Transport()
     {
         Dictionary<string, object?> headers = new Dictionary<string, object?>()
         {
-            [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(CONVERSATION_ID),
+            [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(ConversationId),
             [TransportHeaders.ConversationAddress] = TransportHeaders.ToHeader("orders.created"),
-            [TransportHeaders.ConversationOccurredAt] = TransportHeaders.ToHeader(OCCURRED_AT.ToString("O")),
-            [TransportHeaders.AggregateId] = TransportHeaders.ToHeader(AGGREGATE_ID),
-            [TransportHeaders.AggregateCorrelationId] = TransportHeaders.ToHeader(AGGREGATE_CORRELATION_ID),
-            [TransportHeaders.AggregateOccurredAt] = TransportHeaders.ToHeader(OCCURRED_AT.ToString("O")),
+            [TransportHeaders.ConversationOccurredAt] = TransportHeaders.ToHeader(OccurredAt.ToString("O")),
+            [TransportHeaders.AggregateId] = TransportHeaders.ToHeader(AggregateId),
+            [TransportHeaders.AggregateCorrelationId] = TransportHeaders.ToHeader(AggregateCorrelationId),
+            [TransportHeaders.AggregateOccurredAt] = TransportHeaders.ToHeader(OccurredAt.ToString("O")),
             [TransportHeaders.AggregateConsumers] = TransportHeaders.ToHeader(new[] { "g1", "g2" }),
             [TransportHeaders.RetryCount] = TransportHeaders.ToHeader(3),
             [TransportHeaders.HostMachineName] = TransportHeaders.ToHeader("box-1"),
@@ -53,9 +53,9 @@ public class EventContextTests
     {
         EventContext<TestEvent> context = CreateSut();
 
-        Assert.Equal(AGGREGATE_ID, context.AggregateId);
-        Assert.Equal(AGGREGATE_CORRELATION_ID, context.AggregateCorrelationId);
-        Assert.Equal(OCCURRED_AT, context.AggregateOccurredAt);
+        Assert.Equal(AggregateId, context.AggregateId);
+        Assert.Equal(AggregateCorrelationId, context.AggregateCorrelationId);
+        Assert.Equal(OccurredAt, context.AggregateOccurredAt);
     }
 
     [Fact]
@@ -63,9 +63,9 @@ public class EventContextTests
     {
         EventContext<TestEvent> context = CreateSut();
 
-        Assert.Equal(CONVERSATION_ID, context.ConversationId);
+        Assert.Equal(ConversationId, context.ConversationId);
         Assert.Equal("orders.created", context.ConversationAddress);
-        Assert.Equal(OCCURRED_AT, context.ConversationOccurredAt);
+        Assert.Equal(OccurredAt, context.ConversationOccurredAt);
     }
 
     [Fact]

@@ -15,10 +15,10 @@ public class ConnectionConfigurationTests
         Assert.Equal("pass", factory.Password);
         Assert.True(factory.Ssl.Enabled);
         Assert.Equal("bus", factory.Ssl.ServerName);
-        Assert.Equal(ConnectionConfigurationDefaults.PORT, factory.Port);
-        Assert.Equal(ConnectionConfigurationDefaults.VIRTUAL_HOST, factory.VirtualHost);
+        Assert.Equal(ConnectionConfigurationDefaults.Port, factory.Port);
+        Assert.Equal(ConnectionConfigurationDefaults.VirtualHost, factory.VirtualHost);
         Assert.Equal(Environment.MachineName, factory.ClientProvidedName);
-        Assert.Equal(ConnectionConfigurationDefaults.AUTOMATIC_RECOVERY_ENABLED, factory.AutomaticRecoveryEnabled);
+        Assert.Equal(ConnectionConfigurationDefaults.AutomaticRecoveryEnabled, factory.AutomaticRecoveryEnabled);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class ConnectionConfigurationTests
         ConnectionFactory factory = new ConnectionConfiguration { HostName = "bus", UserName = "user", Password = "pass", Ssl = false }.ConnectionFactory;
 
         Assert.False(factory.Ssl.Enabled);
-        Assert.Equal(ConnectionConfigurationDefaults.PORT, factory.Port);
+        Assert.Equal(ConnectionConfigurationDefaults.Port, factory.Port);
     }
 
     [Fact]

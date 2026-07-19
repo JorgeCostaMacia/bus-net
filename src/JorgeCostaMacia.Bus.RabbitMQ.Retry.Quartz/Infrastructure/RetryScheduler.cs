@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Infrastructure;
 /// <summary>
 /// The Quartz-backed retry scheduler: parks the delivery as a durable <see cref="RetryJob"/> with a
 /// single repeating trigger — the first fire exactly at the scheduled time, then one repetition
-/// every five minutes while the produce keeps failing: <see cref="ATTEMPTS"/> re-executions after
+/// every five minutes while the produce keeps failing: <see cref="Attempts"/> re-executions after
 /// the first fire, the same semantics as the bus's retries.
 /// </summary>
 /// <remarks>
@@ -27,9 +27,9 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Infrastructure;
 /// </remarks>
 internal sealed class RetryScheduler : IRetryScheduler
 {
-    private const int ATTEMPTS = 4;
+    private const int Attempts = 4;
 
-    private static readonly TimeSpan INTERVAL = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
 
     private readonly ISchedulerFactory _schedulerFactory;
 
@@ -50,9 +50,9 @@ internal sealed class RetryScheduler : IRetryScheduler
         IJobDetail job = JobBuilder.Create<RetryJob>()
             .WithIdentity(identity, exchange)
             .WithDescription(queue)
-            .UsingJobData(RetryJob.EXCHANGE_KEY, exchange)
-            .UsingJobData(RetryJob.BODY_KEY, Convert.ToBase64String(body.Span))
-            .UsingJobData(RetryJob.HEADERS_KEY, JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Value))))
+            .UsingJobData(RetryJob.ExchangeKey, exchange)
+            .UsingJobData(RetryJob.BodyKey, Convert.ToBase64String(body.Span))
+            .UsingJobData(RetryJob.HeadersKey, JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Value))))
             .StoreDurably()
             .RequestRecovery()
             .Build();
@@ -61,7 +61,7 @@ internal sealed class RetryScheduler : IRetryScheduler
             .WithIdentity(identity, exchange)
             .WithDescription(queue)
             .StartAt(new DateTimeOffset(DateTime.SpecifyKind(scheduledAt, DateTimeKind.Utc)))
-            .WithSimpleSchedule(schedule => schedule.WithInterval(INTERVAL).WithRepeatCount(ATTEMPTS))
+            .WithSimpleSchedule(schedule => schedule.WithInterval(Interval).WithRepeatCount(Attempts))
             .Build();
 
         // last write wins: an at-least-once duplicate of the same failure re-parks the same key —

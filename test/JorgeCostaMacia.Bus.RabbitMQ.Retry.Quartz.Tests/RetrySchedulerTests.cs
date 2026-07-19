@@ -12,12 +12,12 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests;
 
 public class RetrySchedulerTests
 {
-    private const string EXCHANGE = "orders";
-    private const string QUEUE = "orders.handler";
+    private const string Exchange = "orders";
+    private const string Queue = "orders.handler";
 
     // in the future on purpose: Quartz fast-forwards a repeating trigger whose start is already in
     // the past (it does not replay missed repetitions), which would break the StartAt assertions.
-    private static readonly DateTime SCHEDULED_AT = DateTime.UtcNow.AddDays(1);
+    private static readonly DateTime ScheduledAt = DateTime.UtcNow.AddDays(1);
 
     // A real in-memory Quartz scheduler, never started — ScheduleJob persists to the RAM store without firing.
     // A unique instance name keeps each test's scheduler isolated in the shared repository.
@@ -57,10 +57,10 @@ public class RetrySchedulerTests
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
 
-        await new RetryScheduler(factory).Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(messageId, 2), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await new RetryScheduler(factory).Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(messageId, 2), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        IJobDetail? job = await scheduler.GetJobDetail(new JobKey($"{messageId}:2", EXCHANGE), TestContext.Current.CancellationToken);
+        IJobDetail? job = await scheduler.GetJobDetail(new JobKey($"{messageId}:2", Exchange), TestContext.Current.CancellationToken);
 
         Assert.NotNull(job);
         Assert.Equal(typeof(RetryJob), job.JobType);
@@ -75,10 +75,10 @@ public class RetrySchedulerTests
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
 
-        await new RetryScheduler(factory).Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(messageId, 2), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await new RetryScheduler(factory).Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(messageId, 2), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        IJobDetail? job = await scheduler.GetJobDetail(new JobKey($"{messageId}:2", EXCHANGE), TestContext.Current.CancellationToken);
+        IJobDetail? job = await scheduler.GetJobDetail(new JobKey($"{messageId}:2", Exchange), TestContext.Current.CancellationToken);
 
         Assert.NotNull(job);
         Assert.True(job.Durable);
@@ -90,15 +90,15 @@ public class RetrySchedulerTests
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
 
-        await new RetryScheduler(factory).Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await new RetryScheduler(factory).Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        JobKey key = new($"{messageId}:1", EXCHANGE);
+        JobKey key = new($"{messageId}:1", Exchange);
         IJobDetail job = (await scheduler.GetJobDetail(key, TestContext.Current.CancellationToken))!;
         ITrigger trigger = Assert.Single(await scheduler.GetTriggersOfJob(key, TestContext.Current.CancellationToken));
 
-        Assert.Equal(QUEUE, job.Description);
-        Assert.Equal(QUEUE, trigger.Description);
+        Assert.Equal(Queue, job.Description);
+        Assert.Equal(Queue, trigger.Description);
     }
 
     [Fact]
@@ -107,12 +107,12 @@ public class RetrySchedulerTests
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
 
-        await new RetryScheduler(factory).Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await new RetryScheduler(factory).Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        ITrigger trigger = Assert.Single(await scheduler.GetTriggersOfJob(new JobKey($"{messageId}:1", EXCHANGE), TestContext.Current.CancellationToken));
+        ITrigger trigger = Assert.Single(await scheduler.GetTriggersOfJob(new JobKey($"{messageId}:1", Exchange), TestContext.Current.CancellationToken));
 
-        Assert.Equal(new DateTimeOffset(SCHEDULED_AT), trigger.StartTimeUtc);
+        Assert.Equal(new DateTimeOffset(ScheduledAt), trigger.StartTimeUtc);
     }
 
     [Fact]
@@ -123,10 +123,10 @@ public class RetrySchedulerTests
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
 
-        await new RetryScheduler(factory).Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await new RetryScheduler(factory).Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        ISimpleTrigger trigger = Assert.IsAssignableFrom<ISimpleTrigger>(Assert.Single(await scheduler.GetTriggersOfJob(new JobKey($"{messageId}:1", EXCHANGE), TestContext.Current.CancellationToken)));
+        ISimpleTrigger trigger = Assert.IsAssignableFrom<ISimpleTrigger>(Assert.Single(await scheduler.GetTriggersOfJob(new JobKey($"{messageId}:1", Exchange), TestContext.Current.CancellationToken)));
 
         Assert.Equal(TimeSpan.FromMinutes(5), trigger.RepeatInterval);
         Assert.Equal(4, trigger.RepeatCount);
@@ -138,13 +138,13 @@ public class RetrySchedulerTests
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
 
-        await new RetryScheduler(factory).Schedule(EXCHANGE, QUEUE, "hello"u8.ToArray(), Headers(messageId, 0), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await new RetryScheduler(factory).Schedule(Exchange, Queue, "hello"u8.ToArray(), Headers(messageId, 0), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        IJobDetail job = (await scheduler.GetJobDetail(new JobKey($"{messageId}:0", EXCHANGE), TestContext.Current.CancellationToken))!;
+        IJobDetail job = (await scheduler.GetJobDetail(new JobKey($"{messageId}:0", Exchange), TestContext.Current.CancellationToken))!;
 
-        Assert.Equal(EXCHANGE, job.JobDataMap.GetString(RetryJob.EXCHANGE_KEY));
-        Assert.Equal("hello", Encoding.UTF8.GetString(Convert.FromBase64String(job.JobDataMap.GetString(RetryJob.BODY_KEY)!)));
+        Assert.Equal(Exchange, job.JobDataMap.GetString(RetryJob.ExchangeKey));
+        Assert.Equal("hello", Encoding.UTF8.GetString(Convert.FromBase64String(job.JobDataMap.GetString(RetryJob.BodyKey)!)));
     }
 
     [Fact]
@@ -156,13 +156,13 @@ public class RetrySchedulerTests
         ISchedulerFactory factory = Factory();
 
         await new RetryScheduler(factory).Schedule(
-            EXCHANGE, QUEUE, "body"u8.ToArray(),
+            Exchange, Queue, "body"u8.ToArray(),
             Headers(messageId, 0, ("k", "v"), ("s", "text")),
-            SCHEDULED_AT, TestContext.Current.CancellationToken);
+            ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        IJobDetail job = (await scheduler.GetJobDetail(new JobKey($"{messageId}:0", EXCHANGE), TestContext.Current.CancellationToken))!;
-        List<KeyValuePair<string, string>> decoded = JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(job.JobDataMap.GetString(RetryJob.HEADERS_KEY)!)!;
+        IJobDetail job = (await scheduler.GetJobDetail(new JobKey($"{messageId}:0", Exchange), TestContext.Current.CancellationToken))!;
+        List<KeyValuePair<string, string>> decoded = JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(job.JobDataMap.GetString(RetryJob.HeadersKey)!)!;
 
         Assert.Contains(decoded, header => header.Key == "k" && header.Value == "v");
         Assert.Contains(decoded, header => header.Key == "s" && header.Value == "text");
@@ -178,15 +178,15 @@ public class RetrySchedulerTests
         ISchedulerFactory factory = Factory();
         RetryScheduler sut = new(factory);
 
-        await sut.Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT, TestContext.Current.CancellationToken);
-        await sut.Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(messageId, 1), SCHEDULED_AT.AddMinutes(10), TestContext.Current.CancellationToken);
+        await sut.Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt, TestContext.Current.CancellationToken);
+        await sut.Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt.AddMinutes(10), TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        JobKey key = Assert.Single(await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(EXCHANGE), TestContext.Current.CancellationToken));
+        JobKey key = Assert.Single(await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(Exchange), TestContext.Current.CancellationToken));
         ITrigger trigger = Assert.Single(await scheduler.GetTriggersOfJob(key, TestContext.Current.CancellationToken));
 
         Assert.Equal($"{messageId}:1", key.Name);
-        Assert.Equal(new DateTimeOffset(SCHEDULED_AT.AddMinutes(10)), trigger.StartTimeUtc);
+        Assert.Equal(new DateTimeOffset(ScheduledAt.AddMinutes(10)), trigger.StartTimeUtc);
     }
 
     [Fact]
@@ -194,10 +194,10 @@ public class RetrySchedulerTests
     {
         ISchedulerFactory factory = Factory();
 
-        await new RetryScheduler(factory).Schedule(EXCHANGE, QUEUE, "body"u8.ToArray(), Headers(retryCount: 0), SCHEDULED_AT, TestContext.Current.CancellationToken);
+        await new RetryScheduler(factory).Schedule(Exchange, Queue, "body"u8.ToArray(), Headers(retryCount: 0), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        JobKey key = Assert.Single(await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(EXCHANGE), TestContext.Current.CancellationToken));
+        JobKey key = Assert.Single(await scheduler.GetJobKeys(GroupMatcher<JobKey>.GroupEquals(Exchange), TestContext.Current.CancellationToken));
 
         Assert.Matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:0$", key.Name);
     }

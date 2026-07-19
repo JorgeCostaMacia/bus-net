@@ -19,7 +19,7 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    private const string FAULT_QUEUE_SUFFIX = ".fault";
+    private const string FaultQueueSuffix = ".fault";
 
     private readonly IProducer _producer;
     private readonly ILogger _logger;
@@ -43,7 +43,7 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
         {
             EventFault fault = EventFault.Create(context, _queue);
 
-            await _producer.Park(_queue + FAULT_QUEUE_SUFFIX, JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), FaultHeaders(context), cancellationToken);
+            await _producer.Park(_queue + FaultQueueSuffix, JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), FaultHeaders(context), cancellationToken);
 
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultQueue))
             {

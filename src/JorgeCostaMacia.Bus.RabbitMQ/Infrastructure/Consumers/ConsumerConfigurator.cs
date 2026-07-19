@@ -24,7 +24,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 /// </summary>
 public sealed class ConsumerConfigurator
 {
-    private const ushort DEFAULT_PREFETCH_COUNT = 10;
+    private const ushort DefaultPrefetchCount = 10;
 
     private readonly IServiceCollection _services;
     private readonly IReadOnlyDictionary<Type, string> _messages;
@@ -50,13 +50,13 @@ public sealed class ConsumerConfigurator
         string queue,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
-        ushort prefetchCount = DEFAULT_PREFETCH_COUNT)
+        ushort prefetchCount = DefaultPrefetchCount)
         where TCommand : Command
         where TCommandHandler : CommandHandler<TCommand>
     {
         string exchange = Exchange<TCommand>();
-        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
-        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
+        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RetryIntervals;
+        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RetryExcludeExceptionTypes;
 
         _services.AddScoped<TCommandHandler>();
 
@@ -99,13 +99,13 @@ public sealed class ConsumerConfigurator
         string queue,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
-        ushort prefetchCount = DEFAULT_PREFETCH_COUNT)
+        ushort prefetchCount = DefaultPrefetchCount)
         where TEvent : Event
         where TEventSubscriber : EventSubscriber<TEvent>
     {
         string exchange = Exchange<TEvent>();
-        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RETRY_INTERVALS;
-        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RETRY_EXCLUDE_EXCEPTION_TYPES;
+        ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RetryIntervals;
+        ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RetryExcludeExceptionTypes;
 
         _services.AddScoped<TEventSubscriber>();
 

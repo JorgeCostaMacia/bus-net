@@ -21,7 +21,7 @@ public class EventErrorHandlerTests
     private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
     private ErrorHandler EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
-        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? [], excludes ?? []);
+        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.Exchange, Deliveries.Queue, intervals ?? [], excludes ?? []);
 
     [Fact]
     public async Task NoLadder_ParksToErrorQueue()
@@ -34,18 +34,18 @@ public class EventErrorHandlerTests
         Assert.Equal(ErrorResult.Parked, sut.Result);
         (string exchange, string routingKey, byte[] body, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
-        Assert.Equal($"{Deliveries.QUEUE}.error", routingKey);
+        Assert.Equal($"{Deliveries.Queue}.error", routingKey);
 
         JsonElement parked = JsonSerializer.Deserialize<JsonElement>(body);
         Assert.Equal(typeof(InvalidOperationException).FullName, parked.GetProperty("error").GetProperty("type").GetString());
         Assert.Equal("boom", parked.GetProperty("error").GetProperty("message").GetString());
-        Assert.Equal(Deliveries.QUEUE, parked.GetProperty("queue").GetString());
-        Assert.Equal(Deliveries.EXCHANGE, parked.GetProperty("exchange").GetString());
+        Assert.Equal(Deliveries.Queue, parked.GetProperty("queue").GetString());
+        Assert.Equal(Deliveries.Exchange, parked.GetProperty("exchange").GetString());
         Assert.Equal(10ul, parked.GetProperty("deliveryTag").GetUInt64());
         Assert.Equal("pepe", parked.GetProperty("message").GetProperty("name").GetString());
 
         Assert.Equal(typeof(InvalidOperationException).FullName, Deliveries.Header(headers, TransportHeaders.ErrorType));
-        Assert.Equal(Deliveries.QUEUE, Deliveries.Header(headers, TransportHeaders.ErrorGroupId));
+        Assert.Equal(Deliveries.Queue, Deliveries.Header(headers, TransportHeaders.ErrorGroupId));
     }
 
     [Fact]
@@ -88,10 +88,10 @@ public class EventErrorHandlerTests
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
         (string exchange, string routingKey, _, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
-        Assert.Equal(Deliveries.EXCHANGE, exchange);
+        Assert.Equal(Deliveries.Exchange, exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal("1", Deliveries.Header(headers, TransportHeaders.RetryCount));
-        Assert.Equal(Deliveries.QUEUE, Deliveries.Header(headers, TransportHeaders.AggregateConsumers));   // re-targeted: only this queue reprocesses the fanout retry
+        Assert.Equal(Deliveries.Queue, Deliveries.Header(headers, TransportHeaders.AggregateConsumers));   // re-targeted: only this queue reprocesses the fanout retry
         Assert.Empty(_scheduler.Scheduled);
     }
 
@@ -105,10 +105,10 @@ public class EventErrorHandlerTests
         Assert.Equal(ErrorResult.Scheduled, sut.Result);
         Assert.Empty(_producer.Produced);
         (string exchange, string queue, _, IReadOnlyDictionary<string, string> headers, _) = Assert.Single(_scheduler.Scheduled);
-        Assert.Equal(Deliveries.EXCHANGE, exchange);
-        Assert.Equal(Deliveries.QUEUE, queue);
+        Assert.Equal(Deliveries.Exchange, exchange);
+        Assert.Equal(Deliveries.Queue, queue);
         Assert.Equal("1", Deliveries.Header(headers, TransportHeaders.RetryCount));
-        Assert.Equal(Deliveries.QUEUE, Deliveries.Header(headers, TransportHeaders.AggregateConsumers));
+        Assert.Equal(Deliveries.Queue, Deliveries.Header(headers, TransportHeaders.AggregateConsumers));
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public class EventErrorHandlerTests
         Assert.Equal(ErrorResult.Parked, sut.Result);
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
-        Assert.Equal($"{Deliveries.QUEUE}.error", routingKey);
+        Assert.Equal($"{Deliveries.Queue}.error", routingKey);
         Assert.Empty(_scheduler.Scheduled);
     }
 
@@ -145,7 +145,7 @@ public class EventErrorHandlerTests
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
-        Assert.Equal($"{Deliveries.QUEUE}.error", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Equal($"{Deliveries.Queue}.error", Assert.Single(_producer.Produced).RoutingKey);
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public class EventErrorHandlerTests
         await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
-        Assert.Equal($"{Deliveries.QUEUE}.error", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Equal($"{Deliveries.Queue}.error", Assert.Single(_producer.Produced).RoutingKey);
     }
 
     [Fact]

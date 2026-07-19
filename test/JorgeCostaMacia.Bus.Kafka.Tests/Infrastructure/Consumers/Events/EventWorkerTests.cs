@@ -22,9 +22,9 @@ public class EventWorkerTests
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
             .AddScoped<EventErrorHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
-                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, _scheduler, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
+                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, _scheduler, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
             .AddScoped<EventFaultHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
-                new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.TOPIC, Deliveries.GROUP_ID))
+                new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId))
             .BuildServiceProvider();
 
         return new EventWorker<TestEvent, RecordingEventSubscriber>(
@@ -33,8 +33,8 @@ public class EventWorkerTests
             NullLogger<EventWorker<TestEvent, RecordingEventSubscriber>>.Instance,
             _lifetime,
             _health,
-            Deliveries.TOPIC,
-            Deliveries.GROUP_ID);
+            Deliveries.Topic,
+            Deliveries.GroupId);
     }
 
     private async Task Drive(EventWorker<TestEvent, RecordingEventSubscriber> worker, ConsumerFake consumer)
@@ -71,7 +71,7 @@ public class EventWorkerTests
     [Fact]
     public async Task TargetsItsGroup_Runs()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber,{Deliveries.GROUP_ID}"));
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber,{Deliveries.GroupId}"));
 
         await Drive(Worker(consumer), consumer);
 
@@ -88,7 +88,7 @@ public class EventWorkerTests
         await Drive(Worker(consumer), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.error", topic);
+        Assert.Equal($"{Deliveries.Topic}.error", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -101,7 +101,7 @@ public class EventWorkerTests
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal(Deliveries.TOPIC, topic);
+        Assert.Equal(Deliveries.Topic, topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -114,7 +114,7 @@ public class EventWorkerTests
 
         Assert.Null(_subscriber.Received);
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -127,7 +127,7 @@ public class EventWorkerTests
 
         Assert.Null(_subscriber.Received);
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -153,7 +153,7 @@ public class EventWorkerTests
         await Drive(Worker(consumer), consumer);
 
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 
@@ -166,7 +166,7 @@ public class EventWorkerTests
 
         Assert.Null(_subscriber.Received);
         (string topic, _) = Assert.Single(_producer.Produced);
-        Assert.Equal($"{Deliveries.TOPIC}.fault", topic);
+        Assert.Equal($"{Deliveries.Topic}.fault", topic);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
     }
 

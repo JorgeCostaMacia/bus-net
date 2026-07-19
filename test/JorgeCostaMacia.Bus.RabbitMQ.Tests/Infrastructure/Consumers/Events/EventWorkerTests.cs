@@ -22,17 +22,17 @@ public class EventWorkerTests
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
             .AddScoped<ErrorHandlerBase>(_ =>
-                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, null, NullLogger.Instance, Deliveries.EXCHANGE, Deliveries.QUEUE, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
+                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, null, NullLogger.Instance, Deliveries.Exchange, Deliveries.Queue, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
             .AddScoped<FaultHandlerBase>(_ =>
-                new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.QUEUE))
+                new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.Queue))
             .BuildServiceProvider();
 
         return new EventWorker<TestEvent, RecordingEventSubscriber>(
             channel,
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<EventWorker<TestEvent, RecordingEventSubscriber>>.Instance,
-            Deliveries.EXCHANGE,
-            Deliveries.QUEUE,
+            Deliveries.Exchange,
+            Deliveries.Queue,
             prefetchCount: 10);
     }
 
@@ -57,7 +57,7 @@ public class EventWorkerTests
 
         Assert.Equal("pepe", _subscriber.Received?.Name);
         Assert.True(channel.Declared);
-        Assert.Equal(Deliveries.QUEUE, channel.ConsumedQueue);
+        Assert.Equal(Deliveries.Queue, channel.ConsumedQueue);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
         Assert.Empty(channel.Nacked);
         Assert.Empty(_producer.Produced);
@@ -74,7 +74,7 @@ public class EventWorkerTests
 
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
         Assert.Equal(string.Empty, exchange);
-        Assert.Equal($"{Deliveries.QUEUE}.error", routingKey);
+        Assert.Equal($"{Deliveries.Queue}.error", routingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
         Assert.Empty(channel.Nacked);
     }
@@ -88,7 +88,7 @@ public class EventWorkerTests
         await Deliver(channel, Worker(channel, ImmutableList.Create(TimeSpan.Zero)), Deliveries.Delivery(new TestEvent("pepe")));
 
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
-        Assert.Equal(Deliveries.EXCHANGE, exchange);
+        Assert.Equal(Deliveries.Exchange, exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
     }
@@ -116,7 +116,7 @@ public class EventWorkerTests
         await Deliver(channel, Worker(channel), Deliveries.Garbage());
 
         Assert.Null(_subscriber.Received);
-        Assert.Equal($"{Deliveries.QUEUE}.fault", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Equal($"{Deliveries.Queue}.fault", Assert.Single(_producer.Produced).RoutingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
     }
 
@@ -128,7 +128,7 @@ public class EventWorkerTests
         await Deliver(channel, Worker(channel), Deliveries.NullBody());
 
         Assert.Null(_subscriber.Received);
-        Assert.Equal($"{Deliveries.QUEUE}.fault", Assert.Single(_producer.Produced).RoutingKey);
+        Assert.Equal($"{Deliveries.Queue}.fault", Assert.Single(_producer.Produced).RoutingKey);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
     }
 
@@ -149,7 +149,7 @@ public class EventWorkerTests
     {
         ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber, {Deliveries.QUEUE}"));
+        await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber, {Deliveries.Queue}"));
 
         Assert.Equal("pepe", _subscriber.Received?.Name);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
