@@ -29,7 +29,7 @@ internal sealed class RetryScheduler : IRetryScheduler
 {
     private const int Attempts = 4;
 
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
 
     private readonly ISchedulerFactory _schedulerFactory;
 
@@ -61,7 +61,7 @@ internal sealed class RetryScheduler : IRetryScheduler
             .WithIdentity(identity, exchange)
             .WithDescription(queue)
             .StartAt(new DateTimeOffset(DateTime.SpecifyKind(scheduledAt, DateTimeKind.Utc)))
-            .WithSimpleSchedule(schedule => schedule.WithInterval(Interval).WithRepeatCount(Attempts))
+            .WithSimpleSchedule(schedule => schedule.WithInterval(_interval).WithRepeatCount(Attempts))
             .Build();
 
         // last write wins: an at-least-once duplicate of the same failure re-parks the same key —

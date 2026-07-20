@@ -28,7 +28,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     where TContext : IContext
     where THandler : IHandler
 {
-    private static readonly TimeSpan[] DefaultResurrectionBackoff = new[] { TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60) };
+    private static readonly TimeSpan[] _defaultResurrectionBackoff = new[] { TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60) };
 
     private readonly IConsumerChannelFactory _channelFactory;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -69,7 +69,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// than the constant it defaults to only as the test seam: a test shrinks it to milliseconds so the
     /// resurrection runs inside the test, without widening any constructor.
     /// </summary>
-    internal IReadOnlyList<TimeSpan> ResurrectionBackoff { get; set; } = DefaultResurrectionBackoff;
+    internal IReadOnlyList<TimeSpan> ResurrectionBackoff { get; set; } = _defaultResurrectionBackoff;
 
     /// <summary>
     /// Consumer-side filtering hook: a filtered delivery is acked and skipped before deserializing the
