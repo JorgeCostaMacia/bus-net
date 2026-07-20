@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

@@ -4,11 +4,14 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Admin;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using IBus = JorgeCostaMacia.Bus.Kafka.Domain.IBus;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests;
@@ -211,5 +214,43 @@ public class BusContextTests
         Assert.Equal(ServiceLifetime.Scoped, errorHandler.Lifetime);
         ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(EventFaultHandlerBase<TestEvent, TestEventSubscriber>));
         Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
+    }
+
+    [Fact]
+    public void AddBusContext_WithoutAdmin_DoesNotRegisterTheAdminWorker()
+    {
+        ServiceCollection services = new ServiceCollection();
+
+        services.AddBusContext(Configuration(), producer => producer.AddCommand<TestCommand>("orders"));
+
+        ServiceDescriptor hosted = Assert.Single(services, e => e.ServiceType == typeof(IHostedService));
+        Assert.Equal(typeof(ProducerWorker), hosted.ImplementationType);
+    }
+
+    [Fact]
+    public void AddBusContext_WithAdmin_RegistersTheAdminWorkerFirst()
+    {
+        Dictionary<string, string?> values = new Dictionary<string, string?>()
+        {
+            ["Bus:Producer:BootstrapServers"] = "bus:9092",
+            ["Bus:Producer:SaslUsername"] = "user",
+            ["Bus:Producer:SaslPassword"] = "pass",
+            ["Bus:Admin:BootstrapServers"] = "bus:9092",
+            ["Bus:Admin:SaslUsername"] = "admin",
+            ["Bus:Admin:SaslPassword"] = "pass"
+        };
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+        ServiceCollection services = new ServiceCollection();
+
+        services.AddBusContext(configuration,
+            producer => producer.AddCommand<TestCommand>("orders"),
+            admin: admin => admin.AddCommand<TestCommand>("orders", 3));
+
+        ServiceDescriptor first = services.First(e => e.ServiceType == typeof(IHostedService));
+        ServiceProvider probe = new ServiceCollection().AddSingleton<ILogger<AdminWorker>>(NullLogger<AdminWorker>.Instance).BuildServiceProvider();
+        object instance = first.ImplementationFactory!(probe);
+
+        Assert.IsType<AdminWorker>(instance);
     }
 }
