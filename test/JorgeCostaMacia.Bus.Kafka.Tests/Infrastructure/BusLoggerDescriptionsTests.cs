@@ -31,7 +31,8 @@ public class BusLoggerDescriptionsTests
         ["RedeliveredToNewOwner"] = "Lost in a rebalance; the new owner will handle the message again.",
         ["RedeliveryWindowWidened"] = "The stored offsets were not committed; the crash-redelivery window widened.",
         ["ApplicationStopped"] = "The client is unrecoverable; the application stops to restart clean.",
-        ["QueuedMessagesMayBeLost"] = "Queued messages may be lost."
+        ["QueuedMessagesMayBeLost"] = "Queued messages may be lost.",
+        ["TopicsEnsured"] = "The mapped topics are ensured on the broker before the consumers subscribe."
     };
 
     [Fact]

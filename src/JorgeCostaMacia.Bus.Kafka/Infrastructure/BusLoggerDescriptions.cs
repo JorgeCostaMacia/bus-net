@@ -27,4 +27,5 @@ internal static class BusLoggerDescriptions
     public const string RedeliveryWindowWidened = "The stored offsets were not committed; the crash-redelivery window widened.";
     public const string ApplicationStopped = "The client is unrecoverable; the application stops to restart clean.";
     public const string QueuedMessagesMayBeLost = "Queued messages may be lost.";
+    public const string TopicsEnsured = "The mapped topics are ensured on the broker before the consumers subscribe.";
 }
