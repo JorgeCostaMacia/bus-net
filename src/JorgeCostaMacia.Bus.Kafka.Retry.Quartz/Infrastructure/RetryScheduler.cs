@@ -31,7 +31,7 @@ internal sealed class RetryScheduler : IRetryScheduler
 {
     private const int Attempts = 4;
 
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan _interval = TimeSpan.FromMinutes(5);
 
     private readonly ISchedulerFactory _schedulerFactory;
 
@@ -67,7 +67,7 @@ internal sealed class RetryScheduler : IRetryScheduler
             // reschedules now with the existing repeat count, so a fire missed while the scheduler was
             // down (e.g. a maintenance window) runs on recovery instead of being skipped — no delivery
             // silently dropped. Left implicit on purpose; stated here so it reads as a choice, not an oversight.
-            .WithSimpleSchedule(schedule => schedule.WithInterval(Interval).WithRepeatCount(Attempts))
+            .WithSimpleSchedule(schedule => schedule.WithInterval(_interval).WithRepeatCount(Attempts))
             .Build();
 
         // last write wins: an at-least-once duplicate of the same failure re-parks the same key —
