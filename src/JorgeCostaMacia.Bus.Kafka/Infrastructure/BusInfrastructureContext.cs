@@ -1,5 +1,6 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Admin;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
@@ -34,12 +35,30 @@ internal static class BusInfrastructureContext
     /// <param name="configuration">The application configuration carrying the <c>Bus:Producer</c> section (and <c>Bus:Consumer</c> when a consumer lambda is supplied).</param>
     /// <param name="producer">Maps the messages this service sends/publishes to their topics.</param>
     /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a send-only service.</param>
+    /// <param name="admin">Declares the topics to create at startup (over the dedicated <c>Bus:Admin</c> connection), or <see langword="null"/> to leave provisioning to the broker.</param>
     /// <returns>The same service collection, to allow method chaining.</returns>
-    internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null)
+    internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null, Action<AdminConfigurator>? admin = null)
     {
         ProducerConfigurator producerConfigurator = new ProducerConfigurator(configuration);
 
         producer(producerConfigurator);
+
+        // opt-in topic provisioning: declared through the admin configurator (a dedicated Bus:Admin
+        // connection) and created before every other hosted service, so the topics exist by the time the
+        // consumers subscribe (no "unknown topic" churn). Omit the admin configurator to leave provisioning
+        // to the broker. The error/fault topics are never created here — they are born on the first parked
+        // message, so their presence signals a real failure.
+        if (admin is not null)
+        {
+            AdminConfigurator adminConfigurator = new AdminConfigurator(configuration);
+
+            admin(adminConfigurator);
+
+            AdminClientConfig adminClientConfig = adminConfigurator.AdminClientConfig;
+            IReadOnlyDictionary<string, int> topicSpecifications = adminConfigurator.Topics;
+
+            services.AddHostedService(provider => new AdminWorker(adminClientConfig, topicSpecifications, provider.GetRequiredService<ILogger<AdminWorker>>()));
+        }
 
         // the broker-reachability tracker the transport feeds and the health-check package reads —
         // TryAdd, so registering both the bus and the check (in any order) shares the one instance.

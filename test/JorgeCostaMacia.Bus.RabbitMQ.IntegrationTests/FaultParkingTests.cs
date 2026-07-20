@@ -1,7 +1,6 @@
 using System.Text;
 using JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 
