@@ -19,7 +19,7 @@ public class CommandWorkerTests
     private readonly BusHealth _health = new BusHealth();
     private readonly RecordingCommandHandler _handler = new RecordingCommandHandler();
 
-    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>? faultHandler = null)
+    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>? faultHandler = null, StartupGate? startupGate = null, StartupSignal? startupSignal = null)
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
@@ -35,8 +35,8 @@ public class CommandWorkerTests
             NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
             _lifetime,
             _health,
-            new StartupGate(8),
-            new StartupSignal(),
+            startupGate ?? new StartupGate(8),
+            startupSignal ?? new StartupSignal(),
             Deliveries.Topic,
             Deliveries.GroupId);
     }
@@ -346,5 +346,42 @@ public class CommandWorkerTests
 
         Assert.Equal("pepe", _handler.Received?.Name);
         Assert.Equal(10, Assert.Single(consumer.Stored).Offset.Value);
+    }
+
+    [Fact]
+    public async Task Startup_WaitsForAGateSlot_ThenReleasesItOnGroupJoin()
+    {
+        // the shared gate has a single slot, already taken: the worker must wait its turn before its
+        // first consume, and once it joins its group (its signal raised) it must free the slot again.
+        StartupGate gate = new StartupGate(1);
+        StartupSignal signal = new StartupSignal();
+        await gate.WaitAsync(TestContext.Current.CancellationToken);
+
+        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer, startupGate: gate, startupSignal: signal);
+
+        await worker.StartAsync(TestContext.Current.CancellationToken);
+
+        // slot taken → parked before consuming: nothing handled yet.
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => consumer.Drained.WaitAsync(TimeSpan.FromMilliseconds(300), TestContext.Current.CancellationToken));
+        Assert.Null(_handler.Received);
+
+        // a slot frees → the worker connects and consumes.
+        gate.Release();
+
+        await consumer.Drained.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.Equal("pepe", _handler.Received?.Name);
+
+        // the worker still holds its slot (it has not joined a group in this fake); raising the signal frees it.
+        Task waiter = gate.WaitAsync(TestContext.Current.CancellationToken);
+        Assert.False(waiter.IsCompleted);
+
+        signal.MarkReady();
+
+        await waiter.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.True(waiter.IsCompletedSuccessfully);
+
+        await worker.StopAsync(TestContext.Current.CancellationToken);
     }
 }
