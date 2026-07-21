@@ -1,6 +1,6 @@
-using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Startup;
 
-namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers;
+namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Startup;
 
 public class StartupSignalTests
 {

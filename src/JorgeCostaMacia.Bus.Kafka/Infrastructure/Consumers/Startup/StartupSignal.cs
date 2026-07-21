@@ -1,4 +1,4 @@
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Startup;
 
 /// <summary>
 /// A one-shot startup signal for a single consumer: raised by the consumer's partition-assignment

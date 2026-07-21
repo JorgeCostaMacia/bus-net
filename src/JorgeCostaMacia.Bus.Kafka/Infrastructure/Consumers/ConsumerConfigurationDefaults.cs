@@ -85,7 +85,7 @@ public static class ConsumerConfigurationDefaults
 
     /// <summary>
     /// Maximum consumers opening their initial broker connection at once at startup. Default: <c>8</c> —
-    /// staggers the startup handshakes (see <see cref="StartupGate"/>) so a service with many consumers
+    /// staggers the startup handshakes (see <see cref="Startup.StartupGate"/>) so a service with many consumers
     /// does not connect them all in the same instant.
     /// </summary>
     public const int StartupMaxConcurrency = 8;
