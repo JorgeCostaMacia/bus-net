@@ -65,6 +65,7 @@ The two sides bind independently: the **`Bus:Producer`** section configures the 
 - **`SaslMechanism` `ScramSha512`** — the SASL mechanism both sides authenticate with.
 - **`AutoOffsetReset` `Earliest`** (consumer) — where a group starts when it has no stored offset (its first start, or expired offsets): the at-least-once bias, so a brand-new group replays the topic from the beginning rather than skipping everything published before it joined, mirroring RabbitMQ's queue semantics.
 - **Static membership — `GroupInstanceId` defaults to the machine name** (as does `ClientId`) — a restart within the session timeout reclaims the consumer's partition assignment with no rebalance. Two instances of the same service must therefore get **distinct** `GroupInstanceId`s (one per container/replica); sharing one fences the members out of the group — a fatal broker error that stops the app. Note a static member does not leave the group on a clean shutdown; eviction is by session timeout.
+- **`StartupMaxConcurrency` `8`** (consumer) — how many consumers open their initial broker connection at once. Each handler is its own consumer, so a service hosting many of them would otherwise fire every TLS/SASL handshake in the same instant at startup — enough to overwhelm a small cluster (`ApiVersionRequest` timeouts, transport failures). This staggers them: a consumer connects, joins its group, then frees a slot for the next. Raise it on a cluster that absorbs more concurrent connects.
 
 ```json
 {

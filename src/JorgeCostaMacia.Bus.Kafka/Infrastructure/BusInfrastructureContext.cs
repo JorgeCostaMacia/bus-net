@@ -56,8 +56,9 @@ internal static class BusInfrastructureContext
 
             AdminClientConfig adminClientConfig = adminConfigurator.AdminClientConfig;
             IReadOnlyDictionary<string, int> topicSpecifications = adminConfigurator.Topics;
+            int topicsBatchSize = adminConfigurator.TopicsBatchSize;
 
-            services.AddHostedService(provider => new AdminWorker(adminClientConfig, topicSpecifications, provider.GetRequiredService<ILogger<AdminWorker>>()));
+            services.AddHostedService(provider => new AdminWorker(adminClientConfig, topicSpecifications, topicsBatchSize, provider.GetRequiredService<ILogger<AdminWorker>>()));
         }
 
         // the broker-reachability tracker the transport feeds and the health-check package reads —

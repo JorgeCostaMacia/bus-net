@@ -3,6 +3,7 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,8 @@ public class CommandWorkerTests
             NullLogger<CommandWorker<TestCommand, RecordingCommandHandler>>.Instance,
             _lifetime,
             _health,
+            new StartupGate(8),
+            new StartupSignal(),
             Deliveries.Topic,
             Deliveries.GroupId);
     }

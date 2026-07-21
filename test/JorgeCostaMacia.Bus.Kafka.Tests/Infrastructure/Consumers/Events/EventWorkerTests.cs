@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,8 @@ public class EventWorkerTests
             NullLogger<EventWorker<TestEvent, RecordingEventSubscriber>>.Instance,
             _lifetime,
             _health,
+            new StartupGate(8),
+            new StartupSignal(),
             Deliveries.Topic,
             Deliveries.GroupId);
     }
