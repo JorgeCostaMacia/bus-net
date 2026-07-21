@@ -1,4 +1,4 @@
-namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
+namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Startup;
 
 /// <summary>
 /// Bounds how many consumers open their initial broker connection (the TLS + SASL handshake and group
