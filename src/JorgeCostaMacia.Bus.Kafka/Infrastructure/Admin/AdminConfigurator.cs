@@ -34,6 +34,9 @@ public sealed class AdminConfigurator
     /// <summary>The topic → partition-count map to create (<c>-1</c> = the broker's default partition count).</summary>
     internal IReadOnlyDictionary<string, int> Topics => _topics;
 
+    /// <summary>How many topics are created per request — the bound value, or the default (50) when unset.</summary>
+    internal int TopicsBatchSize => _adminConfiguration.TopicsBatchSize ?? AdminConfigurationDefaults.TopicsBatchSize;
+
     /// <summary>Declares a command's topic to create at startup.</summary>
     /// <typeparam name="TCommand">The command type — mirrors the producer mapping so both lists read alike.</typeparam>
     /// <param name="topic">The Kafka topic to create.</param>

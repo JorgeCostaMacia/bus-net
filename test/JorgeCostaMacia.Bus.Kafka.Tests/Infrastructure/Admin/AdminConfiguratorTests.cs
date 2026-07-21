@@ -71,4 +71,30 @@ public class AdminConfiguratorTests
 
         Assert.Contains("Bus:Admin", exception.Message);
     }
+
+    [Fact]
+    public void TopicsBatchSize_WhenUnset_DefaultsToFifty()
+    {
+        AdminConfigurator configurator = new AdminConfigurator(Configuration());
+
+        Assert.Equal(AdminConfigurationDefaults.TopicsBatchSize, configurator.TopicsBatchSize);
+        Assert.Equal(50, configurator.TopicsBatchSize);
+    }
+
+    [Fact]
+    public void TopicsBatchSize_WhenConfigured_UsesTheConfiguredValue()
+    {
+        Dictionary<string, string?> values = new Dictionary<string, string?>()
+        {
+            ["Bus:Admin:BootstrapServers"] = "bus:9092",
+            ["Bus:Admin:SaslUsername"] = "admin",
+            ["Bus:Admin:SaslPassword"] = "pass",
+            ["Bus:Admin:TopicsBatchSize"] = "20"
+        };
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+        AdminConfigurator configurator = new AdminConfigurator(configuration);
+
+        Assert.Equal(20, configurator.TopicsBatchSize);
+    }
 }

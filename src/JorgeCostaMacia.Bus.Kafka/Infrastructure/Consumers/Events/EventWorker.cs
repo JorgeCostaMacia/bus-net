@@ -30,6 +30,8 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
     /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
+    /// <param name="startupGate">The shared gate bounding how many consumers connect at once at startup.</param>
+    /// <param name="startupSignal">This consumer's one-shot signal, raised by its partition-assignment callback when it joins its group.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     public EventWorker(
@@ -38,9 +40,11 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
         ILogger<EventWorker<TEvent, TEventSubscriber>> logger,
         IHostApplicationLifetime lifetime,
         BusHealth health,
+        StartupGate startupGate,
+        StartupSignal startupSignal,
         string topic,
         string groupId)
-        : base(consumer, scopeFactory, logger, lifetime, health, topic, groupId)
+        : base(consumer, scopeFactory, logger, lifetime, health, startupGate, startupSignal, topic, groupId)
     {
     }
 

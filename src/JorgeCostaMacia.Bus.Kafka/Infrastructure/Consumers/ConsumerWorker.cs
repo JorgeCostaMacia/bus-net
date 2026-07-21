@@ -36,24 +36,32 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>The consumer group id — the consumer's identity for offsets and consumer-side filtering.</summary>
     protected string GroupId { get; }
 
+    /// <summary>Fallback timeout before a consumer releases its startup slot when it never joins its group (e.g. more replicas than partitions), so a stalled join does not hold the slot.</summary>
+    private static readonly TimeSpan StartupReleaseTimeout = TimeSpan.FromSeconds(30);
+
     private readonly IConsumer _consumer;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger _logger;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly BusHealth _health;
+    private readonly StartupGate _startupGate;
+    private readonly StartupSignal _startupSignal;
 
     private readonly string _topic;
 
     private Task? _loop;
     private CancellationTokenSource? _cancellation;
+    private int _startupSlotReleased;
 
-    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker and its contract.</summary>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker, the startup gate/signal and its contract.</summary>
     /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message — the handler and its error and fault handlers are resolved from it.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
     /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
+    /// <param name="startupGate">The shared gate bounding how many consumers connect at once at startup.</param>
+    /// <param name="startupSignal">This consumer's one-shot signal, raised by its partition-assignment callback when it joins its group.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
     protected ConsumerWorker(
@@ -62,6 +70,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         ILogger logger,
         IHostApplicationLifetime lifetime,
         BusHealth health,
+        StartupGate startupGate,
+        StartupSignal startupSignal,
         string topic,
         string groupId)
     {
@@ -70,6 +80,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _logger = logger;
         _lifetime = lifetime;
         _health = health;
+        _startupGate = startupGate;
+        _startupSignal = startupSignal;
         _topic = topic;
         GroupId = groupId;
     }
@@ -127,6 +139,61 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _cancellation.Dispose();
         _cancellation = null;
         _loop = null;
+    }
+
+    /// <summary>
+    /// Waits for a startup slot from the shared <see cref="StartupGate"/> before the first consume, so
+    /// a service with many consumers does not open every broker connection in the same instant, then
+    /// arranges to release the slot once this consumer has connected — leaving the loop free to run.
+    /// A shutdown during the wait means no slot was acquired: nothing to release.
+    /// </summary>
+    /// <param name="cancellationToken">The loop's cancellation token.</param>
+    private async Task AwaitStartupSlot(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _startupGate.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        _ = ReleaseStartupSlotWhenReady(cancellationToken);
+    }
+
+    /// <summary>
+    /// Releases the startup slot as soon as this consumer joins its group (its <see cref="StartupSignal"/>
+    /// is raised), or after <see cref="StartupReleaseTimeout"/> as a fallback — so an idle topic that has
+    /// not assigned yet, or a slow connect, never holds the slot indefinitely. Released exactly once,
+    /// whichever comes first (join, timeout or shutdown).
+    /// </summary>
+    /// <param name="cancellationToken">The loop's cancellation token.</param>
+    private async Task ReleaseStartupSlotWhenReady(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _startupSignal.Ready.WaitAsync(StartupReleaseTimeout, cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            ReleaseStartupSlot();
+        }
+    }
+
+    /// <summary>Releases this consumer's startup slot back to the gate, exactly once.</summary>
+    private void ReleaseStartupSlot()
+    {
+        if (Interlocked.Exchange(ref _startupSlotReleased, 1) == 0)
+        {
+            _startupGate.Release();
+        }
     }
 
     /// <summary>Builds the concrete context for a delivery from its transport.</summary>
@@ -189,6 +256,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private async Task Consume(CancellationToken cancellationToken)
     {
         using IDisposable scope = BusLogger.WorkerContext(_topic, GroupId);
+
+        await AwaitStartupSlot(cancellationToken);
 
         while (!cancellationToken.IsCancellationRequested)
         {
