@@ -7,6 +7,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Faults;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Startup;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Kafka;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,9 @@ public sealed class ConsumerConfigurator
         _services = services;
         _messages = messages;
         _configuration = CreateConsumerConfiguration(configuration);
+
+        // one shared startup gate for all this service's consumers — bounds how many connect at once.
+        _services.AddSingleton(new StartupGate(_configuration.StartupMaxConcurrency ?? ConsumerConfigurationDefaults.StartupMaxConcurrency));
     }
 
     /// <summary>
@@ -97,13 +101,16 @@ public sealed class ConsumerConfigurator
             ILogger<Commands.CommandWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<Commands.CommandWorker<TCommand, TCommandHandler>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
             BusHealth health = provider.GetRequiredService<BusHealth>();
+            StartupSignal startupSignal = new StartupSignal();
 
             return new Commands.CommandWorker<TCommand, TCommandHandler>(
-                new Consumer(CreateBuilder(provider, configuration, logger, lifetime, health)),
+                new Consumer(CreateBuilder(provider, configuration, logger, lifetime, health, startupSignal)),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
                 health,
+                provider.GetRequiredService<StartupGate>(),
+                startupSignal,
                 topic,
                 groupId);
         });
@@ -163,13 +170,16 @@ public sealed class ConsumerConfigurator
             ILogger<Events.EventWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<Events.EventWorker<TEvent, TEventSubscriber>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
             BusHealth health = provider.GetRequiredService<BusHealth>();
+            StartupSignal startupSignal = new StartupSignal();
 
             return new Events.EventWorker<TEvent, TEventSubscriber>(
-                new Consumer(CreateBuilder(provider, configuration, logger, lifetime, health)),
+                new Consumer(CreateBuilder(provider, configuration, logger, lifetime, health, startupSignal)),
                 provider.GetRequiredService<IServiceScopeFactory>(),
                 logger,
                 lifetime,
                 health,
+                provider.GetRequiredService<StartupGate>(),
+                startupSignal,
                 topic,
                 groupId);
         });
@@ -229,14 +239,21 @@ public sealed class ConsumerConfigurator
     /// <c>AllBrokersDown</c> flips the reachability tracker down), the commit results and the
     /// partition lifecycle to the worker's logger.
     /// </summary>
-    private static ConsumerBuilder<Ignore, byte[]> CreateBuilder(IServiceProvider provider, ConsumerConfig configuration, ILogger logger, IHostApplicationLifetime lifetime, BusHealth health)
+    private static ConsumerBuilder<Ignore, byte[]> CreateBuilder(IServiceProvider provider, ConsumerConfig configuration, ILogger logger, IHostApplicationLifetime lifetime, BusHealth health, StartupSignal startupSignal)
     {
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
 
         return new ConsumerBuilder<Ignore, byte[]>(configuration)
             .WithClientCallbacks(kafkaLogger, health, lifetime)
             .SetOffsetsCommittedHandler((_, committed) => BusLogger.LogCommit(logger, committed))
-            .SetPartitionsAssignedHandler((_, partitions) => BusLogger.LogPartitionsAssigned(logger, partitions))
+            .SetPartitionsAssignedHandler((_, partitions) =>
+            {
+                // the group is joined — the connection is established and authenticated. Free the
+                // consumer's startup slot now, so the next consumer can connect without waiting for a
+                // first message that an idle topic may never deliver.
+                startupSignal.MarkReady();
+                BusLogger.LogPartitionsAssigned(logger, partitions);
+            })
             .SetPartitionsRevokedHandler((_, partitions) => BusLogger.LogPartitionsRevoked(logger, partitions))
             .SetPartitionsLostHandler((_, partitions) => BusLogger.LogPartitionsLost(logger, partitions));
     }

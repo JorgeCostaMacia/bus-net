@@ -4,6 +4,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Startup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -29,6 +30,8 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
     /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
+    /// <param name="startupGate">The shared gate bounding how many consumers connect at once at startup.</param>
+    /// <param name="startupSignal">This consumer's one-shot signal, raised by its partition-assignment callback when it joins its group.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
     /// <param name="groupId">The consumer group id — the consumer's identity for offsets.</param>
     public CommandWorker(
@@ -37,9 +40,11 @@ internal sealed class CommandWorker<TCommand, TCommandHandler> : ConsumerWorker<
         ILogger<CommandWorker<TCommand, TCommandHandler>> logger,
         IHostApplicationLifetime lifetime,
         BusHealth health,
+        StartupGate startupGate,
+        StartupSignal startupSignal,
         string topic,
         string groupId)
-        : base(consumer, scopeFactory, logger, lifetime, health, topic, groupId)
+        : base(consumer, scopeFactory, logger, lifetime, health, startupGate, startupSignal, topic, groupId)
     {
     }
 

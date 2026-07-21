@@ -22,7 +22,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Producers;
 /// </summary>
 internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 {
-    private static readonly IReadOnlyList<KeyValuePair<string, string>> HOST = Host();
+    private static readonly IReadOnlyList<KeyValuePair<string, string>> _host = Host();
 
     private readonly Domain.IConnection _connection;
     private readonly ILogger<Producer> _logger;
@@ -104,7 +104,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     {
         Dictionary<string, string> stamped = new(headers);
 
-        foreach (KeyValuePair<string, string> host in HOST)
+        foreach (KeyValuePair<string, string> host in _host)
         {
             stamped[host.Key] = host.Value;
         }

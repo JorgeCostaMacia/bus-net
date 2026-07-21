@@ -27,6 +27,13 @@ public sealed record AdminConfiguration
     /// <summary>SASL mechanism, or <see langword="null"/> for the default.</summary>
     public SaslMechanism? SaslMechanism { get; init; }
 
+    /// <summary>
+    /// How many topics are created per <c>CreateTopicsAsync</c> request, or <see langword="null"/> for
+    /// the default (50). Batches the topic creation so provisioning many topics does not spike the
+    /// controller on a small cluster.
+    /// </summary>
+    public int? TopicsBatchSize { get; init; }
+
     /// <summary>The Kafka admin client configuration — supplied values, producer defaults for the rest.</summary>
     public AdminClientConfig AdminClientConfig => new AdminClientConfig()
     {

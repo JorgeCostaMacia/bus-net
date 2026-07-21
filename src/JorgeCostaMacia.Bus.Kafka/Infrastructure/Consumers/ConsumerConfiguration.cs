@@ -84,6 +84,14 @@ public sealed record ConsumerConfiguration
     public bool? LogConnectionClose { get; init; }
 
     /// <summary>
+    /// Maximum number of this service's consumers opening their initial broker connection at once at
+    /// startup, or <see langword="null"/> for the default (8). Not a Kafka client setting — it bounds
+    /// the startup handshake surge (see <see cref="Startup.StartupGate"/>); raise it on a cluster that absorbs
+    /// more concurrent connects.
+    /// </summary>
+    public int? StartupMaxConcurrency { get; init; }
+
+    /// <summary>
     /// Composes the Kafka consumer configuration for one consumer — supplied values, defaults for the
     /// rest, and the consumer's own group id.
     /// </summary>
