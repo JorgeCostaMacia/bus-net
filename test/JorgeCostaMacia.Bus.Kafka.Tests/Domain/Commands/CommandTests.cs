@@ -9,7 +9,7 @@ public class CommandTests
     [Fact]
     public void Command_RoundTrips_ThroughTheSerializer()
     {
-        TestCommand command = new("pepe", Guid.NewGuid(), Guid.NewGuid(), new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc), ImmutableList.Create("g1", "g2"));
+        TestCommand command = new TestCommand("pepe", Guid.NewGuid(), Guid.NewGuid(), new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc), ImmutableList.Create("g1", "g2"));
 
         TestCommand roundTripped = JsonSerializer.Deserialize<TestCommand>(JsonSerializer.SerializeToUtf8Bytes(command))!;
 
@@ -25,7 +25,7 @@ public class CommandTests
     {
         DateTime before = DateTime.UtcNow;
 
-        TestCommand command = new("pepe");
+        TestCommand command = new TestCommand("pepe");
 
         Assert.NotEqual(Guid.Empty, command.AggregateId);
         Assert.Equal(command.AggregateId, command.AggregateCorrelationId);
@@ -38,13 +38,13 @@ public class CommandTests
     {
         Guid id = Guid.NewGuid();
         Guid correlation = Guid.NewGuid();
-        DateTime occurredAt = new(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc);
+        DateTime occurredAt = new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc);
 
-        TestCommand command = new("pepe", id, correlation, occurredAt, ImmutableList.Create("g1"));
+        TestCommand command = new TestCommand("pepe", id, correlation, occurredAt, ImmutableList.Create("g1"));
 
         Assert.Equal(id, command.AggregateId);
         Assert.Equal(correlation, command.AggregateCorrelationId);
         Assert.Equal(occurredAt, command.AggregateOccurredAt);
-        Assert.Equal(new[] { "g1" }, command.AggregateConsumers);
+        Assert.Equal(new string[] { "g1" }, command.AggregateConsumers);
     }
 }

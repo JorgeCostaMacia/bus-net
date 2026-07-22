@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
@@ -52,7 +53,7 @@ public sealed class ErrorParkingTests : IClassFixture<KafkaFixture>
             producer => producer.AddCommand<ParkingCommand>(Topic),
             // A single 00:00 rung: the original fails and is re-produced immediately, the redelivery
             // fails again, the budget is spent — so the failure parks to .error as terminal.
-            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(GroupId, retryIntervals: [TimeSpan.Zero]));
+            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(GroupId, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);

@@ -43,5 +43,5 @@ public sealed record CommandFaultContext :
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <returns>The context handed to the fault handler.</returns>
     internal static CommandFaultContext Create(byte[]? body, Transport transport, Exception exception)
-        => new(body is null ? string.Empty : Encoding.UTF8.GetString(body), transport, exception);
+        => new CommandFaultContext(body is null ? string.Empty : Encoding.UTF8.GetString(body), transport, exception);
 }

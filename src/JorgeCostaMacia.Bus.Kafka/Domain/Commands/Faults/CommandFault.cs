@@ -81,7 +81,7 @@ public sealed record CommandFault : IErrorMessage
     /// <param name="groupId">The consumer group whose delivery broke.</param>
     /// <returns>The body parked to the fault topic.</returns>
     internal static CommandFault Create(CommandFaultContext context, string groupId)
-        => new(
+        => new CommandFault(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             groupId,

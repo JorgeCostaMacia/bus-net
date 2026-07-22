@@ -85,10 +85,10 @@ public sealed class RetryQuartzFixture : IAsyncLifetime
     /// <returns>The number of rows in <c>qrtz_job_details</c>.</returns>
     public async Task<long> CountParkedJobs(CancellationToken cancellationToken)
     {
-        await using NpgsqlConnection connection = new(PostgresConnectionString);
+        await using NpgsqlConnection connection = new NpgsqlConnection(PostgresConnectionString);
         await connection.OpenAsync(cancellationToken);
 
-        await using NpgsqlCommand command = new("SELECT count(*) FROM qrtz_job_details", connection);
+        await using NpgsqlCommand command = new NpgsqlCommand("SELECT count(*) FROM qrtz_job_details", connection);
 
         return (long)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
@@ -100,10 +100,10 @@ public sealed class RetryQuartzFixture : IAsyncLifetime
     /// </summary>
     private async Task CreateQuartzSchema(CancellationToken cancellationToken)
     {
-        await using NpgsqlConnection connection = new(PostgresConnectionString);
+        await using NpgsqlConnection connection = new NpgsqlConnection(PostgresConnectionString);
         await connection.OpenAsync(cancellationToken);
 
-        await using NpgsqlCommand command = new(QuartzSchema, connection);
+        await using NpgsqlCommand command = new NpgsqlCommand(QuartzSchema, connection);
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

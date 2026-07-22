@@ -17,7 +17,7 @@ public class ProducerTests
         _connection = new ConnectionFake(_channel);
     }
 
-    private RabbitProducer Sut() => new(_connection, _logger);
+    private RabbitProducer Sut() => new RabbitProducer(_connection, _logger);
 
     private static Dictionary<string, string> Headers() => new Dictionary<string, string>();
 
@@ -177,7 +177,7 @@ public class ProducerTests
     {
         Guid messageId = Guid.NewGuid();
         Guid conversationId = Guid.NewGuid();
-        DateTime occurredAt = new(2026, 7, 7, 12, 30, 45, DateTimeKind.Utc);
+        DateTime occurredAt = new DateTime(2026, 7, 7, 12, 30, 45, DateTimeKind.Utc);
 
         Dictionary<string, string> headers = new Dictionary<string, string>()
         {
@@ -221,7 +221,7 @@ public class ProducerTests
         // produces spread across several exchanges (several per exchange) open exactly one channel
         // per distinct exchange and never double-open. Outcome asserted after WhenAll, not timing.
         RabbitProducer sut = Sut();
-        string[] exchanges = new[] { "orders", "orders.created", "billing", "shipping" };
+        string[] exchanges = new string[] { "orders", "orders.created", "billing", "shipping" };
 
         Task[] produces = Enumerable.Range(0, 200).Select(i =>
             Task.Run(() => sut.Produce(exchanges[i % exchanges.Length], string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)).ToArray();

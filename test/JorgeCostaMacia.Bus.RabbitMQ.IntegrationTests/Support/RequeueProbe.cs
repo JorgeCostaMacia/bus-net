@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 /// </summary>
 public sealed class RequeueProbe
 {
-    private readonly TaskCompletionSource _succeeded = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _succeeded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private int _invocations;
 

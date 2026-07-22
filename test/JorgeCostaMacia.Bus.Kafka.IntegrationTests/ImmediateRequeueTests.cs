@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,7 +51,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
             producer => producer.AddCommand<RequeueCommand>(CommandTopic),
             // A single 00:00 rung: the first failure re-produces to the topic immediately for an
             // instant redelivery — the immediate-requeue path, no scheduler involved.
-            consumer => consumer.AddCommandHandler<RequeueCommand, RequeueCommandHandler>(CommandGroupId, retryIntervals: [TimeSpan.Zero]));
+            consumer => consumer.AddCommandHandler<RequeueCommand, RequeueCommandHandler>(CommandGroupId, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);
@@ -93,7 +94,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
             consumer => consumer
                 // The failing group carries a 00:00 rung, so its first failure re-produces the event
                 // immediately, re-targeted (via AggregateConsumers) to this group only.
-                .AddEventSubscriber<RequeueEvent, RetargetFailingSubscriber>(FailingGroupId, retryIntervals: [TimeSpan.Zero])
+                .AddEventSubscriber<RequeueEvent, RetargetFailingSubscriber>(FailingGroupId, retryIntervals: ImmutableList.Create(TimeSpan.Zero))
                 .AddEventSubscriber<RequeueEvent, RetargetOtherSubscriber>(OtherGroupId));
 
         using IHost host = builder.Build();

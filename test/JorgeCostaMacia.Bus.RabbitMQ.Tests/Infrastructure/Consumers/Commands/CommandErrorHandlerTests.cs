@@ -21,12 +21,12 @@ public class CommandErrorHandlerTests
     private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
     private ErrorHandler CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
-        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.Exchange, Deliveries.Queue, intervals ?? [], excludes ?? []);
+        => new ErrorHandler(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.Exchange, Deliveries.Queue, intervals ?? ImmutableList<TimeSpan>.Empty, excludes ?? ImmutableList<Type>.Empty);
 
     [Fact]
     public async Task NoLadder_ParksToErrorQueue()
     {
-        CommandErrorContext<TestCommand> context = new(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
+        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
 
         ErrorHandler sut = CommandError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -53,7 +53,7 @@ public class CommandErrorHandlerTests
     {
         Guid aggregateId = Guid.NewGuid();
         Guid aggregateCorrelationId = Guid.NewGuid();
-        CommandErrorContext<TestCommand> context = new(new TestCommand("pepe"), Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId), new InvalidOperationException());
+        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId), new InvalidOperationException());
 
         await CommandError().Handle(context, TestContext.Current.CancellationToken);
 
@@ -67,7 +67,7 @@ public class CommandErrorHandlerTests
     {
         Exception failure = new InvalidOperationException("outer", new FormatException("the real cause"));
         failure.Data["field"] = "required";
-        CommandErrorContext<TestCommand> context = new(new TestCommand("pepe"), Deliveries.Transport(), failure);
+        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), failure);
 
         await CommandError().Handle(context, TestContext.Current.CancellationToken);
 

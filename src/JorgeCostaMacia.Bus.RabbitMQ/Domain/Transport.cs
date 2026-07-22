@@ -51,8 +51,8 @@ public sealed record Transport : ITransport
     /// <param name="args">The delivered message.</param>
     /// <returns>The delivery's transport.</returns>
     public static Transport Create(BasicDeliverEventArgs args)
-        => new(
-            args.BasicProperties.Headers is { } headers ? new Dictionary<string, object?>(headers) : [],
+        => new Transport(
+            args.BasicProperties.Headers is { } headers ? new Dictionary<string, object?>(headers) : new Dictionary<string, object?>(),
             args.Exchange,
             args.RoutingKey,
             args.DeliveryTag,

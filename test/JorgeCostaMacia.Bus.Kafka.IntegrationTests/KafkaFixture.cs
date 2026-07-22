@@ -20,7 +20,7 @@ public sealed class KafkaFixture : IAsyncLifetime
 
     /// <summary>Starts the container, pulling the image on first use.</summary>
     public ValueTask InitializeAsync()
-        => new(_container.StartAsync(TestContext.Current.CancellationToken));
+        => new ValueTask(_container.StartAsync(TestContext.Current.CancellationToken));
 
     /// <summary>Stops and removes the container.</summary>
     public ValueTask DisposeAsync()

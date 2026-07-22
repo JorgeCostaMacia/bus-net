@@ -90,7 +90,7 @@ public sealed record EventError<TEvent> : IErrorMessage
     /// <param name="groupId">The consumer group whose subscriber failed.</param>
     /// <returns>The body parked to the error topic.</returns>
     internal static EventError<TEvent> Create(EventErrorContext<TEvent> context, string groupId)
-        => new(
+        => new EventError<TEvent>(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             context.RetryCount,

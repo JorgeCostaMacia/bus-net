@@ -41,5 +41,5 @@ public sealed record EventFaultContext :
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <returns>The context handed to the fault handler.</returns>
     internal static EventFaultContext Create(ReadOnlyMemory<byte> body, Transport transport, Exception exception)
-        => new(Encoding.UTF8.GetString(body.Span), transport, exception);
+        => new EventFaultContext(Encoding.UTF8.GetString(body.Span), transport, exception);
 }

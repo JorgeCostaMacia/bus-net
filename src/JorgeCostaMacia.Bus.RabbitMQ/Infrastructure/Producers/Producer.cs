@@ -26,7 +26,7 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 
     private readonly Domain.IConnection _connection;
     private readonly ILogger<Producer> _logger;
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
     private readonly ConcurrentDictionary<string, IChannel> _channels = new ConcurrentDictionary<string, IChannel>();
 
     /// <summary>Creates the producer over the shared connection and the logger a failed produce is written through.</summary>
@@ -102,14 +102,14 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     /// </summary>
     private static BasicProperties Properties(IReadOnlyDictionary<string, string> headers)
     {
-        Dictionary<string, string> stamped = new(headers);
+        Dictionary<string, string> stamped = new Dictionary<string, string>(headers);
 
         foreach (KeyValuePair<string, string> host in _host)
         {
             stamped[host.Key] = host.Value;
         }
 
-        Dictionary<string, object?> table = new(stamped.Count);
+        Dictionary<string, object?> table = new Dictionary<string, object?>(stamped.Count);
 
         foreach (KeyValuePair<string, string> header in stamped)
         {
@@ -216,12 +216,12 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 
         return new KeyValuePair<string, string>[]
         {
-            new(TransportHeaders.HostMachineName, TransportHeaders.ToHeader(Environment.MachineName)),
-            new(TransportHeaders.HostAssembly, TransportHeaders.ToHeader(entry?.Name ?? "unknown")),
-            new(TransportHeaders.HostAssemblyVersion, TransportHeaders.ToHeader(entry?.Version?.ToString() ?? "0.0.0")),
-            new(TransportHeaders.HostFrameworkVersion, TransportHeaders.ToHeader(Environment.Version.ToString())),
-            new(TransportHeaders.HostBusVersion, TransportHeaders.ToHeader(typeof(Producer).Assembly.GetName().Version?.ToString() ?? "0.0.0")),
-            new(TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader(Environment.OSVersion.ToString()))
+            new KeyValuePair<string, string>(TransportHeaders.HostMachineName, TransportHeaders.ToHeader(Environment.MachineName)),
+            new KeyValuePair<string, string>(TransportHeaders.HostAssembly, TransportHeaders.ToHeader(entry?.Name ?? "unknown")),
+            new KeyValuePair<string, string>(TransportHeaders.HostAssemblyVersion, TransportHeaders.ToHeader(entry?.Version?.ToString() ?? "0.0.0")),
+            new KeyValuePair<string, string>(TransportHeaders.HostFrameworkVersion, TransportHeaders.ToHeader(Environment.Version.ToString())),
+            new KeyValuePair<string, string>(TransportHeaders.HostBusVersion, TransportHeaders.ToHeader(typeof(Producer).Assembly.GetName().Version?.ToString() ?? "0.0.0")),
+            new KeyValuePair<string, string>(TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader(Environment.OSVersion.ToString()))
         };
     }
 

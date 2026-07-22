@@ -93,7 +93,7 @@ public class RetrySchedulerTests
         await new RetryScheduler(factory).Schedule(Topic, GroupId, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt, TestContext.Current.CancellationToken);
 
         IScheduler scheduler = await factory.GetScheduler(TestContext.Current.CancellationToken);
-        JobKey key = new($"{messageId}:1", Topic);
+        JobKey key = new JobKey($"{messageId}:1", Topic);
         IJobDetail job = (await scheduler.GetJobDetail(key, TestContext.Current.CancellationToken))!;
         ITrigger trigger = Assert.Single(await scheduler.GetTriggersOfJob(key, TestContext.Current.CancellationToken));
 
@@ -175,7 +175,7 @@ public class RetrySchedulerTests
         // also revives a dead-letter parked under the same key).
         Guid messageId = Guid.NewGuid();
         ISchedulerFactory factory = Factory();
-        RetryScheduler sut = new(factory);
+        RetryScheduler sut = new RetryScheduler(factory);
 
         await sut.Schedule(Topic, GroupId, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt, TestContext.Current.CancellationToken);
         await sut.Schedule(Topic, GroupId, "body"u8.ToArray(), Headers(messageId, 1), ScheduledAt.AddMinutes(10), TestContext.Current.CancellationToken);

@@ -20,14 +20,14 @@ public class EventErrorHandlerTests
     private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
     private EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
-        => new(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? [], excludes ?? []);
+        => new EventErrorHandler<TestEvent, TestEventSubscriber>(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, excludes ?? ImmutableList<Type>.Empty);
 
     [Fact]
     public async Task MissingRetryCountHeader_ReportsFaulted()
     {
         // an envelope whose retry count cannot be read is unreadable for the ladder: the handler
         // reports Faulted so the worker relays the delivery to the fault lane instead of retrying.
-        EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.BareTransport(), new InvalidOperationException("boom"));
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.BareTransport(), new InvalidOperationException("boom"));
 
         EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -39,7 +39,7 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task NoLadder_ParksToErrorTopic()
     {
-        EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
 
         EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -66,7 +66,7 @@ public class EventErrorHandlerTests
     {
         Guid aggregateId = Guid.NewGuid();
         Guid aggregateCorrelationId = Guid.NewGuid();
-        EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId), new InvalidOperationException());
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId), new InvalidOperationException());
 
         await EventError().Handle(context, TestContext.Current.CancellationToken);
 
@@ -80,7 +80,7 @@ public class EventErrorHandlerTests
     {
         Exception failure = new InvalidOperationException("outer", new FormatException("the real cause"));
         failure.Data["field"] = "required";
-        EventErrorContext<TestEvent> context = new(new TestEvent("pepe"), Deliveries.Transport(), failure);
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), failure);
 
         await EventError().Handle(context, TestContext.Current.CancellationToken);
 

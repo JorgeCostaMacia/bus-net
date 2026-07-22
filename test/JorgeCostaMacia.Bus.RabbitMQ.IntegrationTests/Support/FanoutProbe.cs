@@ -8,8 +8,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 /// </summary>
 public sealed class FanoutProbe
 {
-    private readonly TaskCompletionSource<string> _first = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly TaskCompletionSource<string> _second = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<string> _first = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<string> _second = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Completes with the payload the first subscriber received.</summary>
     public Task<string> First => _first.Task;

@@ -9,7 +9,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.IntegrationTests;
 /// </summary>
 public sealed class RetryProbe
 {
-    private readonly TaskCompletionSource _redelivered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _redelivered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private int _invocations;
     private long _firstAtTicks;

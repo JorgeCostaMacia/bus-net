@@ -14,8 +14,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 internal sealed class ConsumerFake : IConsumer
 {
     private readonly Queue<ConsumeResult<Ignore, byte[]>> _pending;
-    private readonly TaskCompletionSource _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly ManualResetEventSlim _park = new(false);
+    private readonly TaskCompletionSource _drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ManualResetEventSlim _park = new ManualResetEventSlim(false);
 
     /// <summary>Creates the fake over the deliveries the loop will consume, in order.</summary>
     /// <param name="deliveries">The deliveries handed to the loop, oldest first.</param>

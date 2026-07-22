@@ -69,7 +69,7 @@ public sealed record CommandError<TCommand> : IErrorMessage
     /// <param name="queue">The queue whose handler failed.</param>
     /// <returns>The body parked to the error queue.</returns>
     internal static CommandError<TCommand> Create(CommandErrorContext<TCommand> context, string queue)
-        => new(
+        => new CommandError<TCommand>(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             context.RetryCount,

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -45,7 +46,7 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
         builder.Services.AddBusContext(
             _fixture.BuildConfiguration(),
             producer => producer.AddCommand<RetryCommand>(Topic),
-            consumer => consumer.AddCommandHandler<RetryCommand, RetryCommandHandler>(GroupId, retryIntervals: [RetryInterval]));
+            consumer => consumer.AddCommandHandler<RetryCommand, RetryCommandHandler>(GroupId, retryIntervals: ImmutableList.Create(RetryInterval)));
         builder.Services.AddQuartz(quartz => quartz.UsePersistentStore(store =>
         {
             store.UsePostgres(_fixture.PostgresConnectionString);

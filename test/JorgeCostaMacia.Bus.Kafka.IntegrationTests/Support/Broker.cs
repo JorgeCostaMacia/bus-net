@@ -139,7 +139,7 @@ internal static class Broker
         };
 
         await admin.CreateTopicsAsync(
-            new[]
+            new TopicSpecification[]
             {
                 new TopicSpecification
                 {

@@ -11,7 +11,7 @@ public class CommandContextTests
     private static readonly Guid ConversationId = Guid.NewGuid();
     private static readonly Guid AggregateId = Guid.NewGuid();
     private static readonly Guid AggregateCorrelationId = Guid.NewGuid();
-    private static readonly DateTime OccurredAt = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
+    private static readonly DateTime OccurredAt = new DateTime(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
     private static Transport Transport()
     {
@@ -35,15 +35,15 @@ public class CommandContextTests
         return new Transport(headers.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(OccurredAt));
     }
 
-    private static CommandContext<TestCommand> CreateSut() => new(new TestCommand("pepe"), Transport());
+    private static CommandContext<TestCommand> CreateSut() => new CommandContext<TestCommand>(new TestCommand("pepe"), Transport());
 
     [Fact]
     public void MessageAndTransport_AreTheDeliveredPair()
     {
-        TestCommand command = new("pepe");
+        TestCommand command = new TestCommand("pepe");
         Transport transport = Transport();
 
-        CommandContext<TestCommand> context = new(command, transport);
+        CommandContext<TestCommand> context = new CommandContext<TestCommand>(command, transport);
 
         Assert.Same(command, context.Message);
         Assert.Same(transport, context.Transport);

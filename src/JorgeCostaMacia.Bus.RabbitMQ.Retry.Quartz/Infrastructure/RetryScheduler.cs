@@ -67,7 +67,7 @@ internal sealed class RetryScheduler : IRetryScheduler
         // last write wins: an at-least-once duplicate of the same failure re-parks the same key —
         // job and trigger overwritten, the ladder restarts fresh — and a dead-letter parked under
         // that key is revived by the new ladder instead of blocking the park.
-        await scheduler.ScheduleJob(job, new[] { trigger }, replace: true, cancellationToken);
+        await scheduler.ScheduleJob(job, new ITrigger[] { trigger }, replace: true, cancellationToken);
     }
 
     private static Guid MessageId(IReadOnlyDictionary<string, string> headers)
