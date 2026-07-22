@@ -90,7 +90,7 @@ public sealed record CommandError<TCommand> : IErrorMessage
     /// <param name="groupId">The consumer group whose handler failed.</param>
     /// <returns>The body parked to the error topic.</returns>
     internal static CommandError<TCommand> Create(CommandErrorContext<TCommand> context, string groupId)
-        => new(
+        => new CommandError<TCommand>(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             context.RetryCount,

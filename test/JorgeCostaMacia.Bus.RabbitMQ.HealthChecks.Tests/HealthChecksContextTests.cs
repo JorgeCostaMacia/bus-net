@@ -36,7 +36,7 @@ public class HealthChecksContextTests
     [Fact]
     public void AddRabbitMQBus_Custom_RegistersTheNameStatusAndTags()
     {
-        ServiceProvider provider = Provider(builder => builder.AddRabbitMQBus("orders-bus", HealthStatus.Degraded, new[] { "ready" }));
+        ServiceProvider provider = Provider(builder => builder.AddRabbitMQBus("orders-bus", HealthStatus.Degraded, new string[] { "ready" }));
 
         HealthCheckRegistration registration = Registration(provider);
         Assert.Equal("orders-bus", registration.Name);

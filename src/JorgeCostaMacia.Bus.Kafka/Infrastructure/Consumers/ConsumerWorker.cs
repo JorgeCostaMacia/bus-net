@@ -38,7 +38,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     protected string GroupId { get; }
 
     /// <summary>Fallback timeout before a consumer releases its startup slot when it never joins its group (e.g. more replicas than partitions), so a stalled join does not hold the slot.</summary>
-    private static readonly TimeSpan StartupReleaseTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan _startupReleaseTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IConsumer _consumer;
 
@@ -165,7 +165,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
 
     /// <summary>
     /// Releases the startup slot as soon as this consumer joins its group (its <see cref="StartupSignal"/>
-    /// is raised), or after <see cref="StartupReleaseTimeout"/> as a fallback — so an idle topic that has
+    /// is raised), or after <see cref="_startupReleaseTimeout"/> as a fallback — so an idle topic that has
     /// not assigned yet, or a slow connect, never holds the slot indefinitely. Released exactly once,
     /// whichever comes first (join, timeout or shutdown).
     /// </summary>
@@ -174,7 +174,7 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     {
         try
         {
-            await _startupSignal.Ready.WaitAsync(StartupReleaseTimeout, cancellationToken);
+            await _startupSignal.Ready.WaitAsync(_startupReleaseTimeout, cancellationToken);
         }
         catch (TimeoutException)
         {

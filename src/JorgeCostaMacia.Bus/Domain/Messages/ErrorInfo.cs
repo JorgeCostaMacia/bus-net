@@ -59,7 +59,7 @@ public sealed record ErrorInfo
     {
         Type type = exception.GetType();
 
-        return new(
+        return new ErrorInfo(
             type.FullName ?? type.Name,
             exception.Message,
             exception.Source,

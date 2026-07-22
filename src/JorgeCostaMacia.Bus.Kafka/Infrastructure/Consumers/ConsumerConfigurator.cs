@@ -32,7 +32,7 @@ public sealed class ConsumerConfigurator
     private readonly IServiceCollection _services;
     private readonly IReadOnlyDictionary<Type, string> _messages;
     private readonly ConsumerConfiguration _configuration;
-    private readonly HashSet<string> _groupIds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _groupIds = new HashSet<string>(StringComparer.Ordinal);
 
     /// <summary>Binds the consumer configuration from the <c>Bus:Consumer</c> section and takes the routing map to resolve topics.</summary>
     /// <param name="services">The service collection.</param>

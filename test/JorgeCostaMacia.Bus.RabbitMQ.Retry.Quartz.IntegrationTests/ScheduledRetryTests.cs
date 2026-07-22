@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,7 +23,7 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
     // A short, positive first interval: the error handler parks the retry with scheduledAt = now + this,
     // so the trigger's first fire lands a few seconds out — the CI-feasible slice of the ladder, never
     // the five-minute repetitions that only apply once the first fire keeps failing.
-    private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(4);
+    private static readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(4);
 
     private readonly RetryQuartzFixture _fixture;
 
@@ -45,7 +46,7 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
         builder.Services.AddBusContext(
             _fixture.BuildConfiguration(),
             producer => producer.AddCommand<RetryCommand>(Exchange),
-            consumer => consumer.AddCommandHandler<RetryCommand, RetryCommandHandler>(Queue, retryIntervals: [RetryInterval]));
+            consumer => consumer.AddCommandHandler<RetryCommand, RetryCommandHandler>(Queue, retryIntervals: ImmutableList.Create(_retryInterval)));
         builder.Services.AddQuartz(quartz => quartz.UsePersistentStore(store =>
         {
             store.UsePostgres(_fixture.PostgresConnectionString);
@@ -82,7 +83,7 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
             // nack-and-requeue: a failed schedule would have redelivered in milliseconds.
             Assert.True(
                 probe.BetweenFirstAndSecond >= TimeSpan.FromSeconds(2.5),
-                $"The retry arrived after {probe.BetweenFirstAndSecond.TotalSeconds:0.00}s; the scheduled delay was {RetryInterval.TotalSeconds:0}s.");
+                $"The retry arrived after {probe.BetweenFirstAndSecond.TotalSeconds:0.00}s; the scheduled delay was {_retryInterval.TotalSeconds:0}s.");
         }
         finally
         {

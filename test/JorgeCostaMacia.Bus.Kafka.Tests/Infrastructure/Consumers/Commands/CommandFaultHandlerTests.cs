@@ -13,7 +13,7 @@ public class CommandFaultHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
-        => new(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId);
+        => new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId);
 
     [Fact]
     public async Task ParksToFaultTopic_WithTheBodyAsText()

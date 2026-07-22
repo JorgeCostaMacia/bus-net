@@ -7,7 +7,7 @@ public class EventTests
     [Fact]
     public void Event_Defaults_GenerateTheTrace()
     {
-        TestEvent @event = new("pepe");
+        TestEvent @event = new TestEvent("pepe");
 
         Assert.NotEqual(Guid.Empty, @event.AggregateId);
         Assert.Equal(@event.AggregateId, @event.AggregateCorrelationId);
@@ -19,7 +19,7 @@ public class EventTests
     {
         Guid correlation = Guid.NewGuid();
 
-        TestEvent @event = new("pepe", aggregateCorrelationId: correlation);
+        TestEvent @event = new TestEvent("pepe", aggregateCorrelationId: correlation);
 
         Assert.Equal(correlation, @event.AggregateCorrelationId);
         Assert.NotEqual(@event.AggregateId, @event.AggregateCorrelationId);

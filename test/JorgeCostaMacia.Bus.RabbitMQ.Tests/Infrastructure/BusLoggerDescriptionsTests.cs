@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure;
 /// </summary>
 public class BusLoggerDescriptionsTests
 {
-    private static readonly Dictionary<string, string> Expected = new Dictionary<string, string>()
+    private static readonly Dictionary<string, string> _expected = new Dictionary<string, string>()
     {
         ["RepublishedToRetry"] = "Republished to the exchange to retry.",
         ["ScheduledToRetry"] = "Scheduled to retry.",
@@ -33,11 +33,11 @@ public class BusLoggerDescriptionsTests
     {
         Dictionary<string, string> actual = Descriptions();
 
-        Assert.Equal(Expected.Count, actual.Count);
+        Assert.Equal(_expected.Count, actual.Count);
 
         foreach ((string name, string text) in actual)
         {
-            Assert.True(Expected.TryGetValue(name, out string? expected), $"Unpinned description '{name}' — add it to the pinned set (and update any Loki/Grafana query that keys on it).");
+            Assert.True(_expected.TryGetValue(name, out string? expected), $"Unpinned description '{name}' — add it to the pinned set (and update any Loki/Grafana query that keys on it).");
             Assert.Equal(expected, text);
         }
     }

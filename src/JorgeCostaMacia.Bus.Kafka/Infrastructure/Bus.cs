@@ -183,7 +183,7 @@ internal sealed class Bus : IBus
     {
         string topic = Topic(message);
 
-        return new(topic, Prepare(topic, message));
+        return new KeyValuePair<string, Message<Null, byte[]>>(topic, Prepare(topic, message));
     }
 
     /// <summary>The (topic, message) pair for a message continuing an inbound flow — the batch counterpart of a single Send/Publish with a transport.</summary>
@@ -192,6 +192,6 @@ internal sealed class Bus : IBus
     {
         string topic = Topic(message);
 
-        return new(topic, Prepare(topic, message, transport));
+        return new KeyValuePair<string, Message<Null, byte[]>>(topic, Prepare(topic, message, transport));
     }
 }

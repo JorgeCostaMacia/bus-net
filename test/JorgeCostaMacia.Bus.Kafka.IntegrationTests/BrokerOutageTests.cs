@@ -20,7 +20,7 @@ public sealed class BrokerOutageTests : IClassFixture<KafkaFixture>
     private const string GroupId = "broker-outage-integration-tests.handler";
     private const int Records = 100;
     private const int PauseAfterUnique = 10;
-    private static readonly TimeSpan Outage = TimeSpan.FromSeconds(4);
+    private static readonly TimeSpan _outage = TimeSpan.FromSeconds(4);
 
     private readonly KafkaFixture _fixture;
     private readonly ITestOutputHelper _output;
@@ -86,7 +86,7 @@ public sealed class BrokerOutageTests : IClassFixture<KafkaFixture>
         }
     }
 
-    /// <summary>Waits for the drain to get underway, freezes the broker for <see cref="Outage"/>, then thaws it.</summary>
+    /// <summary>Waits for the drain to get underway, freezes the broker for <see cref="_outage"/>, then thaws it.</summary>
     /// <param name="probe">The probe whose progress marks the drain starting.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     private async Task InjectOutageMidDrainAsync(RecoveryProbe probe, CancellationToken cancellationToken)
@@ -94,7 +94,7 @@ public sealed class BrokerOutageTests : IClassFixture<KafkaFixture>
         await WaitUntilAsync(() => probe.UniqueHandled >= PauseAfterUnique, TimeSpan.FromSeconds(90), cancellationToken);
 
         await _fixture.PauseAsync(cancellationToken);
-        await Task.Delay(Outage, cancellationToken);
+        await Task.Delay(_outage, cancellationToken);
         await _fixture.UnpauseAsync(cancellationToken);
     }
 
