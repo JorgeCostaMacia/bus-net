@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
 /// </summary>
 public sealed class RecoveryCommandHandler : CommandHandler<ChaosCommand>
 {
-    private static readonly TimeSpan PerRecordDelay = TimeSpan.FromMilliseconds(20);
+    private static readonly TimeSpan _perRecordDelay = TimeSpan.FromMilliseconds(20);
 
     private readonly RecoveryProbe _probe;
 
@@ -26,7 +26,7 @@ public sealed class RecoveryCommandHandler : CommandHandler<ChaosCommand>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     public override async Task Handle(CommandContext<ChaosCommand> context, CancellationToken cancellationToken = default)
     {
-        await Task.Delay(PerRecordDelay, cancellationToken);
+        await Task.Delay(_perRecordDelay, cancellationToken);
 
         _probe.Signal(context.Message.Payload);
     }

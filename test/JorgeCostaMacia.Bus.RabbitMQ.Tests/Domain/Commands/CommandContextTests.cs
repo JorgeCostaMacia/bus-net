@@ -6,21 +6,21 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Domain.Commands;
 
 public class CommandContextTests
 {
-    private static readonly Guid ConversationId = Guid.NewGuid();
-    private static readonly Guid AggregateId = Guid.NewGuid();
-    private static readonly Guid AggregateCorrelationId = Guid.NewGuid();
-    private static readonly DateTime OccurredAt = new DateTime(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
+    private static readonly Guid _conversationId = Guid.NewGuid();
+    private static readonly Guid _aggregateId = Guid.NewGuid();
+    private static readonly Guid _aggregateCorrelationId = Guid.NewGuid();
+    private static readonly DateTime _occurredAt = new DateTime(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
     private static Transport Transport()
     {
         Dictionary<string, object?> headers = new Dictionary<string, object?>()
         {
-            [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(ConversationId),
+            [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(_conversationId),
             [TransportHeaders.ConversationAddress] = TransportHeaders.ToHeader("orders"),
-            [TransportHeaders.ConversationOccurredAt] = TransportHeaders.ToHeader(OccurredAt.ToString("O")),
-            [TransportHeaders.AggregateId] = TransportHeaders.ToHeader(AggregateId),
-            [TransportHeaders.AggregateCorrelationId] = TransportHeaders.ToHeader(AggregateCorrelationId),
-            [TransportHeaders.AggregateOccurredAt] = TransportHeaders.ToHeader(OccurredAt.ToString("O")),
+            [TransportHeaders.ConversationOccurredAt] = TransportHeaders.ToHeader(_occurredAt.ToString("O")),
+            [TransportHeaders.AggregateId] = TransportHeaders.ToHeader(_aggregateId),
+            [TransportHeaders.AggregateCorrelationId] = TransportHeaders.ToHeader(_aggregateCorrelationId),
+            [TransportHeaders.AggregateOccurredAt] = TransportHeaders.ToHeader(_occurredAt.ToString("O")),
             [TransportHeaders.RetryCount] = TransportHeaders.ToHeader(2),
             [TransportHeaders.HostMachineName] = TransportHeaders.ToHeader("box-1"),
             [TransportHeaders.HostAssembly] = TransportHeaders.ToHeader("MyApp"),
@@ -52,9 +52,9 @@ public class CommandContextTests
     {
         CommandContext<TestCommand> context = CreateSut();
 
-        Assert.Equal(AggregateId, context.AggregateId);
-        Assert.Equal(AggregateCorrelationId, context.AggregateCorrelationId);
-        Assert.Equal(OccurredAt, context.AggregateOccurredAt);
+        Assert.Equal(_aggregateId, context.AggregateId);
+        Assert.Equal(_aggregateCorrelationId, context.AggregateCorrelationId);
+        Assert.Equal(_occurredAt, context.AggregateOccurredAt);
     }
 
     [Fact]
@@ -62,9 +62,9 @@ public class CommandContextTests
     {
         CommandContext<TestCommand> context = CreateSut();
 
-        Assert.Equal(ConversationId, context.ConversationId);
+        Assert.Equal(_conversationId, context.ConversationId);
         Assert.Equal("orders", context.ConversationAddress);
-        Assert.Equal(OccurredAt, context.ConversationOccurredAt);
+        Assert.Equal(_occurredAt, context.ConversationOccurredAt);
     }
 
     [Fact]
