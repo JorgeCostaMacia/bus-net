@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 /// </summary>
 internal sealed class StoppingCommandFaultHandler : CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>
 {
-    private readonly TaskCompletionSource<Task> _stopping = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<Task> _stopping = new TaskCompletionSource<Task>(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Initiates the worker's stop; its task completes when the stop does.</summary>
     public Func<Task>? Stop { get; set; }

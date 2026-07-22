@@ -21,7 +21,7 @@ public class ErrorInfoTests
     [Fact]
     public void Create_RecursesTheInnerExceptionChain()
     {
-        InvalidOperationException outer = new("outer", new ArgumentException("middle", new FormatException("deepest")));
+        InvalidOperationException outer = new InvalidOperationException("outer", new ArgumentException("middle", new FormatException("deepest")));
 
         ErrorInfo error = ErrorInfo.Create(outer);
 
@@ -38,7 +38,7 @@ public class ErrorInfoTests
     [Fact]
     public void Create_ExtractsData_StringifyingNonStringKeys()
     {
-        InvalidOperationException exception = new("boom");
+        InvalidOperationException exception = new InvalidOperationException("boom");
         exception.Data["order"] = "42";
         exception.Data[7] = "seven";
         exception.Data["nothing"] = null;
@@ -57,7 +57,7 @@ public class ErrorInfoTests
         // the parked error is serialized through both failure lanes — a value that cannot serialize
         // (a reference cycle, a Type…) must degrade to its text instead of poisoning the park and
         // turning the failure into a hot redelivery loop.
-        InvalidOperationException exception = new("boom");
+        InvalidOperationException exception = new InvalidOperationException("boom");
         Dictionary<string, object> cyclic = new Dictionary<string, object>();
         cyclic["self"] = cyclic;
         exception.Data["cyclic"] = cyclic;
@@ -89,7 +89,7 @@ public class ErrorInfoTests
         // with the Web options — Type/Message/Source/StackTrace and the whole inner-cause chain survive.
         Exception thrown = Throw(new InvalidOperationException("outer", new FormatException("inner")));
         ErrorInfo error = ErrorInfo.Create(thrown);
-        JsonSerializerOptions options = new(JsonSerializerDefaults.Web);
+        JsonSerializerOptions options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
         ErrorInfo roundTripped = JsonSerializer.Deserialize<ErrorInfo>(JsonSerializer.Serialize(error, options), options)!;
 
@@ -107,7 +107,7 @@ public class ErrorInfoTests
     {
         // an int key and a string key that stringify to the same text collapse to one entry — the
         // later write wins (Exception.Data preserves insertion order).
-        InvalidOperationException exception = new("boom");
+        InvalidOperationException exception = new InvalidOperationException("boom");
         exception.Data[7] = "int-seven";
         exception.Data["7"] = "string-seven";
 

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,7 +50,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<RabbitMqFixture>
             producer => producer.AddCommand<RequeueCommand>(Exchange),
             // A single 00:00 rung: the first failure re-publishes to the exchange immediately for an
             // instant redelivery — the immediate-requeue path, no scheduler involved.
-            consumer => consumer.AddCommandHandler<RequeueCommand, RequeueCommandHandler>(Queue, retryIntervals: [TimeSpan.Zero]));
+            consumer => consumer.AddCommandHandler<RequeueCommand, RequeueCommandHandler>(Queue, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);
@@ -92,7 +93,7 @@ public sealed class ImmediateRequeueTests : IClassFixture<RabbitMqFixture>
             consumer => consumer
                 // The failing subscriber carries a 00:00 rung, so its first failure re-publishes the event
                 // immediately, re-targeted (via AggregateConsumers) to this subscriber's group only.
-                .AddEventSubscriber<RequeueEvent, RetargetFailingSubscriber>(FailingQueue, retryIntervals: [TimeSpan.Zero])
+                .AddEventSubscriber<RequeueEvent, RetargetFailingSubscriber>(FailingQueue, retryIntervals: ImmutableList.Create(TimeSpan.Zero))
                 .AddEventSubscriber<RequeueEvent, RetargetOtherSubscriber>(OtherQueue));
 
         using IHost host = builder.Build();

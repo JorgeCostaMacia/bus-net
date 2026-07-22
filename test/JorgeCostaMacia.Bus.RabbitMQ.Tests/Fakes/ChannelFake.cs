@@ -39,7 +39,7 @@ internal sealed class ChannelFake : IChannel
             return ValueTask.FromException(PublishFailure);
         }
 
-        Publish publish = new(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body, mandatory);
+        Publish publish = new Publish(exchange, routingKey, basicProperties.Persistent, basicProperties.MessageId, basicProperties.CorrelationId, basicProperties.Type, basicProperties.AppId, basicProperties.ContentType, basicProperties.Timestamp.UnixTime, basicProperties.Headers as IReadOnlyDictionary<string, object?>, body, mandatory);
 
         lock (_publishGate)
         {

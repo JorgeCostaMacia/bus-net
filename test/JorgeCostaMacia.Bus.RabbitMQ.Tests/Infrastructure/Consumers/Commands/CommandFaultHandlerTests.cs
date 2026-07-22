@@ -12,7 +12,7 @@ public class CommandFaultHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private FaultHandler Fault()
-        => new(_producer, NullLogger.Instance, Deliveries.Queue);
+        => new FaultHandler(_producer, NullLogger.Instance, Deliveries.Queue);
 
     [Fact]
     public async Task ParksToFaultQueue_WithTheBodyAsText()

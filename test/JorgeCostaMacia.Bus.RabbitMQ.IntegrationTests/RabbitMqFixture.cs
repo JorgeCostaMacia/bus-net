@@ -19,7 +19,7 @@ public sealed class RabbitMqFixture : IAsyncLifetime
 
     /// <summary>Starts the container, pulling the image on first use.</summary>
     public ValueTask InitializeAsync()
-        => new(_container.StartAsync(TestContext.Current.CancellationToken));
+        => new ValueTask(_container.StartAsync(TestContext.Current.CancellationToken));
 
     /// <summary>Stops and removes the container.</summary>
     public ValueTask DisposeAsync()
@@ -51,7 +51,7 @@ public sealed class RabbitMqFixture : IAsyncLifetime
         // GetConnectionString() reflects whatever user/password the module provisioned (a custom,
         // non-loopback-restricted user — never the loopback-only 'guest'), so parse it rather than
         // hard-coding credentials.
-        Uri uri = new(_container.GetConnectionString());
+        Uri uri = new Uri(_container.GetConnectionString());
         string[] userInfo = uri.UserInfo.Split(':');
 
         Dictionary<string, string?> settings = new Dictionary<string, string?>()

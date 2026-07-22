@@ -14,7 +14,7 @@ public class BusHealthCheckTests
     [Fact]
     public async Task CheckHealthAsync_ConnectionOpen_ReportsHealthy()
     {
-        BusHealthCheck check = new(_connection);
+        BusHealthCheck check = new BusHealthCheck(_connection);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context(check), TestContext.Current.CancellationToken);
 
@@ -26,7 +26,7 @@ public class BusHealthCheckTests
     public async Task CheckHealthAsync_ConnectionDown_ReportsUnhealthyByDefault()
     {
         _connection.IsOpen = false;
-        BusHealthCheck check = new(_connection);
+        BusHealthCheck check = new BusHealthCheck(_connection);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context(check), TestContext.Current.CancellationToken);
 
@@ -38,7 +38,7 @@ public class BusHealthCheckTests
     public async Task CheckHealthAsync_ConnectionDown_HonorsTheRegistrationFailureStatus()
     {
         _connection.IsOpen = false;
-        BusHealthCheck check = new(_connection);
+        BusHealthCheck check = new BusHealthCheck(_connection);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context(check, HealthStatus.Degraded), TestContext.Current.CancellationToken);
 

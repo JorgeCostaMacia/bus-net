@@ -9,8 +9,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 /// </summary>
 public sealed class RetargetProbe
 {
-    private readonly TaskCompletionSource _failingSucceeded = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly TaskCompletionSource _otherReceived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _failingSucceeded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _otherReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private int _failingInvocations;
     private int _otherInvocations;

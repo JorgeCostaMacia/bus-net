@@ -14,7 +14,7 @@ public class BusHealthCheckTests
     [Fact]
     public async Task CheckHealthAsync_BrokersReachable_ReportsHealthy()
     {
-        BusHealthCheck check = new(_health);
+        BusHealthCheck check = new BusHealthCheck(_health);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context(check), TestContext.Current.CancellationToken);
 
@@ -26,7 +26,7 @@ public class BusHealthCheckTests
     public async Task CheckHealthAsync_AllBrokersDown_ReportsUnhealthyByDefault_WithTheFlipInstant()
     {
         _health.Down();
-        BusHealthCheck check = new(_health);
+        BusHealthCheck check = new BusHealthCheck(_health);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context(check), TestContext.Current.CancellationToken);
 
@@ -39,7 +39,7 @@ public class BusHealthCheckTests
     public async Task CheckHealthAsync_AllBrokersDown_HonorsTheRegistrationFailureStatus()
     {
         _health.Down();
-        BusHealthCheck check = new(_health);
+        BusHealthCheck check = new BusHealthCheck(_health);
 
         HealthCheckResult result = await check.CheckHealthAsync(Context(check, HealthStatus.Degraded), TestContext.Current.CancellationToken);
 

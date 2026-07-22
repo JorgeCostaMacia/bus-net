@@ -16,7 +16,7 @@ public class BusTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private KafkaBus CreateSut(params (Type Type, string Topic)[] messages)
-        => new(_producer, messages.ToDictionary(e => e.Type, e => e.Topic));
+        => new KafkaBus(_producer, messages.ToDictionary(e => e.Type, e => e.Topic));
 
     private static string? Header(Message<Null, byte[]> message, string key)
         => message.Headers.TryGetLastBytes(key, out byte[] value) ? Encoding.UTF8.GetString(value) : null;
@@ -40,7 +40,7 @@ public class BusTests
     [Fact]
     public async Task Send_Fresh_BuildsANewEnvelope()
     {
-        TestCommand command = new("pepe", aggregateConsumers: ["g1", "g2"]);
+        TestCommand command = new TestCommand("pepe", aggregateConsumers: new string[] { "g1", "g2" });
 
         await CreateSut((typeof(TestCommand), "orders")).Send(command, TestContext.Current.CancellationToken);
 
@@ -80,8 +80,8 @@ public class BusTests
             { TransportHeaders.RetryCount, "2"u8.ToArray() }
         };
 
-        Transport transport = new(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
-        TestEvent message = new("pepe", aggregateConsumers: ["g1"]);
+        Transport transport = new Transport(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
+        TestEvent message = new TestEvent("pepe", aggregateConsumers: new string[] { "g1" });
 
         await CreateSut((typeof(TestEvent), "payments")).Publish(message, transport, TestContext.Current.CancellationToken);
 
@@ -132,19 +132,19 @@ public class BusTests
     [Fact]
     public async Task Publish_Batch_ProducesEveryEventInOrder()
     {
-        TestEvent[] events = new TestEvent[] { new("a"), new("b"), new("c") };
+        TestEvent[] events = new TestEvent[] { new TestEvent("a"), new TestEvent("b"), new TestEvent("c") };
 
         await CreateSut((typeof(TestEvent), "orders.created")).Publish(events, TestContext.Current.CancellationToken);
 
         Assert.Equal(3, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced => Assert.Equal("orders.created", produced.Topic));
-        Assert.Equal(new[] { "a", "b", "c" }, _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Message.Value).GetProperty("name").GetString()));
+        Assert.Equal(new string[] { "a", "b", "c" }, _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Message.Value).GetProperty("name").GetString()));
     }
 
     [Fact]
     public async Task Send_Batch_ProducesEveryCommand()
     {
-        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
+        TestCommand[] commands = new TestCommand[] { new TestCommand("x"), new TestCommand("y") };
 
         await CreateSut((typeof(TestCommand), "orders")).Send(commands, TestContext.Current.CancellationToken);
 
@@ -171,8 +171,8 @@ public class BusTests
             { TransportHeaders.RetryCount, "3"u8.ToArray() }
         };
 
-        Transport transport = new(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
-        TestCommand[] commands = new TestCommand[] { new("x"), new("y") };
+        Transport transport = new Transport(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
+        TestCommand[] commands = new TestCommand[] { new TestCommand("x"), new TestCommand("y") };
 
         await CreateSut((typeof(TestCommand), "payments")).Send(commands, transport, TestContext.Current.CancellationToken);
 

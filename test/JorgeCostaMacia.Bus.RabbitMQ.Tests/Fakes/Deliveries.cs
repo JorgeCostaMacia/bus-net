@@ -51,7 +51,7 @@ internal static class Deliveries
 
     /// <summary>Builds the delivery args from a body, its headers and a delivery tag — the AMQP shape the worker receives.</summary>
     public static BasicDeliverEventArgs Args(byte[] body, Dictionary<string, object?> headers, ulong deliveryTag = 10)
-        => new(
+        => new BasicDeliverEventArgs(
             consumerTag: "consumer-tag",
             deliveryTag: deliveryTag,
             redelivered: false,

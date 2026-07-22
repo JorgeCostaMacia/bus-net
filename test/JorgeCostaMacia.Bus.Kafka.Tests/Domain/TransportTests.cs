@@ -8,7 +8,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain;
 public class TransportTests
 {
     private static Transport CreateSut(Headers headers)
-        => new(headers.ToImmutableList(), "orders", new Partition(1), new Offset(10), null, new Timestamp(DateTime.UtcNow));
+        => new Transport(headers.ToImmutableList(), "orders", new Partition(1), new Offset(10), null, new Timestamp(DateTime.UtcNow));
 
     [Fact]
     public void Create_FromConsumeResult_MapsTheDelivery()
@@ -59,7 +59,7 @@ public class TransportTests
     [Fact]
     public void GetDateTime_RoundTripFormat_ParsesAsUtc()
     {
-        DateTime value = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
+        DateTime value = new DateTime(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
         DateTime parsed = CreateSut(new Headers { new Header("at", Encoding.UTF8.GetBytes(value.ToString("O"))) }).GetHeaderDateTime("at");
 
@@ -73,7 +73,7 @@ public class TransportTests
 
     [Fact]
     public void GetStringList_TrimsAndSkipsEmptyEntries()
-        => Assert.Equal(new[] { "a", "b", "c" }, CreateSut(new Headers { new Header("list", " a, b ,,c "u8.ToArray()) }).GetHeaderStringList("list"));
+        => Assert.Equal(new string[] { "a", "b", "c" }, CreateSut(new Headers { new Header("list", " a, b ,,c "u8.ToArray()) }).GetHeaderStringList("list"));
 
     [Fact]
     public void GetInt_Digits_Parses()

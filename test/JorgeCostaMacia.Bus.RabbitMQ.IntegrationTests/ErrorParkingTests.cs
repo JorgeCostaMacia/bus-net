@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 using Microsoft.Extensions.Configuration;
@@ -47,7 +48,7 @@ public sealed class ErrorParkingTests : IClassFixture<RabbitMqFixture>
             producer => producer.AddCommand<ParkingCommand>(Exchange),
             // A single 00:00 rung: the original fails and is re-published immediately, the redelivery
             // fails again, the budget is spent — so the failure parks to .error as terminal.
-            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(Queue, retryIntervals: [TimeSpan.Zero]));
+            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(Queue, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);

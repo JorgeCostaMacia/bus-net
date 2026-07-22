@@ -11,7 +11,7 @@ public class EventContextTests
     private static readonly Guid ConversationId = Guid.NewGuid();
     private static readonly Guid AggregateId = Guid.NewGuid();
     private static readonly Guid AggregateCorrelationId = Guid.NewGuid();
-    private static readonly DateTime OccurredAt = new(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
+    private static readonly DateTime OccurredAt = new DateTime(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
     private static Transport Transport()
     {
@@ -23,7 +23,7 @@ public class EventContextTests
             new Header(TransportHeaders.AggregateId, TransportHeaders.ToHeader(AggregateId)),
             new Header(TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(AggregateCorrelationId)),
             new Header(TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(OccurredAt.ToString("O"))),
-            new Header(TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(new[] { "g1", "g2" })),
+            new Header(TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(new string[] { "g1", "g2" })),
             new Header(TransportHeaders.RetryCount, TransportHeaders.ToHeader(3)),
             new Header(TransportHeaders.HostMachineName, TransportHeaders.ToHeader("box-1")),
             new Header(TransportHeaders.HostAssembly, TransportHeaders.ToHeader("MyApp")),
@@ -36,15 +36,15 @@ public class EventContextTests
         return new Transport(headers.ToImmutableList(), "orders.created", new Partition(0), new Offset(10), null, new Timestamp(OccurredAt));
     }
 
-    private static EventContext<TestEvent> CreateSut() => new(new TestEvent("pepe"), Transport());
+    private static EventContext<TestEvent> CreateSut() => new EventContext<TestEvent>(new TestEvent("pepe"), Transport());
 
     [Fact]
     public void MessageAndTransport_AreTheDeliveredPair()
     {
-        TestEvent @event = new("pepe");
+        TestEvent @event = new TestEvent("pepe");
         Transport transport = Transport();
 
-        EventContext<TestEvent> context = new(@event, transport);
+        EventContext<TestEvent> context = new EventContext<TestEvent>(@event, transport);
 
         Assert.Same(@event, context.Message);
         Assert.Same(transport, context.Transport);
@@ -76,7 +76,7 @@ public class EventContextTests
 
     [Fact]
     public void AggregateConsumers_ReadsTheTargetsFromTheTransportHeaders()
-        => Assert.Equal(new[] { "g1", "g2" }, CreateSut().AggregateConsumers);
+        => Assert.Equal(new string[] { "g1", "g2" }, CreateSut().AggregateConsumers);
 
     [Fact]
     public void Host_ReadsFromTheTransportHeaders()

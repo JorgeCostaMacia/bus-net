@@ -8,7 +8,7 @@ public class ProducerWorkerTests
 {
     private readonly KafkaProducerFake _kafka = new KafkaProducerFake();
 
-    private ProducerWorker Sut() => new(_kafka, NullLogger<ProducerWorker>.Instance);
+    private ProducerWorker Sut() => new ProducerWorker(_kafka, NullLogger<ProducerWorker>.Instance);
 
     [Fact]
     public async Task StopAsync_FlushesTheProducer()

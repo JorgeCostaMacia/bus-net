@@ -12,7 +12,7 @@ public class TopologyWorkerTests
         // the producer's exchanges are born at startup, idempotently, with exactly the options the
         // consumers declare with (durable, not auto-delete) — a mismatch would fail their declare.
         ChannelFake channel = new ChannelFake();
-        ConnectionFake connection = new(channel);
+        ConnectionFake connection = new ConnectionFake(channel);
         Dictionary<string, string> exchanges = new Dictionary<string, string>() { ["orders"] = ExchangeType.Direct, ["orders.created"] = ExchangeType.Fanout };
 
         await new TopologyWorker(connection, exchanges).StartAsync(TestContext.Current.CancellationToken);
@@ -26,7 +26,7 @@ public class TopologyWorkerTests
     public async Task StartAsync_NoExchanges_OpensNoChannel()
     {
         ChannelFake channel = new ChannelFake();
-        ConnectionFake connection = new(channel);
+        ConnectionFake connection = new ConnectionFake(channel);
 
         await new TopologyWorker(connection, new Dictionary<string, string>()).StartAsync(TestContext.Current.CancellationToken);
 

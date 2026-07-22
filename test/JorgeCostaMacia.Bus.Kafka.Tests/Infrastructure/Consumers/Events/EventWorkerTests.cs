@@ -50,7 +50,7 @@ public class EventWorkerTests
     [Fact]
     public async Task SubscriberSucceeds_StoresTheOffset_AndProducesNothing()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe")));
 
         await Drive(Worker(consumer), consumer);
 
@@ -62,7 +62,7 @@ public class EventWorkerTests
     [Fact]
     public async Task TargetsOtherConsumers_SkipsAndStores_WithoutRunningTheSubscriber()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe"), consumers: "billing.on.orders.subscriber"));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe"), consumers: "billing.on.orders.subscriber"));
 
         await Drive(Worker(consumer), consumer);
 
@@ -74,7 +74,7 @@ public class EventWorkerTests
     [Fact]
     public async Task TargetsItsGroup_Runs()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber,{Deliveries.GroupId}"));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber,{Deliveries.GroupId}"));
 
         await Drive(Worker(consumer), consumer);
 
@@ -86,7 +86,7 @@ public class EventWorkerTests
     public async Task SubscriberThrows_NoLadder_ParksToErrorTopic_AndStores()
     {
         _subscriber.Failure = new InvalidOperationException("boom");
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe")));
 
         await Drive(Worker(consumer), consumer);
 
@@ -99,7 +99,7 @@ public class EventWorkerTests
     public async Task SubscriberThrows_ZeroInterval_RequeuesToTopicTail_AndStores()
     {
         _subscriber.Failure = new InvalidOperationException("boom");
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe")));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
@@ -111,7 +111,7 @@ public class EventWorkerTests
     [Fact]
     public async Task MalformedBody_ParksToFaultTopic_AndStores()
     {
-        ConsumerFake consumer = new(Deliveries.Garbage());
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Garbage());
 
         await Drive(Worker(consumer), consumer);
 
@@ -124,7 +124,7 @@ public class EventWorkerTests
     [Fact]
     public async Task NullBody_ParksToFaultTopic_AndStores()
     {
-        ConsumerFake consumer = new(Deliveries.NullBody());
+        ConsumerFake consumer = new ConsumerFake(Deliveries.NullBody());
 
         await Drive(Worker(consumer), consumer);
 
@@ -137,12 +137,12 @@ public class EventWorkerTests
     [Fact]
     public async Task MultipleDeliveries_ProcessedInOrder_EachStored()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("a"), 10), Deliveries.Delivery(new TestEvent("b"), 11));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("a"), 10), Deliveries.Delivery(new TestEvent("b"), 11));
 
         await Drive(Worker(consumer), consumer);
 
         Assert.Equal("b", _subscriber.Received?.Name);
-        Assert.Equal(new[] { 10L, 11L }, consumer.Stored.Select(offset => offset.Offset.Value));
+        Assert.Equal(new long[] { 10L, 11L }, consumer.Stored.Select(offset => offset.Offset.Value));
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class EventWorkerTests
         // the body parses and the subscriber runs, but the envelope has no trace headers: the error
         // handler cannot read the retry count and reports Faulted — the delivery must end parked.
         _subscriber.Failure = new InvalidOperationException("boom");
-        ConsumerFake consumer = new(Deliveries.MissingTrace(new TestEvent("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.MissingTrace(new TestEvent("pepe")));
 
         await Drive(Worker(consumer), consumer);
 
@@ -163,7 +163,7 @@ public class EventWorkerTests
     [Fact]
     public async Task Tombstone_ParksToFaultTopic_AndStores()
     {
-        ConsumerFake consumer = new(Deliveries.Tombstone());
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Tombstone());
 
         await Drive(Worker(consumer), consumer);
 
@@ -178,7 +178,7 @@ public class EventWorkerTests
     {
         // an empty AggregateConsumers header targets nobody in particular: the delivery is for
         // everyone, so the subscriber must run — only a non-empty list excluding this group filters.
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestEvent("pepe"), consumers: ""));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe"), consumers: ""));
 
         await Drive(Worker(consumer), consumer);
 

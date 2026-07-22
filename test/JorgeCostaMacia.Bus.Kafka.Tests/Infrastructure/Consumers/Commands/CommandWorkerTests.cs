@@ -51,7 +51,7 @@ public class CommandWorkerTests
     [Fact]
     public async Task HandlerSucceeds_StoresTheOffset_AndProducesNothing()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
 
         await Drive(Worker(consumer), consumer);
 
@@ -69,7 +69,7 @@ public class CommandWorkerTests
         // a delivery in hand proves the brokers are reachable: consuming flips a down tracker back
         // up before the handler runs — its failures are the delivery's problem, not the connection's.
         _health.Down();
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
 
         await Drive(Worker(consumer), consumer);
 
@@ -80,7 +80,7 @@ public class CommandWorkerTests
     public async Task HandlerThrows_NoLadder_ParksToErrorTopic_AndStores()
     {
         _handler.Failure = new InvalidOperationException("boom");
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
 
         await Drive(Worker(consumer), consumer);
 
@@ -93,7 +93,7 @@ public class CommandWorkerTests
     public async Task HandlerThrows_ZeroInterval_RequeuesToTopicTail_AndStores()
     {
         _handler.Failure = new InvalidOperationException("boom");
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
@@ -107,7 +107,7 @@ public class CommandWorkerTests
     {
         // a dictionary miss inside USER code is a handling failure (retry ladder), not a malformed delivery
         _handler.Failure = new KeyNotFoundException("user code dictionary miss");
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
@@ -119,7 +119,7 @@ public class CommandWorkerTests
     [Fact]
     public async Task MalformedBody_ParksToFaultTopic_AndStores()
     {
-        ConsumerFake consumer = new(Deliveries.Garbage());
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Garbage());
 
         await Drive(Worker(consumer), consumer);
 
@@ -132,7 +132,7 @@ public class CommandWorkerTests
     [Fact]
     public async Task NullBody_ParksToFaultTopic_AndStores()
     {
-        ConsumerFake consumer = new(Deliveries.NullBody());
+        ConsumerFake consumer = new ConsumerFake(Deliveries.NullBody());
 
         await Drive(Worker(consumer), consumer);
 
@@ -150,7 +150,7 @@ public class CommandWorkerTests
         _handler.Failure = new InvalidOperationException("boom");
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
         _producer.FailingTopics.Add(Deliveries.Topic);
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
@@ -169,7 +169,7 @@ public class CommandWorkerTests
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
         _producer.FailingTopics.Add(Deliveries.Topic);
         _producer.FailingTopics.Add($"{Deliveries.Topic}.fault");
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
@@ -186,7 +186,7 @@ public class CommandWorkerTests
         _handler.Failure = new InvalidOperationException("boom");
         _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
         _producer.FailingTopics.Add(Deliveries.Topic);
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero), new ThrowingCommandFaultHandler()), consumer);
 
@@ -210,7 +210,7 @@ public class CommandWorkerTests
     {
         // a non-fatal ConsumeException is the client reconnecting on its own: the loop backs off and
         // survives — the delivery consumed after the failure is still handled and acked.
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")))
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")))
         {
             FirstConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Transport))
         };
@@ -247,7 +247,7 @@ public class CommandWorkerTests
     {
         // the partition was reclaimed by another owner between handling and storing: the stale store
         // is swallowed (the new owner redelivers) and the loop keeps consuming its remaining work.
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
         {
             StoreFailure = new KafkaException(new Error(ErrorCode.Local_State))
         };
@@ -264,7 +264,7 @@ public class CommandWorkerTests
     {
         // an arbitrary store failure leaves the delivery unacked (a restart redelivers it) without
         // tearing anything down: the loop keeps consuming and acking the deliveries that follow.
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
         {
             StoreFailure = new InvalidOperationException("store down")
         };
@@ -283,7 +283,7 @@ public class CommandWorkerTests
         // for the loop to exit through — no crash, nothing acked, nothing produced — and the stop
         // still closes the consumer gracefully.
         StoppingCommandFaultHandler faultHandler = new StoppingCommandFaultHandler();
-        ConsumerFake consumer = new(Deliveries.Garbage());
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Garbage());
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer, faultHandler: faultHandler);
         faultHandler.Stop = () => worker.StopAsync(TestContext.Current.CancellationToken);
 
@@ -304,7 +304,7 @@ public class CommandWorkerTests
         // the body parses and the handler runs, but the envelope has no trace headers: the error
         // handler cannot read the retry count and reports Faulted — the delivery must end parked.
         _handler.Failure = new InvalidOperationException("boom");
-        ConsumerFake consumer = new(Deliveries.MissingTrace(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.MissingTrace(new TestCommand("pepe")));
 
         await Drive(Worker(consumer), consumer);
 
@@ -316,7 +316,7 @@ public class CommandWorkerTests
     [Fact]
     public async Task Tombstone_ParksToFaultTopic_AndStores()
     {
-        ConsumerFake consumer = new(Deliveries.Tombstone());
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Tombstone());
 
         await Drive(Worker(consumer), consumer);
 
@@ -329,18 +329,18 @@ public class CommandWorkerTests
     [Fact]
     public async Task MultipleDeliveries_ProcessedInOrder_EachStored()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("a"), 10), Deliveries.Delivery(new TestCommand("b"), 11));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("a"), 10), Deliveries.Delivery(new TestCommand("b"), 11));
 
         await Drive(Worker(consumer), consumer);
 
         Assert.Equal("b", _handler.Received?.Name);
-        Assert.Equal(new[] { 10L, 11L }, consumer.Stored.Select(offset => offset.Offset.Value));
+        Assert.Equal(new long[] { 10L, 11L }, consumer.Stored.Select(offset => offset.Offset.Value));
     }
 
     [Fact]
     public async Task IgnoresAggregateConsumers_AlwaysProcesses()
     {
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe"), consumers: "other.handler"));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe"), consumers: "other.handler"));
 
         await Drive(Worker(consumer), consumer);
 
@@ -357,7 +357,7 @@ public class CommandWorkerTests
         StartupSignal signal = new StartupSignal();
         await gate.WaitAsync(TestContext.Current.CancellationToken);
 
-        ConsumerFake consumer = new(Deliveries.Delivery(new TestCommand("pepe")));
+        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer, startupGate: gate, startupSignal: signal);
 
         await worker.StartAsync(TestContext.Current.CancellationToken);

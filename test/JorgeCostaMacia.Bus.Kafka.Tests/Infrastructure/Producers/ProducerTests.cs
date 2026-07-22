@@ -13,7 +13,7 @@ public class ProducerTests
     private readonly KafkaProducerFake _kafka = new KafkaProducerFake();
     private readonly BusHealth _health = new BusHealth();
 
-    private KafkaProducer Sut() => new(_kafka, _health, NullLogger<KafkaProducer>.Instance);
+    private KafkaProducer Sut() => new KafkaProducer(_kafka, _health, NullLogger<KafkaProducer>.Instance);
 
     private static Message<Null, byte[]> Message(string value = "{}") => new Message<Null, byte[]>() { Value = Encoding.UTF8.GetBytes(value) };
 
@@ -94,13 +94,13 @@ public class ProducerTests
     {
         List<KeyValuePair<string, Message<Null, byte[]>>> messages = new List<KeyValuePair<string, Message<Null, byte[]>>>
         {
-            new("orders", Message("a")),
-            new("payments", Message("b"))
+            new KeyValuePair<string, Message<Null, byte[]>>("orders", Message("a")),
+            new KeyValuePair<string, Message<Null, byte[]>>("payments", Message("b"))
         };
 
         await Sut().Produce(messages, TestContext.Current.CancellationToken);
 
-        Assert.Equal(new[] { "orders", "payments" }, _kafka.Produced.Select(produced => produced.Topic));
+        Assert.Equal(new string[] { "orders", "payments" }, _kafka.Produced.Select(produced => produced.Topic));
     }
 
     [Fact]
@@ -113,13 +113,13 @@ public class ProducerTests
         _kafka.FailingTopics.Add("payments");
         List<KeyValuePair<string, Message<Null, byte[]>>> messages = new List<KeyValuePair<string, Message<Null, byte[]>>>
         {
-            new("orders", Message("a")),
-            new("payments", Message("b")),
-            new("shipping", Message("c"))
+            new KeyValuePair<string, Message<Null, byte[]>>("orders", Message("a")),
+            new KeyValuePair<string, Message<Null, byte[]>>("payments", Message("b")),
+            new KeyValuePair<string, Message<Null, byte[]>>("shipping", Message("c"))
         };
 
         await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce(messages, TestContext.Current.CancellationToken));
 
-        Assert.Equal(new[] { "orders", "shipping" }, _kafka.Produced.Select(produced => produced.Topic));
+        Assert.Equal(new string[] { "orders", "shipping" }, _kafka.Produced.Select(produced => produced.Topic));
     }
 }

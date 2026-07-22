@@ -249,7 +249,7 @@ public class CommandWorkerTests
         await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestCommand("a"), 10), Deliveries.Delivery(new TestCommand("b"), 11));
 
         Assert.Equal("b", _handler.Received?.Name);
-        Assert.Equal(new[] { 10ul, 11ul }, channel.Acked);
+        Assert.Equal(new ulong[] { 10ul, 11ul }, channel.Acked);
     }
 
     [Fact]
@@ -294,7 +294,7 @@ public class CommandWorkerTests
         ConsumerChannelFake channel = new ConsumerChannelFake();
         RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
-        worker.ResurrectionBackoff = new[] { TimeSpan.FromMilliseconds(1) };
+        worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
         await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Application, 200, "Goodbye"));
@@ -332,7 +332,7 @@ public class CommandWorkerTests
         ConsumerChannelFake channel = new ConsumerChannelFake() { Next = replacement };
         RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
-        worker.ResurrectionBackoff = new[] { TimeSpan.FromMilliseconds(1) };
+        worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
         await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Peer, 404, "NOT_FOUND"));
@@ -367,7 +367,7 @@ public class CommandWorkerTests
         ConsumerChannelFake resurrected = new ConsumerChannelFake();
         ConsumerChannelFake delivering = new ConsumerChannelFake() { Next = resurrected };
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(delivering);
-        worker.ResurrectionBackoff = new[] { TimeSpan.FromMilliseconds(1) };
+        worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
 
@@ -398,7 +398,7 @@ public class CommandWorkerTests
         ConsumerChannelFake channel = new ConsumerChannelFake() { Next = replacement };
         RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
-        worker.ResurrectionBackoff = new[] { TimeSpan.FromMilliseconds(1) };
+        worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
         await channel.CloseAsync(null);
@@ -425,7 +425,7 @@ public class CommandWorkerTests
         ConsumerChannelFake channel = new ConsumerChannelFake();
         RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
-        worker.ResurrectionBackoff = new[] { TimeSpan.FromMilliseconds(50) };
+        worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(50) };
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
         await channel.CloseAsync(new ShutdownEventArgs(ShutdownInitiator.Library, 320, "CONNECTION_FORCED"));
@@ -448,7 +448,7 @@ public class CommandWorkerTests
         ConsumerChannelFake channel = new ConsumerChannelFake();
         RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
-        worker.ResurrectionBackoff = new[] { TimeSpan.FromMilliseconds(1) };
+        worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
         await worker.StopAsync(TestContext.Current.CancellationToken);
