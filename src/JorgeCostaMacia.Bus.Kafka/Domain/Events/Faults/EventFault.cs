@@ -81,7 +81,7 @@ public sealed record EventFault : IErrorMessage
     /// <param name="groupId">The consumer group whose delivery broke.</param>
     /// <returns>The body parked to the fault topic.</returns>
     internal static EventFault Create(EventFaultContext context, string groupId)
-        => new(
+        => new EventFault(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             groupId,

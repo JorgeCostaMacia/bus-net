@@ -63,7 +63,7 @@ public sealed record CommandFault : IErrorMessage
     /// <param name="queue">The queue whose delivery broke.</param>
     /// <returns>The body parked to the fault queue.</returns>
     internal static CommandFault Create(CommandFaultContext context, string queue)
-        => new(
+        => new CommandFault(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             queue,

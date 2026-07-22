@@ -60,7 +60,7 @@ public sealed record EventFault : IErrorMessage
     /// <param name="queue">The queue whose delivery broke.</param>
     /// <returns>The body parked to the fault queue.</returns>
     internal static EventFault Create(EventFaultContext context, string queue)
-        => new(
+        => new EventFault(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             queue,

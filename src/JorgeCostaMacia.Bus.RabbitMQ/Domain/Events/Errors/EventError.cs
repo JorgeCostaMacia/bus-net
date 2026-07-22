@@ -67,7 +67,7 @@ public sealed record EventError<TEvent> : IErrorMessage
     /// <param name="queue">The queue whose subscriber failed.</param>
     /// <returns>The body parked to the error queue.</returns>
     internal static EventError<TEvent> Create(EventErrorContext<TEvent> context, string queue)
-        => new(
+        => new EventError<TEvent>(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,
             context.RetryCount,

@@ -45,7 +45,7 @@ internal static class BusInfrastructureContext
 
         if (consumer is not null)
         {
-            ConsumerConfigurator consumerConfigurator = new(services, producerConfigurator.Messages);
+            ConsumerConfigurator consumerConfigurator = new ConsumerConfigurator(services, producerConfigurator.Messages);
 
             consumer(consumerConfigurator);
         }

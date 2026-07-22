@@ -53,7 +53,7 @@ public sealed record Transport : ITransport
     /// <param name="result">The delivered message.</param>
     /// <returns>The delivery's transport.</returns>
     public static Transport Create(ConsumeResult<Ignore, byte[]> result)
-        => new(
+        => new Transport(
             result.Message.Headers.ToImmutableList(),
             result.Topic,
             result.Partition,

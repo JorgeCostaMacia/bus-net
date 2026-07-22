@@ -11,5 +11,5 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure;
 internal static class BusSerializer
 {
     /// <summary>The options every body serialization uses — .NET's Web defaults (camelCase).</summary>
-    public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+    public static readonly JsonSerializerOptions Options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 }

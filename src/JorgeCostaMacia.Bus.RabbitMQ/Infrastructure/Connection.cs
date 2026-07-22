@@ -16,7 +16,7 @@ internal sealed class Connection : Domain.IConnection
 {
     private readonly ConnectionFactory _factory;
     private readonly ILogger _logger;
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
 
     private IConnection? _connection;
     private bool _disposed;
