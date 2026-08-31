@@ -76,7 +76,7 @@ Skills that apply to this repo — let them trigger, or invoke explicitly. `gitf
 - **`dotnet`** — C# language server + general .NET development (the transport implementations live here).
 - **`dotnet-msbuild`** — `Directory.Build.props`, project-file quality, CPM.
 - **`dotnet-nuget`** — dependency management.
-- **`dotnet-test`** / **`dotnet-test-migration`** — tests; the xUnit.v3 / MTP setup.
+- **`dotnet-test`** / **`dotnet-test-migration`** — tests; the xUnit v4 / MTP v2 setup.
 - **`dotnet-upgrade`** — target-framework migrations.
 
 Not relevant to this repo (skip): `validation-net` (no FluentValidation here — messages are primitive DTO contracts; boundary validation is the consuming app's job), `dotnet-aspnetcore` (that's http-net), `dotnet-ai`, `dotnet-maui`, `dotnet-blazor`, `dotnet-data`, `dotnet-template-engine`, `dotnet11`, `dotnet-diag`, `dotnet-advanced`.
@@ -86,8 +86,10 @@ Not relevant to this repo (skip): `validation-net` (no FluentValidation here —
 ```
 dotnet format bus-net.slnx                  # apply .editorconfig (using order, whitespace) — run before committing
 dotnet build  bus-net.slnx -c Release
-dotnet test   bus-net.slnx -c Release       # MTP prints a per-assembly summary; --logger is VSTest-only (MTP0001)
+dotnet test   bus-net.slnx -c Release       # MTP v2 via global.json (needs the .NET 10 SDK); --logger is VSTest-only (MTP0001)
 dotnet pack   bus-net.slnx -c Release        # packs all packable; tests are IsPackable=false
 ```
+
+Tests are **xUnit v4 on Microsoft.Testing.Platform v2** — test projects are `OutputType=Exe`, and `dotnet test` runs MTP because the root **`global.json`** opts in (`"test": { "runner": "Microsoft.Testing.Platform" }`). MTP v2 dropped the VSTest bridge, so `TestingPlatformDotnetTestSupport` is gone and running the tests needs the **.NET 10 SDK**. The integration suites (Kafka / RabbitMQ / Postgres via Testcontainers) are the slow ones: running the whole solution starts 12 of them at once (4 projects x 3 TFMs) and Docker contention can make them flake — re-run a failing suite on its own (its MTP `.exe` under `bin/Release/<tfm>/`) before treating it as a real failure.
 
 Run **`dotnet format` before committing** — it applies the `.editorconfig` (using ordering, whitespace), the CLI equivalent of Visual Studio's *Code Cleanup*, so generated code doesn't drift from what the IDE would produce.
