@@ -2,6 +2,7 @@ using System.Text.Json;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain;
 using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Faults;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using FaultHandler = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Events.EventFaultHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestEvent, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestEventSubscriber>;
 
@@ -11,8 +12,8 @@ public class EventFaultHandlerTests
 {
     private readonly ProducerFake _producer = new ProducerFake();
 
-    private FaultHandler Fault()
-        => new FaultHandler(_producer, NullLogger.Instance, Deliveries.Queue);
+    private FaultHandler Fault(ILogger? logger = null)
+        => new FaultHandler(_producer, logger ?? NullLogger.Instance, Deliveries.Queue);
 
     [Fact]
     public async Task ParksToFaultQueue_WithTheBodyAsText()
@@ -73,5 +74,23 @@ public class EventFaultHandlerTests
         await sut.Handle(EventFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);
+    }
+
+    [Fact]
+    public async Task ShutdownWhileParking_LeavesUnhandled_Silently()
+    {
+        // a deploy cancels the token while the fault is being parked. The outcome matches a broker
+        // failure — Unhandled, so the delivery is redelivered rather than acked away — but it must get
+        // there silently: the generic catch logs "Parking failed." at Error, and a routine shutdown
+        // must not look like a parking outage.
+        RecordingLogger<EventFaultHandlerTests> logger = new RecordingLogger<EventFaultHandlerTests>();
+        _producer.Failure = new OperationCanceledException();
+        FaultHandler sut = Fault(logger);
+
+        await sut.Handle(EventFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header")), TestContext.Current.CancellationToken);
+
+        Assert.Equal(FaultResult.Unhandled, sut.Result);
+        Assert.Empty(_producer.Produced);
+        Assert.DoesNotContain(logger.Logged, entry => entry.Level >= LogLevel.Error);
     }
 }

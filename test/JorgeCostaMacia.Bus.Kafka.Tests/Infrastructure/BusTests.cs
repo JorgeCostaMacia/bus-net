@@ -196,4 +196,43 @@ public class BusTests
 
         Assert.Empty(_producer.Produced);
     }
+
+    [Fact]
+    public async Task Publish_BatchWithTransport_ContinuesTheConversationForEach()
+    {
+        // the shape a handler actually uses: it received a command and publishes several events in
+        // reaction, all continuing the same conversation. Send's twin was pinned and this one was not,
+        // which left the most common fan-out in these services untested.
+        Guid conversationId = Guid.NewGuid();
+
+        Headers inbound = new Headers()
+        {
+            { TransportHeaders.MessageId, Guid.NewGuid().ToByteArray() },
+            { TransportHeaders.MessageDestinationAddress, "orders"u8.ToArray() },
+            { TransportHeaders.ConversationId, conversationId.ToByteArray() },
+            { TransportHeaders.ConversationAddress, "orders"u8.ToArray() },
+            { TransportHeaders.ConversationOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")) },
+            { TransportHeaders.AggregateId, Guid.NewGuid().ToByteArray() },
+            { TransportHeaders.AggregateCorrelationId, Guid.NewGuid().ToByteArray() },
+            { TransportHeaders.AggregateOccurredAt, Encoding.UTF8.GetBytes(DateTime.UtcNow.ToString("O")) },
+            { TransportHeaders.RetryCount, "3"u8.ToArray() }
+        };
+
+        Transport transport = new Transport(inbound.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(DateTime.UtcNow));
+        TestEvent[] events = new TestEvent[] { new TestEvent("a"), new TestEvent("b") };
+
+        await CreateSut((typeof(TestEvent), "orders.created")).Publish(events, transport, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _producer.Produced.Count);
+        Assert.All(_producer.Produced, produced =>
+        {
+            Assert.Equal("orders.created", produced.Topic);
+            Assert.Equal(conversationId, GuidHeader(produced.Message, TransportHeaders.ConversationId));
+            Assert.Equal("orders", Header(produced.Message, TransportHeaders.MessageOriginAddress));
+            Assert.Equal("orders.created", Header(produced.Message, TransportHeaders.MessageDestinationAddress));
+            Assert.Equal("0", Header(produced.Message, TransportHeaders.RetryCount));
+        });
+
+        Assert.Equal(2, _producer.Produced.Select(produced => GuidHeader(produced.Message, TransportHeaders.MessageId)).Distinct().Count());
+    }
 }

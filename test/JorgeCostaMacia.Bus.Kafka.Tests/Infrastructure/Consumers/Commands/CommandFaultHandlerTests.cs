@@ -4,6 +4,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Commands;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Commands;
@@ -12,8 +13,8 @@ public class CommandFaultHandlerTests
 {
     private readonly ProducerFake _producer = new ProducerFake();
 
-    private CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault()
-        => new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId);
+    private CommandFaultHandler<TestCommand, RecordingCommandHandler> Fault(ILogger? logger = null)
+        => new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, logger ?? NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId);
 
     [Fact]
     public async Task ParksToFaultTopic_WithTheBodyAsText()
@@ -73,5 +74,23 @@ public class CommandFaultHandlerTests
         await sut.Handle(CommandFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);
+    }
+
+    [Fact]
+    public async Task ShutdownWhileParking_LeavesUnhandled_Silently()
+    {
+        // a deploy cancels the token while the fault is being parked. The outcome matches a broker
+        // failure — Unhandled, so the delivery is redelivered rather than acked away — but it must get
+        // there silently: the generic catch logs "Parking failed." at Error, and a routine shutdown
+        // must not look like a parking outage.
+        RecordingLogger<CommandFaultHandlerTests> logger = new RecordingLogger<CommandFaultHandlerTests>();
+        _producer.Failure = new OperationCanceledException();
+        CommandFaultHandler<TestCommand, RecordingCommandHandler> sut = Fault(logger);
+
+        await sut.Handle(CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header")), TestContext.Current.CancellationToken);
+
+        Assert.Equal(FaultResult.Unhandled, sut.Result);
+        Assert.Empty(_producer.Produced);
+        Assert.DoesNotContain(logger.Logged, entry => entry.Level >= LogLevel.Error);
     }
 }
