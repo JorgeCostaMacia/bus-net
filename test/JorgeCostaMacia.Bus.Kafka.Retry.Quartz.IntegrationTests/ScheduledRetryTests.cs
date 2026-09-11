@@ -50,7 +50,8 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
         builder.Services.AddQuartz(quartz => quartz.UsePersistentStore(store =>
         {
             store.UsePostgres(_fixture.PostgresConnectionString);
-            store.UseProperties = true;
+            store.ConfigureStore(options => options.StoreJobDataAsStrings = true);
+            store.ProvisionSchema();
             store.UseSystemTextJsonSerializer();
         }));
         builder.Services.AddQuartzHostedService(options => options.WaitForJobsToComplete = true);

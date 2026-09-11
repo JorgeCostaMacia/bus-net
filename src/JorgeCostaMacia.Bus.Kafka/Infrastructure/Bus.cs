@@ -120,7 +120,7 @@ internal sealed class Bus : IBus
     private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message)
         where TMessage : ITracedMessage, IFilteredMessage
     {
-        Guid messageId = GuidFactory.Domain.GuidFactory.Create();
+        Guid messageId = Guid.CreateVersion7();
         string occurredAt = DateTime.UtcNow.ToString("O");
         Type type = message.GetType();
 
@@ -158,7 +158,7 @@ internal sealed class Bus : IBus
             throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the Kafka transport; the Kafka bus can only continue a delivery received over Kafka.");
         }
 
-        Guid messageId = GuidFactory.Domain.GuidFactory.Create();
+        Guid messageId = Guid.CreateVersion7();
         Type type = message.GetType();
 
         Headers headers = inbound.CloneHeaders();

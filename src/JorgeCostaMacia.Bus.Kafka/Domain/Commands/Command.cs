@@ -6,7 +6,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 /// <summary>
 /// Base implementation for commands on the Kafka bus: an immutable <see langword="record"/> carrying
 /// traceability metadata (id / correlation / UTC timestamp) and optional target consumers,
-/// defaulting the id via JorgeCostaMacia.GuidFactory. Concrete commands forward to it with
+/// defaulting the id to a time-ordered UUIDv7. Concrete commands forward to it with
 /// <c>: base(...)</c>. Implements the transport-agnostic message contracts
 /// (<see cref="ITracedMessage"/> / <see cref="IFilteredMessage"/>).
 /// </summary>
@@ -39,9 +39,9 @@ public abstract record Command : ITracedMessage, IFilteredMessage
     /// <param name="aggregateConsumers">The target consumers, or <see langword="null"/> for none.</param>
     protected Command(Guid? aggregateId, Guid? aggregateCorrelationId, DateTime? aggregateOccurredAt, IEnumerable<string>? aggregateConsumers)
     {
-        AggregateId = aggregateId ?? GuidFactory.Domain.GuidFactory.Create();
+        AggregateId = aggregateId ?? Guid.CreateVersion7();
         AggregateCorrelationId = aggregateCorrelationId ?? AggregateId;
         AggregateOccurredAt = aggregateOccurredAt ?? DateTime.UtcNow;
-        AggregateConsumers = aggregateConsumers?.ToImmutableList() ?? [];
+        AggregateConsumers = aggregateConsumers?.ToImmutableList() ?? ImmutableList<string>.Empty;
     }
 }

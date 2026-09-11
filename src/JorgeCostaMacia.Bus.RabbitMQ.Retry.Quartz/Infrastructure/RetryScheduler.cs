@@ -67,13 +67,13 @@ internal sealed class RetryScheduler : IRetryScheduler
         // last write wins: an at-least-once duplicate of the same failure re-parks the same key —
         // job and trigger overwritten, the ladder restarts fresh — and a dead-letter parked under
         // that key is revived by the new ladder instead of blocking the park.
-        await scheduler.ScheduleJob(job, new ITrigger[] { trigger }, replace: true, cancellationToken);
+        await scheduler.ScheduleJob(job, new ITrigger[] { trigger }, ScheduleJobOptions.Replacing, cancellationToken);
     }
 
     private static Guid MessageId(IReadOnlyDictionary<string, string> headers)
         => headers.TryGetValue(TransportHeaders.MessageId, out string? id) && Guid.TryParse(id, out Guid value)
             ? value
-            : GuidFactory.Domain.GuidFactory.Create();
+            : Guid.CreateVersion7();
 
     private static int RetryCount(IReadOnlyDictionary<string, string> headers)
         => headers.TryGetValue(TransportHeaders.RetryCount, out string? retry) && int.TryParse(retry, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)

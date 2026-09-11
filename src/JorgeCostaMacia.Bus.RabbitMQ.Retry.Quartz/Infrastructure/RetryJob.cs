@@ -34,7 +34,7 @@ internal sealed class RetryJob : IJob
     }
 
     /// <inheritdoc />
-    public async Task Execute(IJobExecutionContext context)
+    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
         string exchange = Exchange(context.MergedJobDataMap);
         byte[] body = Body(context.MergedJobDataMap);
@@ -42,11 +42,11 @@ internal sealed class RetryJob : IJob
 
         // a failed produce just throws: Quartz wraps it and hands it to the job listeners, and the
         // trigger repeats the produce on its own until the attempts run out — nothing to do here.
-        await _producer.Produce(exchange, string.Empty, body, headers, context.CancellationToken);
+        await _producer.Produce(exchange, string.Empty, body, headers, cancellationToken);
 
         // produced: the job is done for good — deleting the durable job takes any pending
         // repetition with it (and cleans up a re-fired dead-letter).
-        await context.Scheduler.DeleteJob(context.JobDetail.Key, context.CancellationToken);
+        await context.Scheduler.DeleteJob(context.JobDetail.Key, cancellationToken);
     }
 
     private static string Exchange(JobDataMap data)
@@ -84,7 +84,7 @@ internal sealed class RetryJob : IJob
 
         Dictionary<string, string> headers = new Dictionary<string, string>();
 
-        foreach (KeyValuePair<string, string> header in JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(value) ?? [])
+        foreach (KeyValuePair<string, string> header in JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(value) ?? new List<KeyValuePair<string, string>>())
         {
             headers[header.Key] = header.Value;
         }
