@@ -6,6 +6,7 @@ using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Domain.Events.Errors;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Events;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Consumers.Events;
@@ -19,8 +20,8 @@ public class EventErrorHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
     private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
-    private EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true)
-        => new EventErrorHandler<TestEvent, TestEventSubscriber>(_producer, scheduler ? _scheduler : null, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, excludes ?? ImmutableList<Type>.Empty);
+    private EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true, ILogger? logger = null)
+        => new EventErrorHandler<TestEvent, TestEventSubscriber>(_producer, scheduler ? _scheduler : null, logger ?? NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, excludes ?? ImmutableList<Type>.Empty);
 
     [Fact]
     public async Task MissingRetryCountHeader_ReportsFaulted()
@@ -189,5 +190,36 @@ public class EventErrorHandlerTests
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
         Assert.Equal("2", Deliveries.Header(Assert.Single(_producer.Produced).Message, TransportHeaders.RetryCount));
+    }
+
+    [Fact]
+    public async Task ShutdownWhileParking_LeavesUnhandled_Silently()
+    {
+        // a deploy cancels the token mid-park. Unhandled is the only safe answer — the delivery stays
+        // unacked, so whoever is still running gets it — and it must be SILENT: the generic catch logs
+        // "Producer failed." at Error, and a routine shutdown must not put an error in the log.
+        RecordingLogger<TestEvent> logger = new RecordingLogger<TestEvent>();
+        _producer.Failure = new OperationCanceledException();
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(logger: logger);
+
+        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorResult.Unhandled, sut.Result);
+        Assert.DoesNotContain(logger.Logged, entry => entry.Level >= LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task ShutdownWhileScheduling_LeavesUnhandled_Silently()
+    {
+        // same during a delayed retry: cancelling the schedule must not read as a scheduler outage.
+        RecordingLogger<TestEvent> logger = new RecordingLogger<TestEvent>();
+        _scheduler.Failure = new OperationCanceledException();
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)), logger: logger);
+
+        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(ErrorResult.Unhandled, sut.Result);
+        Assert.Empty(_producer.Produced);
+        Assert.DoesNotContain(logger.Logged, entry => entry.Level >= LogLevel.Error);
     }
 }

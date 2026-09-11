@@ -18,7 +18,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests;
 
 public class BusContextTests
 {
-    private static IConfiguration Configuration(bool producer = true, bool consumer = false, string? producerBootstrap = "bus:9092", string? producerUser = "user")
+    private static IConfiguration Configuration(bool producer = true, bool consumer = false, string? producerBootstrap = "bus:9092", string? producerUser = "user", string? producerPassword = "pass")
     {
         Dictionary<string, string?> values = new Dictionary<string, string?>();
 
@@ -26,7 +26,7 @@ public class BusContextTests
         {
             values["Bus:Producer:BootstrapServers"] = producerBootstrap;
             values["Bus:Producer:SaslUsername"] = producerUser;
-            values["Bus:Producer:SaslPassword"] = "pass";
+            values["Bus:Producer:SaslPassword"] = producerPassword;
         }
 
         if (consumer)
@@ -252,5 +252,48 @@ public class BusContextTests
         object instance = first.ImplementationFactory!(probe);
 
         Assert.IsType<AdminWorker>(instance);
+    }
+
+    [Fact]
+    public void AddBusContext_MissingSaslPassword_Throws()
+    {
+        // the producer's three required fields are guarded one by one so the message names the field
+        // that is actually missing; bootstrap and username were pinned, the password was not.
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(Configuration(producerPassword: null), _ => { }, _ => { }));
+
+        Assert.Contains("SaslPassword", exception.Message);
+    }
+
+    [Fact]
+    public void AddBusContext_ConsumerMissingSaslUsername_Throws()
+    {
+        Dictionary<string, string?> values = new Dictionary<string, string?>()
+        {
+            ["Bus:Producer:BootstrapServers"] = "bus:9092",
+            ["Bus:Producer:SaslUsername"] = "user",
+            ["Bus:Producer:SaslPassword"] = "pass",
+            ["Bus:Consumer:BootstrapServers"] = "bus:9092",
+            ["Bus:Consumer:SaslPassword"] = "pass"
+        };
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(configuration, _ => { }, _ => { }));
+
+        Assert.Contains("SaslUsername", exception.Message);
+    }
+
+    [Fact]
+    public void AddEventSubscriber_WithoutTheEventMapped_Throws()
+    {
+        // the mirror of the command case: subscribing to an event nobody mapped to a topic is a wiring
+        // mistake, and the message names the type so it is obvious which map is missing an entry.
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(Configuration(consumer: true),
+                _ => { },
+                consumer => consumer.AddEventSubscriber<TestEvent, TestEventSubscriber>("billing.on.orders.created.subscriber")));
+
+        Assert.Contains(nameof(TestEvent), exception.Message);
     }
 }

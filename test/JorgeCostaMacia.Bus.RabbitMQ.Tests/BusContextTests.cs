@@ -149,4 +149,17 @@ public class BusContextTests
         ServiceDescriptor faultHandler = Assert.Single(services, e => e.ServiceType == typeof(EventFaultHandlerBase));
         Assert.Equal(ServiceLifetime.Scoped, faultHandler.Lifetime);
     }
+
+    [Fact]
+    public void AddEventSubscriber_WithoutTheEventMapped_Throws()
+    {
+        // the mirror of the command case: subscribing to an event nobody mapped to an exchange is a
+        // wiring mistake, and the message names the type so it is obvious which map is missing an entry.
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new ServiceCollection().AddBusContext(Configuration(),
+                _ => { },
+                consumer => consumer.AddEventSubscriber<TestEvent, TestEventSubscriber>("billing.on.orders.created.subscriber")));
+
+        Assert.Contains(nameof(TestEvent), exception.Message);
+    }
 }
