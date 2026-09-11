@@ -168,4 +168,27 @@ internal static class Broker
 
         return Encoding.UTF8.GetString(bytes);
     }
+
+    /// <summary>
+    /// The topics the broker knows, as name → partition count, read straight from its metadata with a
+    /// bare admin client. The provisioning tests assert on this rather than on anything the bus reports,
+    /// so what they verify is the broker's own state.
+    /// </summary>
+    /// <param name="configuration">The bus configuration carrying the mapped bootstrap.</param>
+    /// <returns>The broker's topics and how many partitions each has.</returns>
+    public static IReadOnlyDictionary<string, int> Topics(IConfiguration configuration)
+    {
+        AdminClientConfig config = new AdminClientConfig()
+        {
+            BootstrapServers = BootstrapServers(configuration),
+            SecurityProtocol = SecurityProtocol.Plaintext
+        };
+
+        using IAdminClient admin = new AdminClientBuilder(config).Build();
+
+        // The same generous window CreateCappedTopicAsync uses, and for the same reason: controller
+        // discovery can be slow while the other broker containers are running.
+        return admin.GetMetadata(TimeSpan.FromSeconds(90)).Topics
+            .ToDictionary(topic => topic.Topic, topic => topic.Partitions.Count);
+    }
 }

@@ -97,4 +97,49 @@ public class AdminConfiguratorTests
 
         Assert.Equal(20, configurator.TopicsBatchSize);
     }
+
+    [Fact]
+    public void Constructor_MissingBootstrapServers_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new AdminConfigurator(ConfigurationWithout("Bus:Admin:BootstrapServers")));
+
+        Assert.Contains("BootstrapServers", exception.Message);
+    }
+
+    [Fact]
+    public void Constructor_MissingSaslUsername_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new AdminConfigurator(ConfigurationWithout("Bus:Admin:SaslUsername")));
+
+        Assert.Contains("SaslUsername", exception.Message);
+    }
+
+    [Fact]
+    public void Constructor_MissingSaslPassword_Throws()
+    {
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            () => new AdminConfigurator(ConfigurationWithout("Bus:Admin:SaslPassword")));
+
+        Assert.Contains("SaslPassword", exception.Message);
+    }
+
+    /// <summary>
+    /// The full admin section with one key blanked rather than absent — the section itself must still
+    /// bind, so the per-field guard is what answers instead of the missing-section one. Blank, not null,
+    /// because that is the shape a present-but-empty environment variable takes.
+    /// </summary>
+    private static IConfiguration ConfigurationWithout(string key)
+    {
+        Dictionary<string, string?> values = new Dictionary<string, string?>()
+        {
+            ["Bus:Admin:BootstrapServers"] = "bus:9092",
+            ["Bus:Admin:SaslUsername"] = "admin",
+            ["Bus:Admin:SaslPassword"] = "pass"
+        };
+        values[key] = " ";
+
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+    }
 }
