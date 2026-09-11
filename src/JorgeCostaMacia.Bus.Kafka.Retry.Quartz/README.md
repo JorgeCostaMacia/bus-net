@@ -27,7 +27,7 @@ services
     .AddQuartz(q => q.UsePersistentStore(store =>
     {
         store.UsePostgres(/* connection string */);   // any provider
-        store.UseProperties = true;                    // string-only job data
+        store.ConfigureStore(o => o.StoreJobDataAsStrings = true);  // string-only job data
         store.UseClustering();
         store.UseSystemTextJsonSerializer();
     }))

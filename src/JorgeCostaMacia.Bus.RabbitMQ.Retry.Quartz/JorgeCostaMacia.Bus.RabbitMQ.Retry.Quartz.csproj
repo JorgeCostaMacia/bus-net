@@ -14,7 +14,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="JorgeCostaMacia.GuidFactory" />
 		<PackageReference Include="Quartz" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 	</ItemGroup>

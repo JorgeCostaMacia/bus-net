@@ -7,7 +7,7 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 /// <summary>
 /// Base implementation for events on the Kafka bus: an immutable <see langword="record"/> carrying
 /// traceability metadata (id / correlation / UTC timestamp) and optional target consumers,
-/// defaulting the id via JorgeCostaMacia.GuidFactory. Concrete events forward to it with
+/// defaulting the id to a time-ordered UUIDv7. Concrete events forward to it with
 /// <c>: base(...)</c>. Implements the transport-agnostic message contracts
 /// (<see cref="ITracedMessage"/> / <see cref="IFilteredMessage"/>) and <see cref="IDomainEvent"/>,
 /// so it fits an aggregate's event list.
@@ -37,9 +37,9 @@ public abstract record Event : IDomainEvent, ITracedMessage, IFilteredMessage
     /// <param name="aggregateConsumers">The target consumers, or <see langword="null"/> for none.</param>
     protected Event(Guid? aggregateId, Guid? aggregateCorrelationId, DateTime? aggregateOccurredAt, IEnumerable<string>? aggregateConsumers)
     {
-        AggregateId = aggregateId ?? GuidFactory.Domain.GuidFactory.Create();
+        AggregateId = aggregateId ?? Guid.CreateVersion7();
         AggregateCorrelationId = aggregateCorrelationId ?? AggregateId;
         AggregateOccurredAt = aggregateOccurredAt ?? DateTime.UtcNow;
-        AggregateConsumers = aggregateConsumers?.ToImmutableList() ?? [];
+        AggregateConsumers = aggregateConsumers?.ToImmutableList() ?? ImmutableList<string>.Empty;
     }
 }

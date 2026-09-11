@@ -5,8 +5,6 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Domain;
 using JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Infrastructure;
 using Quartz;
-using Quartz.Impl;
-using Quartz.Impl.Matchers;
 
 namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests;
 
@@ -22,12 +20,12 @@ public class RetrySchedulerTests
     // A real in-memory Quartz scheduler, never started — ScheduleJob persists to the RAM store without firing.
     // A unique instance name keeps each test's scheduler isolated in the shared repository.
     private static ISchedulerFactory Factory()
-        => new StdSchedulerFactory(new NameValueCollection
+        => QuartzSchedulerBuilder.Create().UseProperties(new NameValueCollection
         {
             ["quartz.scheduler.instanceName"] = $"test-{Guid.NewGuid():N}",
             ["quartz.jobStore.type"] = "Quartz.Simpl.RAMJobStore, Quartz",
             ["quartz.threadPool.threadCount"] = "1"
-        });
+        }).Build();
 
     private static Headers Headers(Guid? messageId = null, int? retryCount = null, params (string Key, byte[]? Value)[] extra)
     {

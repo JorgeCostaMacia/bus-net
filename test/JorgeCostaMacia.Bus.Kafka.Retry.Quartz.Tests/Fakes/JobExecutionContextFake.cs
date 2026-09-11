@@ -29,6 +29,7 @@ internal sealed class JobExecutionContextFake : IJobExecutionContext
     public bool Recovering => throw new NotSupportedException();
     public TriggerKey RecoveringTriggerKey => throw new NotSupportedException();
     public int RefireCount => throw new NotSupportedException();
+    public int RetryAttempt => throw new NotSupportedException();
     public IJobDetail JobDetail { get; }
     public IJob JobInstance => throw new NotSupportedException();
     public DateTimeOffset FireTimeUtc => throw new NotSupportedException();
@@ -38,7 +39,4 @@ internal sealed class JobExecutionContextFake : IJobExecutionContext
     public string FireInstanceId => throw new NotSupportedException();
     public object? Result { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
     public TimeSpan JobRunTime => throw new NotSupportedException();
-
-    public object? Get(object key) => throw new NotSupportedException();
-    public void Put(object key, object objectValue) => throw new NotSupportedException();
 }
