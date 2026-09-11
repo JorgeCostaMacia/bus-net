@@ -5,7 +5,6 @@ using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Infrastructure;
 using JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests.Fakes;
 using Quartz;
-using Quartz.Impl;
 
 namespace JorgeCostaMacia.Bus.Kafka.Retry.Quartz.Tests;
 
@@ -139,7 +138,7 @@ public class RetryJobTests
     }
 
     private Task Execute(JobDataMap data, IJobDetail job, ITrigger trigger, IScheduler scheduler)
-        => new RetryJob(_producer).Execute(new JobExecutionContextFake(data, job, trigger, scheduler));
+        => new RetryJob(_producer).Execute(new JobExecutionContextFake(data, job, trigger, scheduler), CancellationToken.None).AsTask();
 
     /// <summary>
     /// A real in-memory scheduler (never started) seeded with the durable job — with its repeating
@@ -147,12 +146,12 @@ public class RetryJobTests
     /// </summary>
     private static async Task<(IScheduler Scheduler, IJobDetail Job, ITrigger Trigger)> Seed(bool parked = false)
     {
-        IScheduler scheduler = await new StdSchedulerFactory(new NameValueCollection
+        IScheduler scheduler = await QuartzSchedulerBuilder.Create().UseProperties(new NameValueCollection
         {
             ["quartz.scheduler.instanceName"] = $"test-{Guid.NewGuid():N}",
             ["quartz.jobStore.type"] = "Quartz.Simpl.RAMJobStore, Quartz",
             ["quartz.threadPool.threadCount"] = "1"
-        }).GetScheduler();
+        }).Build().GetScheduler();
 
         IJobDetail job = JobBuilder.Create<RetryJob>()
             .WithIdentity("message-1:0", "orders")
@@ -169,7 +168,7 @@ public class RetryJobTests
 
         if (parked)
         {
-            await scheduler.AddJob(job, replace: false);
+            await scheduler.AddJob(job);
         }
         else
         {

@@ -121,7 +121,7 @@ internal sealed class Bus : IBus
     private static Dictionary<string, string> Prepare<TMessage>(string exchange, TMessage message)
         where TMessage : ITracedMessage, IFilteredMessage
     {
-        Guid messageId = GuidFactory.Domain.GuidFactory.Create();
+        Guid messageId = Guid.CreateVersion7();
         string occurredAt = DateTime.UtcNow.ToString("O");
         Type type = message.GetType();
 
@@ -157,7 +157,7 @@ internal sealed class Bus : IBus
             throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the RabbitMQ transport; the RabbitMQ bus can only continue a delivery received over RabbitMQ.");
         }
 
-        Guid messageId = GuidFactory.Domain.GuidFactory.Create();
+        Guid messageId = Guid.CreateVersion7();
         Type type = message.GetType();
 
         Dictionary<string, string> headers = inbound.CloneHeaders();
