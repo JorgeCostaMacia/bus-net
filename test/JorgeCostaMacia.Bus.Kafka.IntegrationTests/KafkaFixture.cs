@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Testcontainers.Kafka;
 
@@ -48,9 +49,14 @@ public sealed class KafkaFixture : IAsyncLifetime
     /// mapped bootstrap address. The <c>SaslUsername</c>/<c>SaslPassword</c> are dummy values present
     /// only to satisfy the bus's required-field validation; under <c>Plaintext</c> librdkafka never
     /// sends them (SASL is inert), so their contents are irrelevant.
+    /// <para>
+    /// The <c>Bus:Admin</c> section carries the same mapped bootstrap, so a test can opt into topic
+    /// provisioning by passing an <c>admin</c> configurator; the section is inert for the tests that do not.
+    /// </para>
     /// </summary>
-    /// <returns>An in-memory configuration carrying the <c>Bus:Producer</c> and <c>Bus:Consumer</c> keys.</returns>
-    public IConfiguration BuildConfiguration()
+    /// <param name="topicsBatchSize">How many topics the admin worker creates per request; omitted leaves the default (50).</param>
+    /// <returns>An in-memory configuration carrying the <c>Bus:Producer</c>, <c>Bus:Consumer</c> and <c>Bus:Admin</c> keys.</returns>
+    public IConfiguration BuildConfiguration(int? topicsBatchSize = null)
     {
         // GetBootstrapAddress() returns a UriBuilder string (PLAINTEXT://host:port); librdkafka's
         // bootstrap.servers wants a bare host:port list, so take the authority.
@@ -65,8 +71,17 @@ public sealed class KafkaFixture : IAsyncLifetime
             ["Bus:Consumer:BootstrapServers"] = bootstrapServers,
             ["Bus:Consumer:SecurityProtocol"] = "Plaintext",
             ["Bus:Consumer:SaslUsername"] = "test",
-            ["Bus:Consumer:SaslPassword"] = "test"
+            ["Bus:Consumer:SaslPassword"] = "test",
+            ["Bus:Admin:BootstrapServers"] = bootstrapServers,
+            ["Bus:Admin:SecurityProtocol"] = "Plaintext",
+            ["Bus:Admin:SaslUsername"] = "test",
+            ["Bus:Admin:SaslPassword"] = "test"
         };
+
+        if (topicsBatchSize is int batchSize)
+        {
+            settings["Bus:Admin:TopicsBatchSize"] = batchSize.ToString(CultureInfo.InvariantCulture);
+        }
 
         return new ConfigurationBuilder()
             .AddInMemoryCollection(settings)

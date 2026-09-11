@@ -6,6 +6,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Domain.Commands;
 
 public class CommandContextTests
 {
+    private static readonly Guid _messageId = Guid.NewGuid();
     private static readonly Guid _conversationId = Guid.NewGuid();
     private static readonly Guid _aggregateId = Guid.NewGuid();
     private static readonly Guid _aggregateCorrelationId = Guid.NewGuid();
@@ -15,6 +16,11 @@ public class CommandContextTests
     {
         Dictionary<string, object?> headers = new Dictionary<string, object?>()
         {
+            [TransportHeaders.MessageId] = TransportHeaders.ToHeader(_messageId),
+            [TransportHeaders.MessageType] = TransportHeaders.ToHeader("PlaceOrder"),
+            [TransportHeaders.MessageDestinationAddress] = TransportHeaders.ToHeader("orders"),
+            [TransportHeaders.MessageOriginAddress] = TransportHeaders.ToHeader("orders.origin"),
+            [TransportHeaders.MessageOccurredAt] = TransportHeaders.ToHeader(_occurredAt.ToString("O")),
             [TransportHeaders.ConversationId] = TransportHeaders.ToHeader(_conversationId),
             [TransportHeaders.ConversationAddress] = TransportHeaders.ToHeader("orders"),
             [TransportHeaders.ConversationOccurredAt] = TransportHeaders.ToHeader(_occurredAt.ToString("O")),
@@ -82,5 +88,20 @@ public class CommandContextTests
         Assert.Equal("10.0.8", context.HostFrameworkVersion);
         Assert.Equal("2.0.0.0", context.HostBusVersion);
         Assert.Equal("Unix 6.8", context.HostOperatingSystemVersion);
+    }
+
+    [Fact]
+    public void MessageFacet_ReadsFromTheTransportHeaders()
+    {
+        // the message facet is the envelope's own identity, separate from the aggregate's and the
+        // conversation's: it is what identifies THIS delivery, so a handler logging or deduplicating on
+        // it depends on every one of these reading through to the transport.
+        CommandContext<TestCommand> context = CreateSut();
+
+        Assert.Equal(_messageId, context.MessageId);
+        Assert.Equal("PlaceOrder", context.MessageType);
+        Assert.Equal("orders", context.MessageDestinationAddress);
+        Assert.Equal("orders.origin", context.MessageOriginAddress);
+        Assert.Equal(_occurredAt, context.MessageOccurredAt);
     }
 }
