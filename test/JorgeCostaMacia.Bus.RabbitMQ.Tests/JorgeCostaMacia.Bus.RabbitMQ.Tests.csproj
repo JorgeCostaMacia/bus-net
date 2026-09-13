@@ -7,6 +7,7 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Configuration" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+		<PackageReference Include="Serilog" />
 	</ItemGroup>
 
 </Project>
