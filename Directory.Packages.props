@@ -11,7 +11,7 @@
 
 	<ItemGroup>
 		<PackageVersion Include="Confluent.Kafka" Version="2.15.1" />
-		<PackageVersion Include="JorgeCostaMacia.DomainEvent" Version="7.1.1" />
+		<PackageVersion Include="JorgeCostaMacia.DomainEvent" Version="7.2.0" />
 		<PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
 		<PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
 		<PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
