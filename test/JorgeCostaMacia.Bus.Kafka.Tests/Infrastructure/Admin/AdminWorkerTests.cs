@@ -1,7 +1,6 @@
 using Confluent.Kafka;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Admin;
 using JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
-using Microsoft.Extensions.Logging;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Admin;
 
