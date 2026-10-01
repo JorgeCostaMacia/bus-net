@@ -57,7 +57,11 @@ public static class ConsumerConfigurationDefaults
     /// <summary>Socket timeout (ms). Default: <c>90000</c>.</summary>
     public const int SocketTimeoutMs = 90_000;
 
-    /// <summary>Max interval between polls before the consumer is considered failed (ms). Default: <c>300000</c>.</summary>
+    /// <summary>
+    /// Max interval between polls before the consumer is considered failed (ms). Default: <c>300000</c>.
+    /// Keep it above the producer's <see cref="Producers.ProducerConfigurationDefaults.MessageTimeoutMs"/>,
+    /// so a handler waiting on a slow delivery fails rather than drops the consumer from its group.
+    /// </summary>
     public const int MaxPollIntervalMs = 300_000;
 
     /// <summary>Consumer session timeout (ms). Default: <c>45000</c>.</summary>
