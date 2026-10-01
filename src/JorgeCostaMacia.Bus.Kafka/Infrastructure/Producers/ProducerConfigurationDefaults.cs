@@ -30,8 +30,19 @@ public static class ProducerConfigurationDefaults
     /// <summary>Compression type for producer messages. Default: <c>Lz4</c> — fast, the de-facto modern default; applied per batch over the serialized byte payloads (effective on text-like data, near-neutral on already-compressed bytes).</summary>
     public const CompressionType CompressionType = CompressionType.Lz4;
 
-    /// <summary>Maximum time (ms) to wait for message delivery. Default: <c>300000</c> (5 min).</summary>
-    public const int MessageTimeoutMs = 300_000;
+    /// <summary>
+    /// Maximum time (ms) to wait for message delivery. Default: <c>120000</c> (2 min).
+    /// </summary>
+    /// <remarks>
+    /// It has to stay below the consumer's <see cref="Consumers.ConsumerConfigurationDefaults.MaxPollIntervalMs"/>.
+    /// A handler that sends or publishes waits for the delivery, and the consumer does not poll while it
+    /// waits: with the two equal, a broker that is slow to confirm — a leader or coordinator moving —
+    /// holds the handler for the whole delivery timeout and the consumer leaves its group just past it.
+    /// Below it, the delivery fails first, the handler throws and the bus's retry takes over, while the
+    /// consumer stays in its group. The gap between the two is what the handler's own work may take on
+    /// top of a slow delivery: two minutes still wait far longer than a broker failover, and leave three.
+    /// </remarks>
+    public const int MessageTimeoutMs = 120_000;
 
     /// <summary>Producer linger time (ms) before sending a batch. Default: <c>50</c>.</summary>
     public const double LingerMs = 50;
@@ -54,7 +65,7 @@ public static class ProducerConfigurationDefaults
 
     /// <summary>
     /// Maximum number of retries on send failure. Default: <see cref="int.MaxValue"/> — retries are
-    /// bounded by time (<see cref="MessageTimeoutMs"/>, 5 min), not by a count, which is the
+    /// bounded by time (<see cref="MessageTimeoutMs"/>, 2 min), not by a count, which is the
     /// idiomatic choice with <see cref="EnableIdempotence"/> on (order and no-duplicates preserved
     /// across retries). The back-off below is what keeps a struggling broker from being hammered.
     /// </summary>

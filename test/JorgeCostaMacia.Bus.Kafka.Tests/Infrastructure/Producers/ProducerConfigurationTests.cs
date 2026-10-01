@@ -1,4 +1,5 @@
 using Confluent.Kafka;
+using JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 using JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Infrastructure.Producers;
@@ -18,10 +19,18 @@ public class ProducerConfigurationTests
         Assert.Equal(CompressionType.Lz4, config.CompressionType);
         Assert.Equal(50, config.LingerMs);
         Assert.Equal(int.MaxValue, config.MessageSendMaxRetries);
+        Assert.Equal(120_000, config.MessageTimeoutMs);
         Assert.Equal(1_048_576, config.MessageMaxBytes);
         Assert.Equal(Environment.MachineName, config.ClientId);
         Assert.True(config.SocketKeepaliveEnable);
     }
+
+    // A handler waits for its delivery and its consumer does not poll meanwhile: with the delivery
+    // timeout at or above the poll interval, a broker slow to confirm evicts the consumer from its group
+    // instead of failing the delivery into the bus's retry. Seen in production with both at 5 minutes.
+    [Fact]
+    public void Defaults_TheDeliveryTimeoutStaysBelowTheConsumersPollInterval()
+        => Assert.True(ProducerConfigurationDefaults.MessageTimeoutMs < ConsumerConfigurationDefaults.MaxPollIntervalMs);
 
     [Fact]
     public void ProducerConfig_SuppliedValues_Win()
