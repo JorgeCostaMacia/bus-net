@@ -29,7 +29,7 @@ public sealed record AdminConfiguration
 
     /// <summary>
     /// How many topics are created per <c>CreateTopicsAsync</c> request, or <see langword="null"/> for
-    /// the default (50). Batches the topic creation so provisioning many topics does not spike the
+    /// the default (25). Batches the topic creation so provisioning many topics does not spike the
     /// controller on a small cluster.
     /// </summary>
     public int? TopicsBatchSize { get; init; }

@@ -85,7 +85,7 @@ public sealed record ConsumerConfiguration
 
     /// <summary>
     /// Maximum number of this service's consumers opening their initial broker connection at once at
-    /// startup, or <see langword="null"/> for the default (8). Not a Kafka client setting — it bounds
+    /// startup, or <see langword="null"/> for the default (2). Not a Kafka client setting — it bounds
     /// the startup handshake surge (see <see cref="Startup.StartupGate"/>); raise it on a cluster that absorbs
     /// more concurrent connects.
     /// </summary>
