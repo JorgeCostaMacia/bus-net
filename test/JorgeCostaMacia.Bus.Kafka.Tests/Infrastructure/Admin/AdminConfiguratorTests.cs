@@ -73,12 +73,12 @@ public class AdminConfiguratorTests
     }
 
     [Fact]
-    public void TopicsBatchSize_WhenUnset_DefaultsToFifty()
+    public void TopicsBatchSize_WhenUnset_DefaultsToTwentyFive()
     {
         AdminConfigurator configurator = new AdminConfigurator(Configuration());
 
         Assert.Equal(AdminConfigurationDefaults.TopicsBatchSize, configurator.TopicsBatchSize);
-        Assert.Equal(50, configurator.TopicsBatchSize);
+        Assert.Equal(25, configurator.TopicsBatchSize);
     }
 
     [Fact]

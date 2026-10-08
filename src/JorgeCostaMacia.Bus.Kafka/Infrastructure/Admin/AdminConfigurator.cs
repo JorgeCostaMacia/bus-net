@@ -34,7 +34,7 @@ public sealed class AdminConfigurator
     /// <summary>The topic → partition-count map to create (<c>-1</c> = the broker's default partition count).</summary>
     internal IReadOnlyDictionary<string, int> Topics => _topics;
 
-    /// <summary>How many topics are created per request — the bound value, or the default (50) when unset.</summary>
+    /// <summary>How many topics are created per request — the bound value, or the default (25) when unset.</summary>
     internal int TopicsBatchSize => _adminConfiguration.TopicsBatchSize ?? AdminConfigurationDefaults.TopicsBatchSize;
 
     /// <summary>Declares a command's topic to create at startup.</summary>
