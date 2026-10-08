@@ -8,9 +8,12 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Admin;
 public static class AdminConfigurationDefaults
 {
     /// <summary>
-    /// How many topics are created per <c>CreateTopicsAsync</c> request. Default: <c>50</c> — the
+    /// How many topics are created per <c>CreateTopicsAsync</c> request. Default: <c>25</c> — the
     /// declared topics are created in batches instead of one request for all of them, so provisioning
-    /// many topics does not spike the controller on a small cluster.
+    /// many topics does not spike the controller on a small cluster. It was 50 up to 4.1, lowered as a
+    /// precaution: it only matters on a service's first deploy, when its topics are new (at eight
+    /// partitions each, half the partitions per request); once they exist each batch is a no-op answered
+    /// with <c>TopicAlreadyExists</c>, so the smaller batch costs a few round trips at startup and nothing else.
     /// </summary>
-    public const int TopicsBatchSize = 50;
+    public const int TopicsBatchSize = 25;
 }

@@ -54,7 +54,7 @@ public sealed class KafkaFixture : IAsyncLifetime
     /// provisioning by passing an <c>admin</c> configurator; the section is inert for the tests that do not.
     /// </para>
     /// </summary>
-    /// <param name="topicsBatchSize">How many topics the admin worker creates per request; omitted leaves the default (50).</param>
+    /// <param name="topicsBatchSize">How many topics the admin worker creates per request; omitted leaves the default (25).</param>
     /// <returns>An in-memory configuration carrying the <c>Bus:Producer</c>, <c>Bus:Consumer</c> and <c>Bus:Admin</c> keys.</returns>
     public IConfiguration BuildConfiguration(int? topicsBatchSize = null)
     {
