@@ -88,9 +88,12 @@ public static class ConsumerConfigurationDefaults
     public static string GroupInstanceId => Environment.MachineName;
 
     /// <summary>
-    /// Maximum consumers opening their initial broker connection at once at startup. Default: <c>8</c> —
+    /// Maximum consumers opening their initial broker connection at once at startup. Default: <c>2</c> —
     /// staggers the startup handshakes (see <see cref="Startup.StartupGate"/>) so a service with many consumers
-    /// does not connect them all in the same instant.
+    /// does not connect them all in the same instant. It was 8: a service of about 300 consumers on SCRAM-SHA-512
+    /// over TLS then never finished starting — its handshakes ran past librdkafka's 30 s connection setup
+    /// timeout and were retried — and started at 2. The cost is only that the last consumers of a large
+    /// service join later; a small one does not notice.
     /// </summary>
-    public const int StartupMaxConcurrency = 8;
+    public const int StartupMaxConcurrency = 2;
 }
