@@ -27,12 +27,7 @@ public sealed record RequeueCommand : Command
         DateTime aggregateOccurredAt,
         ImmutableList<string> aggregateConsumers,
         string payload
-    ) : base(
-        aggregateId,
-        aggregateCorrelationId,
-        aggregateOccurredAt,
-        aggregateConsumers
-    )
+    ) : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
     {
         Payload = payload;
     }
@@ -40,12 +35,7 @@ public sealed record RequeueCommand : Command
     /// <summary>Convenience constructor used to send the command, defaulting the metadata.</summary>
     /// <param name="payload">The payload.</param>
     public RequeueCommand(string payload)
-        : base(
-            aggregateId: null,
-            aggregateCorrelationId: null,
-            aggregateOccurredAt: null,
-            aggregateConsumers: null
-        )
+        : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
     {
         Payload = payload;
     }

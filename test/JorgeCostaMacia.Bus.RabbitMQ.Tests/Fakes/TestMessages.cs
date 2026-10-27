@@ -17,12 +17,7 @@ internal sealed record TestCommand : Command
         DateTime aggregateOccurredAt,
         ImmutableList<string> aggregateConsumers,
         string name
-    ) : base(
-        aggregateId,
-        aggregateCorrelationId,
-        aggregateOccurredAt,
-        aggregateConsumers
-    )
+    ) : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
     {
         Name = name;
     }
@@ -33,12 +28,7 @@ internal sealed record TestCommand : Command
         Guid? aggregateCorrelationId = null,
         DateTime? aggregateOccurredAt = null,
         IEnumerable<string>? aggregateConsumers = null
-    ) : base(
-        aggregateId,
-        aggregateCorrelationId,
-        aggregateOccurredAt,
-        aggregateConsumers
-    )
+    ) : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
     {
         Name = name;
     }
@@ -56,12 +46,7 @@ internal sealed record TestEvent : Event
         DateTime aggregateOccurredAt,
         ImmutableList<string> aggregateConsumers,
         string name
-    ) : base(
-        aggregateId,
-        aggregateCorrelationId,
-        aggregateOccurredAt,
-        aggregateConsumers
-    )
+    ) : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
     {
         Name = name;
     }
@@ -72,12 +57,7 @@ internal sealed record TestEvent : Event
         Guid? aggregateCorrelationId = null,
         DateTime? aggregateOccurredAt = null,
         IEnumerable<string>? aggregateConsumers = null
-    ) : base(
-        aggregateId,
-        aggregateCorrelationId,
-        aggregateOccurredAt,
-        aggregateConsumers
-    )
+    ) : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
     {
         Name = name;
     }
