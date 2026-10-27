@@ -10,7 +10,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands;
 /// Delivery is <b>at-least-once</b>: a handler may run more than once for the same command — an
 /// un-acked delivery is redelivered, and a retry re-publishes it — and the retry path carries no
 /// ordering guarantee. Handlers must therefore be <b>idempotent</b> — deduplicate by the message's id
-/// or reconcile against a version the data carries, never assume a once-only, in-order call.
+/// or reconcile by a version (its <c>AggregateOccurredAt</c> can serve as one), never assume a once-only,
+/// in-order call.
 /// </para>
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler processes.</typeparam>

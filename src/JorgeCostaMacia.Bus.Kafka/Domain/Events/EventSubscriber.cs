@@ -10,8 +10,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Events;
 /// Delivery is <b>at-least-once</b> and unordered: a subscriber may run more than once for the same
 /// event (a retry re-produces it, and offsets commit on an interval so a crash reprocesses the last
 /// few), and messages carry no cross-partition order. Subscribers must therefore be <b>idempotent</b>
-/// — deduplicate by the message's id or reconcile against a version the data carries, never assume a
-/// once-only, in-order call.
+/// — deduplicate by the message's id or reconcile by a version (its <c>AggregateOccurredAt</c> can serve
+/// as one), never assume a once-only, in-order call.
 /// </para>
 /// </summary>
 /// <typeparam name="TEvent">The event type this subscriber processes.</typeparam>

@@ -12,8 +12,9 @@ public interface ITracedMessage : IMessage
     Guid AggregateCorrelationId { get; }
 
     /// <summary>
-    /// UTC timestamp of when the event occurred — what happened, and when. How a consumer orders or
-    /// reconciles messages with it, or with a version its own data carries, is the consumer's decision.
+    /// UTC timestamp of when the event occurred. A consumer can use it to order its messages — the newer
+    /// occurrence wins, so a stale or reprocessed one never overwrites a newer state — or compare a version
+    /// its own data carries instead; which one is the consumer's decision.
     /// </summary>
     DateTime AggregateOccurredAt { get; }
 }
