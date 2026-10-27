@@ -55,6 +55,7 @@
       "Bash(*.pfx*)",
       "Bash(*.p12*)",
       "Bash(*.pem*)",
+      "Bash(*.key)",
       "Bash(*.key *)",
       "Bash(*.git-credentials*)",
       "Bash(*.netrc*)",
