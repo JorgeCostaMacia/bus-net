@@ -109,7 +109,10 @@ internal sealed class KafkaProducerFake : IProducer<Null, byte[]>
 
     public int AddBrokers(string brokers) => throw new NotSupportedException();
 
-    public void SetSaslCredentials(string username, string password) => throw new NotSupportedException();
+    public void SetSaslCredentials(
+        string username,
+        string password
+    ) => throw new NotSupportedException();
 
     public Handle Handle => throw new NotSupportedException();
 
