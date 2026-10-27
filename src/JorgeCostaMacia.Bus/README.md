@@ -31,7 +31,7 @@ dotnet add package JorgeCostaMacia.Bus
 | `IHandler<TMessage, TContext>` | handle a delivered message (`TContext : IContext`) |
 | `ErrorInfo` / `IErrorMessage` | the failure a transport parks with a failed delivery — the whole exception chain modeled (type, message, source, stack trace, inner), so any parked failure reads the same |
 
-Ordering is a non-concern by design: transports partition freely, and each consumer decides how it resolves conflicts — by a version its data carries, or by `AggregateOccurredAt`, the instant the event occurred.
+Ordering is a non-concern by design: transports partition freely, and each consumer decides how it resolves conflicts. `AggregateOccurredAt`, the instant the event occurred, can serve as the order (the newer occurrence wins); a consumer whose data carries a version of its own can compare that instead.
 
 ## Requirements
 
