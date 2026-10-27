@@ -27,12 +27,7 @@ public sealed record FanoutEvent : Event
         DateTime aggregateOccurredAt,
         ImmutableList<string> aggregateConsumers,
         string payload
-    ) : base(
-        aggregateId,
-        aggregateCorrelationId,
-        aggregateOccurredAt,
-        aggregateConsumers
-    )
+    ) : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
     {
         Payload = payload;
     }
@@ -40,12 +35,7 @@ public sealed record FanoutEvent : Event
     /// <summary>Convenience constructor used to publish the event, defaulting the metadata.</summary>
     /// <param name="payload">The payload.</param>
     public FanoutEvent(string payload)
-        : base(
-            aggregateId: null,
-            aggregateCorrelationId: null,
-            aggregateOccurredAt: null,
-            aggregateConsumers: null
-        )
+        : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
     {
         Payload = payload;
     }
