@@ -16,8 +16,11 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 /// </summary>
 internal static class Broker
 {
-    /// <summary>Builds the connection factory for the running container from the bus's <c>Bus:Connection</c> config — plain AMQP on the mapped port, the provisioned credentials, confirms tracked on every channel it opens.</summary>
-    /// <param name="configuration">The configuration the fixture built, carrying the <c>Bus:Connection</c> keys.</param>
+    /// <summary>Builds the connection factory for the running container from the bus's <c>Bus:Connection</c> config —
+    /// plain AMQP on the mapped port, the provisioned credentials, confirms tracked on every channel it
+    /// opens.</summary>
+    /// <param name="configuration">The configuration the fixture built, carrying the <c>Bus:Connection</c>
+    /// keys.</param>
     /// <returns>A connection factory pointed at the container.</returns>
     public static ConnectionFactory Factory(IConfiguration configuration)
     {
@@ -40,14 +43,21 @@ internal static class Broker
     /// <param name="configuration">The bus's <c>Bus:Connection</c> configuration.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>An open connection the caller disposes.</returns>
-    public static Task<IConnection> ConnectAsync(IConfiguration configuration, CancellationToken cancellationToken)
-        => Factory(configuration).CreateConnectionAsync(cancellationToken);
+    public static Task<IConnection> ConnectAsync(
+        IConfiguration configuration,
+        CancellationToken cancellationToken
+    ) => Factory(configuration).CreateConnectionAsync(cancellationToken);
 
-    /// <summary>Opens a channel with publisher confirmations and tracking on — the same options the bus's producer uses, so a mandatory publish surfaces an unroutable message as a thrown exception rather than a silent drop.</summary>
+    /// <summary>Opens a channel with publisher confirmations and tracking on — the same options the bus's producer
+    /// uses, so a mandatory publish surfaces an unroutable message as a thrown exception rather than a silent
+    /// drop.</summary>
     /// <param name="connection">The open connection.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A confirm-tracking channel the caller disposes.</returns>
-    public static Task<IChannel> ConfirmChannelAsync(IConnection connection, CancellationToken cancellationToken)
+    public static Task<IChannel> ConfirmChannelAsync(
+        IConnection connection,
+        CancellationToken cancellationToken
+    )
         => connection.CreateChannelAsync(
             new CreateChannelOptions(publisherConfirmationsEnabled: true, publisherConfirmationTrackingEnabled: true),
             cancellationToken);
@@ -64,7 +74,12 @@ internal static class Broker
     /// <param name="timeout">How long to wait for the lazily-born queue to hold a message.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The parked message, or <see langword="null"/> if none arrived in time.</returns>
-    public static async Task<BasicGetResult?> WaitForParkedAsync(IConnection connection, string queue, TimeSpan timeout, CancellationToken cancellationToken)
+    public static async Task<BasicGetResult?> WaitForParkedAsync(
+        IConnection connection,
+        string queue,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
     {
         DateTime deadline = DateTime.UtcNow.Add(timeout);
 
@@ -92,7 +107,8 @@ internal static class Broker
             }
             catch (RabbitMQClientException)
             {
-                // The park queue is not born yet — the passive declare closed this channel; the next pass opens a fresh one.
+                // The park queue is not born yet — the passive declare closed this channel; the next pass opens a fresh
+                // one.
             }
             finally
             {
@@ -105,13 +121,20 @@ internal static class Broker
         return null;
     }
 
-    /// <summary>Reads a header's text from a parked delivery — the bus writes the <c>jcm-*</c> headers as AMQP longstr (a byte array on the wire), so a byte array is decoded as UTF-8, and anything else falls back to its text.</summary>
+    /// <summary>Reads a header's text from a parked delivery — the bus writes the <c>jcm-*</c> headers as AMQP longstr
+    /// (a byte array on the wire), so a byte array is decoded as UTF-8, and anything else falls back to its
+    /// text.</summary>
     /// <param name="result">The parked delivery.</param>
     /// <param name="key">The header key.</param>
     /// <returns>The header text, or <see langword="null"/> when the header is absent.</returns>
-    public static string? Header(BasicGetResult result, string key)
+    public static string? Header(
+        BasicGetResult result,
+        string key
+    )
     {
-        if (result.BasicProperties.Headers is null || !result.BasicProperties.Headers.TryGetValue(key, out object? value) || value is null)
+        if (result.BasicProperties.Headers is null
+            || !result.BasicProperties.Headers.TryGetValue(key, out object? value)
+            || value is null)
         {
             return null;
         }

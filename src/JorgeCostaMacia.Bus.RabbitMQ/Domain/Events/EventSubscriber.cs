@@ -20,5 +20,8 @@ public abstract class EventSubscriber<TEvent> : IHandler<TEvent, EventContext<TE
     /// <summary>Handles the delivered event.</summary>
     /// <param name="context">The delivery's context — event, transport and read-only envelope.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public abstract Task Handle(EventContext<TEvent> context, CancellationToken cancellationToken = default);
+    public abstract Task Handle(
+        EventContext<TEvent> context,
+        CancellationToken cancellationToken = default
+    );
 }

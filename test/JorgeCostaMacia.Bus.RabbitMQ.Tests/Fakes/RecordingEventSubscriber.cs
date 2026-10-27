@@ -2,7 +2,8 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 
-/// <summary>Event subscriber double — records the event it received and optionally fails, to drive the handler's success and error paths.</summary>
+/// <summary>Event subscriber double — records the event it received and optionally fails, to drive the handler's
+/// success and error paths.</summary>
 internal sealed class RecordingEventSubscriber : EventSubscriber<TestEvent>
 {
     /// <summary>The event handed to the subscriber, or <see langword="null"/> if it never ran.</summary>
@@ -11,7 +12,10 @@ internal sealed class RecordingEventSubscriber : EventSubscriber<TestEvent>
     /// <summary>An exception to fail with, or <see langword="null"/> to succeed.</summary>
     public Exception? Failure { get; set; }
 
-    public override Task Handle(EventContext<TestEvent> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        EventContext<TestEvent> context,
+        CancellationToken cancellationToken = default
+    )
     {
         Received = context.Message;
 

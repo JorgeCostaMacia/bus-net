@@ -19,14 +19,32 @@ public class CommandWorkerTests
     private readonly BusHealth _health = new BusHealth();
     private readonly RecordingCommandHandler _handler = new RecordingCommandHandler();
 
-    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null, CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>? faultHandler = null, StartupGate? startupGate = null, StartupSignal? startupSignal = null)
+    private CommandWorker<TestCommand, RecordingCommandHandler> Worker(
+        ConsumerFake consumer,
+        ImmutableList<TimeSpan>? intervals = null,
+        CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>? faultHandler = null,
+        StartupGate? startupGate = null,
+        StartupSignal? startupSignal = null
+    )
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<CommandErrorHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
-                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, _scheduler, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
+                new CommandErrorHandler<TestCommand, RecordingCommandHandler>(
+                    _producer,
+                    _scheduler,
+                    NullLogger.Instance,
+                    Deliveries.Topic,
+                    Deliveries.GroupId,
+                    intervals ?? ImmutableList<TimeSpan>.Empty,
+                    ImmutableList<Type>.Empty))
             .AddScoped<CommandFaultHandlerBase<TestCommand, RecordingCommandHandler>>(_ =>
-                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId))
+                faultHandler
+                    ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(
+                        _producer,
+                        NullLogger.Instance,
+                        Deliveries.Topic,
+                        Deliveries.GroupId))
             .BuildServiceProvider();
 
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
@@ -41,7 +59,10 @@ public class CommandWorkerTests
             Deliveries.GroupId);
     }
 
-    private async Task Drive(CommandWorker<TestCommand, RecordingCommandHandler> worker, ConsumerFake consumer)
+    private async Task Drive(
+        CommandWorker<TestCommand, RecordingCommandHandler> worker,
+        ConsumerFake consumer
+    )
     {
         await worker.StartAsync(TestContext.Current.CancellationToken);
         await consumer.Drained.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -148,7 +169,9 @@ public class CommandWorkerTests
         // the handler fails AND the retry lane's produce fails (partial outage): the error handler
         // reports Unhandled and the worker escalates — the valid message must end parked to .fault.
         _handler.Failure = new InvalidOperationException("boom");
-        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
+        _producer.Failure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_Transport),
+            new DeliveryResult<Null, byte[]>());
         _producer.FailingTopics.Add(Deliveries.Topic);
         ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
 
@@ -166,10 +189,14 @@ public class CommandWorkerTests
         // the delivery cannot be parked anywhere — it must stay unacked (the Critical log is the
         // recovery signal) and the loop must survive to keep processing the partition.
         _handler.Failure = new InvalidOperationException("boom");
-        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
+        _producer.Failure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_Transport),
+            new DeliveryResult<Null, byte[]>());
         _producer.FailingTopics.Add(Deliveries.Topic);
         _producer.FailingTopics.Add($"{Deliveries.Topic}.fault");
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestCommand("first"), 10),
+            Deliveries.Delivery(new TestCommand("second"), 11));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero)), consumer);
 
@@ -184,9 +211,13 @@ public class CommandWorkerTests
         // the last-resort catch: even the fault handler blowing up must not ack the delivery nor
         // kill the consume loop — the Critical log carries the coordinates for manual recovery.
         _handler.Failure = new InvalidOperationException("boom");
-        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_Transport), new DeliveryResult<Null, byte[]>());
+        _producer.Failure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_Transport),
+            new DeliveryResult<Null, byte[]>());
         _producer.FailingTopics.Add(Deliveries.Topic);
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11));
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestCommand("first"), 10),
+            Deliveries.Delivery(new TestCommand("second"), 11));
 
         await Drive(Worker(consumer, ImmutableList.Create(TimeSpan.Zero), new ThrowingCommandFaultHandler()), consumer);
 
@@ -198,7 +229,12 @@ public class CommandWorkerTests
     [Fact]
     public async Task FatalConsumeError_StopsTheApplication()
     {
-        ConsumerFake consumer = new ConsumerFake() { ConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Fatal, "fatal", isFatal: true)) };
+        ConsumerFake consumer = new ConsumerFake()
+        {
+            ConsumeFailure = new ConsumeException(
+                new ConsumeResult<byte[], byte[]>(),
+                new Error(ErrorCode.Local_Fatal, "fatal", isFatal: true))
+        };
 
         await Drive(Worker(consumer), consumer);
 
@@ -212,7 +248,9 @@ public class CommandWorkerTests
         // survives — the delivery consumed after the failure is still handled and acked.
         ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")))
         {
-            FirstConsumeFailure = new ConsumeException(new ConsumeResult<byte[], byte[]>(), new Error(ErrorCode.Local_Transport))
+            FirstConsumeFailure = new ConsumeException(
+                new ConsumeResult<byte[], byte[]>(),
+                new Error(ErrorCode.Local_Transport))
         };
 
         await Drive(Worker(consumer), consumer);
@@ -247,7 +285,9 @@ public class CommandWorkerTests
     {
         // the partition was reclaimed by another owner between handling and storing: the stale store
         // is swallowed (the new owner redelivers) and the loop keeps consuming its remaining work.
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestCommand("first"), 10),
+            Deliveries.Delivery(new TestCommand("second"), 11))
         {
             StoreFailure = new KafkaException(new Error(ErrorCode.Local_State))
         };
@@ -264,7 +304,9 @@ public class CommandWorkerTests
     {
         // an arbitrary store failure leaves the delivery unacked (a restart redelivers it) without
         // tearing anything down: the loop keeps consuming and acking the deliveries that follow.
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("first"), 10), Deliveries.Delivery(new TestCommand("second"), 11))
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestCommand("first"), 10),
+            Deliveries.Delivery(new TestCommand("second"), 11))
         {
             StoreFailure = new InvalidOperationException("store down")
         };
@@ -288,7 +330,9 @@ public class CommandWorkerTests
         faultHandler.Stop = () => worker.StopAsync(TestContext.Current.CancellationToken);
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
-        Task stop = await faultHandler.Stopping.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Task stop = await faultHandler.Stopping.WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
         await stop.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         Assert.Empty(consumer.Stored);
@@ -329,7 +373,9 @@ public class CommandWorkerTests
     [Fact]
     public async Task MultipleDeliveries_ProcessedInOrder_EachStored()
     {
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("a"), 10), Deliveries.Delivery(new TestCommand("b"), 11));
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestCommand("a"), 10),
+            Deliveries.Delivery(new TestCommand("b"), 11));
 
         await Drive(Worker(consumer), consumer);
 
@@ -340,7 +386,8 @@ public class CommandWorkerTests
     [Fact]
     public async Task IgnoresAggregateConsumers_AlwaysProcesses()
     {
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe"), consumers: "other.handler"));
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestCommand("pepe"), consumers: "other.handler"));
 
         await Drive(Worker(consumer), consumer);
 
@@ -358,7 +405,10 @@ public class CommandWorkerTests
         await gate.WaitAsync(TestContext.Current.CancellationToken);
 
         ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestCommand("pepe")));
-        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(consumer, startupGate: gate, startupSignal: signal);
+        CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(
+            consumer,
+            startupGate: gate,
+            startupSignal: signal);
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
 

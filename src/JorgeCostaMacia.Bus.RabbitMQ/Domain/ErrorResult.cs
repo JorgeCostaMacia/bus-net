@@ -9,7 +9,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain;
 /// </summary>
 internal enum ErrorResult
 {
-    /// <summary>The handler could not cope (a failed publish, a transient fault) — the delivery stays unacked and redelivers.</summary>
+    /// <summary>The handler could not cope (a failed publish, a transient fault) — the delivery stays unacked and
+    /// redelivers.</summary>
     Unhandled,
 
     /// <summary>Re-published to the message's exchange for an immediate retry.</summary>

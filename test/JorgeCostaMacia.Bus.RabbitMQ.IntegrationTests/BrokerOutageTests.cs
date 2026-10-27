@@ -28,13 +28,17 @@ public sealed class BrokerOutageTests : IClassFixture<RabbitMqFixture>
     /// <summary>Takes the shared broker fixture and the test output sink.</summary>
     /// <param name="fixture">The running RabbitMQ container.</param>
     /// <param name="output">The sink the recovery evidence is written to.</param>
-    public BrokerOutageTests(RabbitMqFixture fixture, ITestOutputHelper output)
+    public BrokerOutageTests(
+        RabbitMqFixture fixture,
+        ITestOutputHelper output
+    )
     {
         _fixture = fixture;
         _output = output;
     }
 
-    /// <summary>Every distinct record is handled even though the broker is frozen mid-drain — no record is lost across the outage.</summary>
+    /// <summary>Every distinct record is handled even though the broker is frozen mid-drain — no record is lost across
+    /// the outage.</summary>
     [Fact]
     public async Task Send_aBatchAndFreezeTheBrokerMidDrain_RecoversAndHandlesEveryDistinctRecord()
     {
@@ -69,7 +73,9 @@ public sealed class BrokerOutageTests : IClassFixture<RabbitMqFixture>
             // Freeze the broker once the drain is underway, then thaw it — a real outage mid-load.
             Task outage = InjectOutageMidDrainAsync(probe, cancellationToken);
 
-            Task completed = await Task.WhenAny(probe.AllUniqueHandled, Task.Delay(TimeSpan.FromSeconds(180), cancellationToken));
+            Task completed = await Task.WhenAny(
+                probe.AllUniqueHandled,
+                Task.Delay(TimeSpan.FromSeconds(180), cancellationToken));
 
             // Ensure the pause/unpause finished so a frozen broker never leaks into the next test.
             await outage;
@@ -78,7 +84,8 @@ public sealed class BrokerOutageTests : IClassFixture<RabbitMqFixture>
                 completed == probe.AllUniqueHandled,
                 $"Only {probe.UniqueHandled} of {Records} distinct records survived the broker outage — a record was lost across the outage.");
 
-            _output.WriteLine($"RabbitMQ broker outage: {probe.UniqueHandled}/{Records} distinct handled, {probe.TotalHandled} total deliveries ({probe.TotalHandled - probe.UniqueHandled} at-least-once redeliveries across the outage).");
+            _output.WriteLine(
+                $"RabbitMQ broker outage: {probe.UniqueHandled}/{Records} distinct handled, {probe.TotalHandled} total deliveries ({probe.TotalHandled - probe.UniqueHandled} at-least-once redeliveries across the outage).");
         }
         finally
         {
@@ -86,12 +93,19 @@ public sealed class BrokerOutageTests : IClassFixture<RabbitMqFixture>
         }
     }
 
-    /// <summary>Waits for the drain to get underway, freezes the broker for <see cref="_outage"/>, then thaws it.</summary>
+    /// <summary>Waits for the drain to get underway, freezes the broker for <see cref="_outage"/>, then thaws
+    /// it.</summary>
     /// <param name="probe">The probe whose progress marks the drain starting.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    private async Task InjectOutageMidDrainAsync(RecoveryProbe probe, CancellationToken cancellationToken)
+    private async Task InjectOutageMidDrainAsync(
+        RecoveryProbe probe,
+        CancellationToken cancellationToken
+    )
     {
-        await WaitUntilAsync(() => probe.UniqueHandled >= PauseAfterUnique, TimeSpan.FromSeconds(90), cancellationToken);
+        await WaitUntilAsync(
+            () => probe.UniqueHandled >= PauseAfterUnique,
+            TimeSpan.FromSeconds(90),
+            cancellationToken);
 
         await _fixture.PauseAsync(cancellationToken);
         await Task.Delay(_outage, cancellationToken);
@@ -102,7 +116,11 @@ public sealed class BrokerOutageTests : IClassFixture<RabbitMqFixture>
     /// <param name="condition">The condition awaited.</param>
     /// <param name="timeout">The longest time to wait.</param>
     /// <param name="cancellationToken">A token to cancel the wait.</param>
-    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout, CancellationToken cancellationToken)
+    private static async Task WaitUntilAsync(
+        Func<bool> condition,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
     {
         DateTime deadline = DateTime.UtcNow.Add(timeout);
 

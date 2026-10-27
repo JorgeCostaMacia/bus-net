@@ -27,7 +27,8 @@ public sealed class FanoutTests : IClassFixture<RabbitMqFixture>
         _fixture = fixture;
     }
 
-    /// <summary>One published event is delivered to two subscribers on two queues bound to its fanout exchange.</summary>
+    /// <summary>One published event is delivered to two subscribers on two queues bound to its fanout
+    /// exchange.</summary>
     [Fact]
     public async Task Publish_AnEvent_FansOutToEverySubscriber()
     {

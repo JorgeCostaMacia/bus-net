@@ -34,7 +34,8 @@ public sealed class MandatoryReturnTests : IClassFixture<RabbitMqFixture>
         _fixture = fixture;
     }
 
-    /// <summary>An unroutable mandatory publish throws <see cref="PublishReturnException"/>, which the error handler classifies as a <see cref="RabbitMQClientException"/> (the <c>Unhandled</c> lane, not <c>Faulted</c>).</summary>
+    /// <summary>An unroutable mandatory publish throws <see cref="PublishReturnException"/>, which the error handler
+    /// classifies as a <see cref="RabbitMQClientException"/> (the <c>Unhandled</c> lane, not <c>Faulted</c>).</summary>
     [Fact]
     public async Task MandatoryPublish_ThatIsUnroutable_ThrowsARabbitMQClientException()
     {
@@ -51,7 +52,12 @@ public sealed class MandatoryReturnTests : IClassFixture<RabbitMqFixture>
         byte[] body = Encoding.UTF8.GetBytes("unroutable");
 
         Exception caught = await Assert.ThrowsAnyAsync<Exception>(
-            () => channel.BasicPublishAsync(string.Empty, routingKey: unroutable, mandatory: true, body: body, cancellationToken: cancellationToken).AsTask());
+            () => channel.BasicPublishAsync(
+                string.Empty,
+                routingKey: unroutable,
+                mandatory: true,
+                body: body,
+                cancellationToken: cancellationToken).AsTask());
 
         // The discovered type: a basic.return surfaced as a PublishReturnException.
         PublishReturnException returned = Assert.IsType<PublishReturnException>(caught);

@@ -19,7 +19,9 @@ public class EventTests
     {
         Guid correlation = Guid.NewGuid();
 
-        TestEvent @event = new TestEvent("pepe", aggregateCorrelationId: correlation);
+        TestEvent @event = new TestEvent(
+            "pepe",
+            aggregateCorrelationId: correlation);
 
         Assert.Equal(correlation, @event.AggregateCorrelationId);
         Assert.NotEqual(@event.AggregateId, @event.AggregateCorrelationId);

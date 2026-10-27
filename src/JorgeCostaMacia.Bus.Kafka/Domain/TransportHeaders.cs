@@ -62,11 +62,16 @@ internal static class TransportHeaders
     /// <summary>Encodes a string list to header bytes (comma-joined, UTF-8).</summary>
     public static byte[] ToHeader(IEnumerable<string> values) => Encoding.UTF8.GetBytes(string.Join(',', values));
 
-    /// <summary>Replaces every value of a header key with the given one — a plain static (not an extension) so it can never collide with a future Kafka client method.</summary>
+    /// <summary>Replaces every value of a header key with the given one — a plain static (not an extension) so it can
+    /// never collide with a future Kafka client method.</summary>
     /// <param name="headers">The headers to restamp.</param>
     /// <param name="key">The header key.</param>
     /// <param name="value">The new value.</param>
-    public static void Restamp(Headers headers, string key, byte[] value)
+    public static void Restamp(
+        Headers headers,
+        string key,
+        byte[] value
+    )
     {
         headers.Remove(key);
         headers.Add(key, value);
@@ -80,7 +85,11 @@ internal static class TransportHeaders
     /// <param name="headers">The headers to stamp — typically a clone of the delivery's envelope.</param>
     /// <param name="error">The failure whose type and message are stamped.</param>
     /// <param name="groupId">The failing consumer group id.</param>
-    public static void StampError(Headers headers, Exception error, string groupId)
+    public static void StampError(
+        Headers headers,
+        Exception error,
+        string groupId
+    )
     {
         Type type = error.GetType();
 

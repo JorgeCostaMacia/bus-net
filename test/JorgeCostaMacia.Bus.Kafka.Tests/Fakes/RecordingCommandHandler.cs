@@ -2,7 +2,8 @@ using JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
-/// <summary>Command handler double — records the command it received and optionally fails, to drive the consume loop's success and error paths.</summary>
+/// <summary>Command handler double — records the command it received and optionally fails, to drive the consume loop's
+/// success and error paths.</summary>
 internal sealed class RecordingCommandHandler : CommandHandler<TestCommand>
 {
     /// <summary>The command the loop handed to the handler, or <see langword="null"/> if it never ran.</summary>
@@ -11,7 +12,10 @@ internal sealed class RecordingCommandHandler : CommandHandler<TestCommand>
     /// <summary>An exception to fail with, or <see langword="null"/> to succeed.</summary>
     public Exception? Failure { get; set; }
 
-    public override Task Handle(CommandContext<TestCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandContext<TestCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         Received = context.Message;
 

@@ -10,7 +10,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers.Startup;
 /// </summary>
 internal sealed class StartupSignal
 {
-    private readonly TaskCompletionSource _ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _ready = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>A task that completes the first time the consumer joins its group.</summary>
     public Task Ready => _ready.Task;

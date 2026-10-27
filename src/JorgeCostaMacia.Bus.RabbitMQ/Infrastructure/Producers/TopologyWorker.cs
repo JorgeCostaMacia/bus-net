@@ -20,7 +20,10 @@ internal sealed class TopologyWorker : IHostedService
     /// <summary>Creates the worker over the shared connection and the map's exchanges.</summary>
     /// <param name="connection">The shared RabbitMQ connection the declare channel is opened on.</param>
     /// <param name="exchanges">The exchange → kind (direct/fanout) map from the producer configurator.</param>
-    public TopologyWorker(IConnection connection, IReadOnlyDictionary<string, string> exchanges)
+    public TopologyWorker(
+        IConnection connection,
+        IReadOnlyDictionary<string, string> exchanges
+    )
     {
         _connection = connection;
         _exchanges = exchanges;
@@ -39,7 +42,12 @@ internal sealed class TopologyWorker : IHostedService
 
         foreach ((string exchange, string exchangeType) in _exchanges)
         {
-            await channel.ExchangeDeclareAsync(exchange, exchangeType, durable: true, autoDelete: false, cancellationToken: cancellationToken);
+            await channel.ExchangeDeclareAsync(
+                exchange,
+                exchangeType,
+                durable: true,
+                autoDelete: false,
+                cancellationToken: cancellationToken);
         }
     }
 

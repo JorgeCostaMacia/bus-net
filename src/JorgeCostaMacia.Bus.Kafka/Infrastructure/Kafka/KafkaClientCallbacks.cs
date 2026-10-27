@@ -20,7 +20,12 @@ internal static class KafkaClientCallbacks
     /// <param name="health">The broker-reachability tracker, flipped down on an all-brokers-down error.</param>
     /// <param name="lifetime">The application lifetime, stopped on a fatal error.</param>
     /// <returns>The same builder, to allow method chaining.</returns>
-    public static ProducerBuilder<Null, byte[]> WithClientCallbacks(this ProducerBuilder<Null, byte[]> builder, ILogger logger, BusHealth health, IHostApplicationLifetime lifetime)
+    public static ProducerBuilder<Null, byte[]> WithClientCallbacks(
+        this ProducerBuilder<Null, byte[]> builder,
+        ILogger logger,
+        BusHealth health,
+        IHostApplicationLifetime lifetime
+    )
         => builder
             .SetErrorHandler((_, error) => OnError(logger, error, health, lifetime))
             .SetLogHandler((_, log) => KafkaLogger.Log(logger, log))
@@ -32,14 +37,26 @@ internal static class KafkaClientCallbacks
     /// <param name="health">The broker-reachability tracker, flipped down on an all-brokers-down error.</param>
     /// <param name="lifetime">The application lifetime, stopped on a fatal error.</param>
     /// <returns>The same builder, to allow method chaining.</returns>
-    public static ConsumerBuilder<Ignore, byte[]> WithClientCallbacks(this ConsumerBuilder<Ignore, byte[]> builder, ILogger logger, BusHealth health, IHostApplicationLifetime lifetime)
+    public static ConsumerBuilder<Ignore, byte[]> WithClientCallbacks(
+        this ConsumerBuilder<Ignore, byte[]> builder,
+        ILogger logger,
+        BusHealth health,
+        IHostApplicationLifetime lifetime
+    )
         => builder
             .SetErrorHandler((_, error) => OnError(logger, error, health, lifetime))
             .SetLogHandler((_, log) => KafkaLogger.Log(logger, log))
             .SetStatisticsHandler((_, statistics) => KafkaLogger.LogStatistics(logger, statistics));
 
-    /// <summary>The shared error reaction: logs the error, flips the reachability tracker down on an <c>AllBrokersDown</c>, and stops the application on a fatal one (every other error the client recovers from on its own).</summary>
-    private static void OnError(ILogger logger, Error error, BusHealth health, IHostApplicationLifetime lifetime)
+    /// <summary>The shared error reaction: logs the error, flips the reachability tracker down on an
+    /// <c>AllBrokersDown</c>, and stops the application on a fatal one (every other error the client recovers from on
+    /// its own).</summary>
+    private static void OnError(
+        ILogger logger,
+        Error error,
+        BusHealth health,
+        IHostApplicationLifetime lifetime
+    )
     {
         KafkaLogger.LogError(logger, error);
 

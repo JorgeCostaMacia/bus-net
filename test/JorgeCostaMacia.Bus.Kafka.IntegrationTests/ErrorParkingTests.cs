@@ -40,7 +40,8 @@ public sealed class ErrorParkingTests : IClassFixture<KafkaFixture>
         _fixture = fixture;
     }
 
-    /// <summary>A handler that always throws exhausts its retry ladder and the failure is parked to the topic's <c>.error</c>.</summary>
+    /// <summary>A handler that always throws exhausts its retry ladder and the failure is parked to the topic's
+    /// <c>.error</c>.</summary>
     [Fact]
     public async Task Send_toAHandlerThatAlwaysThrowsWithAnExhaustingLadder_ParksTheFailureToTheErrorTopic()
     {
@@ -53,7 +54,9 @@ public sealed class ErrorParkingTests : IClassFixture<KafkaFixture>
             producer => producer.AddCommand<ParkingCommand>(Topic),
             // A single 00:00 rung: the original fails and is re-produced immediately, the redelivery
             // fails again, the budget is spent — so the failure parks to .error as terminal.
-            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(GroupId, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
+            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(
+                GroupId,
+                retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);
@@ -66,7 +69,11 @@ public sealed class ErrorParkingTests : IClassFixture<KafkaFixture>
                 await bus.Send(new ParkingCommand("hello-error-park"), cancellationToken);
             }
 
-            ConsumeResult<Ignore, byte[]>? parked = await Broker.WaitForParkedAsync(configuration, ErrorTopic, TimeSpan.FromSeconds(120), cancellationToken);
+            ConsumeResult<Ignore, byte[]>? parked = await Broker.WaitForParkedAsync(
+                configuration,
+                ErrorTopic,
+                TimeSpan.FromSeconds(120),
+                cancellationToken);
 
             Assert.True(parked is not null, $"Nothing was parked to '{ErrorTopic}' within 120 seconds.");
             Assert.Equal(GroupId, Broker.Header(parked, ErrorGroupIdHeader));

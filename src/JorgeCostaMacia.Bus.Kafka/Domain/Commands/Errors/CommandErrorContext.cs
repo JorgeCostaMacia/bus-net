@@ -21,8 +21,14 @@ public sealed record CommandErrorContext<TCommand> :
     /// <param name="message">The command payload.</param>
     /// <param name="transport">The Kafka transport for this delivery.</param>
     /// <param name="error">The failure that exhausted the delivery.</param>
-    public CommandErrorContext(TCommand message, Transport transport, Exception error)
-        : base(message, transport)
+    public CommandErrorContext(
+        TCommand message,
+        Transport transport,
+        Exception error
+    ) : base(
+        message,
+        transport
+    )
     {
         Error = error;
     }

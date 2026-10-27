@@ -19,9 +19,21 @@ public static class HealthChecksContext
     /// </summary>
     /// <param name="builder">The health checks builder.</param>
     /// <param name="name">The health check's name, <c>bus-rabbitmq</c> by default.</param>
-    /// <param name="failureStatus">The status reported when the connection is down, or <see langword="null"/> for <see cref="HealthStatus.Unhealthy"/>.</param>
-    /// <param name="tags">The tags the health endpoints filter on (typically <c>"ready"</c> for readiness), or <see langword="null"/> for none.</param>
+    /// <param name="failureStatus">The status reported when the connection is down, or <see langword="null"/> for
+    /// <see cref="HealthStatus.Unhealthy"/>.</param>
+    /// <param name="tags">The tags the health endpoints filter on (typically <c>"ready"</c> for readiness), or
+    /// <see langword="null"/> for none.</param>
     /// <returns>The same builder, to allow method chaining.</returns>
-    public static IHealthChecksBuilder AddRabbitMQBus(this IHealthChecksBuilder builder, string name = "bus-rabbitmq", HealthStatus? failureStatus = null, IEnumerable<string>? tags = null)
-        => builder.Add(new HealthCheckRegistration(name, provider => new BusHealthCheck(provider.GetRequiredService<Domain.IConnection>()), failureStatus, tags));
+    public static IHealthChecksBuilder AddRabbitMQBus(
+        this IHealthChecksBuilder builder,
+        string name = "bus-rabbitmq",
+        HealthStatus? failureStatus = null,
+        IEnumerable<string>? tags = null
+    )
+        => builder.Add(
+            new HealthCheckRegistration(
+                name,
+                provider => new BusHealthCheck(provider.GetRequiredService<Domain.IConnection>()),
+                failureStatus,
+                tags));
 }

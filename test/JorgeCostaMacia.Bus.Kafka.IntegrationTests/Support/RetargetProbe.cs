@@ -9,13 +9,16 @@ namespace JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
 /// </summary>
 public sealed class RetargetProbe
 {
-    private readonly TaskCompletionSource _failingSucceeded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly TaskCompletionSource _otherReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _failingSucceeded = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _otherReceived = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
 
     private int _failingInvocations;
     private int _otherInvocations;
 
-    /// <summary>Completes when the failing group succeeds on its re-targeted redelivery (its second invocation).</summary>
+    /// <summary>Completes when the failing group succeeds on its re-targeted redelivery (its second
+    /// invocation).</summary>
     public Task FailingSucceeded => _failingSucceeded.Task;
 
     /// <summary>Completes when the other group receives its first (original) delivery.</summary>

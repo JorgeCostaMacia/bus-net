@@ -75,7 +75,10 @@ public class KafkaClientCallbacksTests
     [Fact]
     public void TheProducerBuilder_GetsAllThreeCallbacks_AndTheyReachTheKafkaCategory()
     {
-        ProducerBuilderProbe probe = (ProducerBuilderProbe)Wire(new ProducerBuilderProbe(), new BusHealth(), new LifetimeFake());
+        ProducerBuilderProbe probe = (ProducerBuilderProbe)Wire(
+            new ProducerBuilderProbe(),
+            new BusHealth(),
+            new LifetimeFake());
 
         Assert.NotNull(probe.Error);
         Assert.NotNull(probe.Log);
@@ -133,6 +136,9 @@ public class KafkaClientCallbacksTests
     /// <param name="health">The readiness tracker.</param>
     /// <param name="lifetime">The application lifetime.</param>
     /// <returns>The same builder.</returns>
-    private static ProducerBuilder<Null, byte[]> Wire(ProducerBuilderProbe probe, BusHealth health, LifetimeFake lifetime)
-        => probe.WithClientCallbacks(NullLogger<KafkaClientCallbacksTests>.Instance, health, lifetime);
+    private static ProducerBuilder<Null, byte[]> Wire(
+        ProducerBuilderProbe probe,
+        BusHealth health,
+        LifetimeFake lifetime
+    ) => probe.WithClientCallbacks(NullLogger<KafkaClientCallbacksTests>.Instance, health, lifetime);
 }

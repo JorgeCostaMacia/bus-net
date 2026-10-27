@@ -57,7 +57,18 @@ public sealed record CommandFault : IErrorMessage
     /// <param name="timestamp">UTC time Kafka assigned to the message.</param>
     /// <param name="headers">The delivery's headers as best-effort UTF-8 text.</param>
     /// <param name="message">The delivered raw body as text.</param>
-    public CommandFault(ErrorInfo error, DateTime errorOccurredAt, string groupId, string machineName, string topic, int partition, long offset, DateTime timestamp, ImmutableList<KeyValuePair<string, string>> headers, string message)
+    public CommandFault(
+        ErrorInfo error,
+        DateTime errorOccurredAt,
+        string groupId,
+        string machineName,
+        string topic,
+        int partition,
+        long offset,
+        DateTime timestamp,
+        ImmutableList<KeyValuePair<string, string>> headers,
+        string message
+    )
     {
         Error = error;
         ErrorOccurredAt = errorOccurredAt;
@@ -80,7 +91,10 @@ public sealed record CommandFault : IErrorMessage
     /// <param name="context">The broken delivery's fault context.</param>
     /// <param name="groupId">The consumer group whose delivery broke.</param>
     /// <returns>The body parked to the fault topic.</returns>
-    internal static CommandFault Create(CommandFaultContext context, string groupId)
+    internal static CommandFault Create(
+        CommandFaultContext context,
+        string groupId
+    )
         => new CommandFault(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,

@@ -18,22 +18,26 @@ public sealed record ConnectionConfiguration
     /// <summary>The password. Required.</summary>
     public required string Password { get; init; }
 
-    /// <summary>Whether TLS wraps the connection, or <see langword="null"/> for the default (true — secure by default).</summary>
+    /// <summary>Whether TLS wraps the connection, or <see langword="null"/> for the default (true — secure by
+    /// default).</summary>
     public bool? Ssl { get; init; }
 
-    /// <summary>The port, or <see langword="null"/> for the default (5671, AMQPS — going plain requires an explicit port).</summary>
+    /// <summary>The port, or <see langword="null"/> for the default (5671, AMQPS — going plain requires an explicit
+    /// port).</summary>
     public int? Port { get; init; }
 
     /// <summary>The virtual host, or <see langword="null"/> for the default (<c>/</c>).</summary>
     public string? VirtualHost { get; init; }
 
-    /// <summary>The client-provided connection name, or <see langword="null"/> for the default (machine name).</summary>
+    /// <summary>The client-provided connection name, or <see langword="null"/> for the default (machine
+    /// name).</summary>
     public string? ClientProvidedName { get; init; }
 
     /// <summary>Automatic recovery, or <see langword="null"/> for the default (true).</summary>
     public bool? AutomaticRecoveryEnabled { get; init; }
 
-    /// <summary>The RabbitMQ connection factory — supplied values, defaults for the rest; TLS carries the host name for the certificate match.</summary>
+    /// <summary>The RabbitMQ connection factory — supplied values, defaults for the rest; TLS carries the host name for
+    /// the certificate match.</summary>
     public ConnectionFactory ConnectionFactory
     {
         get
@@ -49,7 +53,8 @@ public sealed record ConnectionConfiguration
                 Port = Port ?? ConnectionConfigurationDefaults.Port,
                 VirtualHost = VirtualHost ?? ConnectionConfigurationDefaults.VirtualHost,
                 ClientProvidedName = ClientProvidedName ?? ConnectionConfigurationDefaults.ClientProvidedName,
-                AutomaticRecoveryEnabled = AutomaticRecoveryEnabled ?? ConnectionConfigurationDefaults.AutomaticRecoveryEnabled
+                AutomaticRecoveryEnabled = AutomaticRecoveryEnabled
+                    ?? ConnectionConfigurationDefaults.AutomaticRecoveryEnabled
             };
         }
     }

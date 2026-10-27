@@ -30,7 +30,11 @@ public sealed record CommandFaultContext :
     /// <param name="message">The delivered raw body as text.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
-    public CommandFaultContext(string message, Transport transport, Exception exception)
+    public CommandFaultContext(
+        string message,
+        Transport transport,
+        Exception exception
+    )
     {
         Message = message;
         Transport = transport;
@@ -42,6 +46,13 @@ public sealed record CommandFaultContext :
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <returns>The context handed to the fault handler.</returns>
-    internal static CommandFaultContext Create(ReadOnlyMemory<byte> body, Transport transport, Exception exception)
-        => new CommandFaultContext(Encoding.UTF8.GetString(body.Span), transport, exception);
+    internal static CommandFaultContext Create(
+        ReadOnlyMemory<byte> body,
+        Transport transport,
+        Exception exception
+    )
+        => new CommandFaultContext(
+            Encoding.UTF8.GetString(body.Span),
+            transport,
+            exception);
 }

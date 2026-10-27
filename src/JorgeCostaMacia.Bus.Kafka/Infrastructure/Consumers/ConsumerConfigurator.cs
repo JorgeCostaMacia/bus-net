@@ -34,19 +34,27 @@ public sealed class ConsumerConfigurator
     private readonly ConsumerConfiguration _configuration;
     private readonly HashSet<string> _groupIds = new HashSet<string>(StringComparer.Ordinal);
 
-    /// <summary>Binds the consumer configuration from the <c>Bus:Consumer</c> section and takes the routing map to resolve topics.</summary>
+    /// <summary>Binds the consumer configuration from the <c>Bus:Consumer</c> section and takes the routing map to
+    /// resolve topics.</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration.</param>
     /// <param name="messages">The type → topic routing map the producer side owns.</param>
-    /// <exception cref="InvalidOperationException">The <c>Bus:Consumer</c> section or one of its required values is missing.</exception>
-    internal ConsumerConfigurator(IServiceCollection services, IConfiguration configuration, IReadOnlyDictionary<Type, string> messages)
+    /// <exception cref="InvalidOperationException">The <c>Bus:Consumer</c> section or one of its required values is
+    /// missing.</exception>
+    internal ConsumerConfigurator(
+        IServiceCollection services,
+        IConfiguration configuration,
+        IReadOnlyDictionary<Type, string> messages
+    )
     {
         _services = services;
         _messages = messages;
         _configuration = CreateConsumerConfiguration(configuration);
 
         // one shared startup gate for all this service's consumers — bounds how many connect at once.
-        _services.AddSingleton(new StartupGate(_configuration.StartupMaxConcurrency ?? ConsumerConfigurationDefaults.StartupMaxConcurrency));
+        _services.AddSingleton(
+            new StartupGate(
+                _configuration.StartupMaxConcurrency ?? ConsumerConfigurationDefaults.StartupMaxConcurrency));
     }
 
     /// <summary>
@@ -57,14 +65,18 @@ public sealed class ConsumerConfigurator
     /// </summary>
     /// <typeparam name="TCommand">The command type consumed.</typeparam>
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
-    /// <param name="groupId">The consumer group id (e.g. <c>{topic}.handler</c>) — a stable contract, it holds the group's offsets.</param>
-    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> requeues immediately), or <see langword="null"/> for the default (none).</param>
-    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
+    /// <param name="groupId">The consumer group id (e.g. <c>{topic}.handler</c>) — a stable contract, it holds the
+    /// group's offsets.</param>
+    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c>
+    /// requeues immediately), or <see langword="null"/> for the default (none).</param>
+    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for
+    /// none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public ConsumerConfigurator AddCommandHandler<TCommand, TCommandHandler>(
         string groupId,
         ImmutableList<TimeSpan>? retryIntervals = null,
-        ImmutableList<Type>? retryExcludeExceptionTypes = null)
+        ImmutableList<Type>? retryExcludeExceptionTypes = null
+    )
         where TCommand : Command
         where TCommandHandler : CommandHandler<TCommand>
     {
@@ -72,7 +84,8 @@ public sealed class ConsumerConfigurator
 
         string topic = _messages.TryGetValue(typeof(TCommand), out string? mapped)
             ? mapped
-            : throw new InvalidOperationException($"'{typeof(TCommand).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
+            : throw new InvalidOperationException(
+                $"'{typeof(TCommand).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
         ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RetryIntervals;
         ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RetryExcludeExceptionTypes;
@@ -98,7 +111,8 @@ public sealed class ConsumerConfigurator
 
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<Commands.CommandWorker<TCommand, TCommandHandler>> logger = provider.GetRequiredService<ILogger<Commands.CommandWorker<TCommand, TCommandHandler>>>();
+            ILogger<Commands.CommandWorker<TCommand, TCommandHandler>> logger
+                = provider.GetRequiredService<ILogger<Commands.CommandWorker<TCommand, TCommandHandler>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
             BusHealth health = provider.GetRequiredService<BusHealth>();
             StartupSignal startupSignal = new StartupSignal();
@@ -126,14 +140,18 @@ public sealed class ConsumerConfigurator
     /// </summary>
     /// <typeparam name="TEvent">The event type consumed.</typeparam>
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
-    /// <param name="groupId">The consumer group id (e.g. <c>{consumer}.on.{topic}.subscriber</c>) — a stable contract, unique per subscriber, it holds the group's offsets.</param>
-    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> requeues immediately), or <see langword="null"/> for the default (none).</param>
-    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
+    /// <param name="groupId">The consumer group id (e.g. <c>{consumer}.on.{topic}.subscriber</c>) — a stable contract,
+    /// unique per subscriber, it holds the group's offsets.</param>
+    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c>
+    /// requeues immediately), or <see langword="null"/> for the default (none).</param>
+    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for
+    /// none.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public ConsumerConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
         string groupId,
         ImmutableList<TimeSpan>? retryIntervals = null,
-        ImmutableList<Type>? retryExcludeExceptionTypes = null)
+        ImmutableList<Type>? retryExcludeExceptionTypes = null
+    )
         where TEvent : Event
         where TEventSubscriber : EventSubscriber<TEvent>
     {
@@ -141,7 +159,8 @@ public sealed class ConsumerConfigurator
 
         string topic = _messages.TryGetValue(typeof(TEvent), out string? mapped)
             ? mapped
-            : throw new InvalidOperationException($"'{typeof(TEvent).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
+            : throw new InvalidOperationException(
+                $"'{typeof(TEvent).FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         ConsumerConfig configuration = _configuration.ConsumerConfig(groupId);
         ImmutableList<TimeSpan> intervals = retryIntervals ?? ConsumerWorkerDefaults.RetryIntervals;
         ImmutableList<Type> excludes = retryExcludeExceptionTypes ?? ConsumerWorkerDefaults.RetryExcludeExceptionTypes;
@@ -167,7 +186,8 @@ public sealed class ConsumerConfigurator
 
         _services.AddSingleton<IHostedService>(provider =>
         {
-            ILogger<Events.EventWorker<TEvent, TEventSubscriber>> logger = provider.GetRequiredService<ILogger<Events.EventWorker<TEvent, TEventSubscriber>>>();
+            ILogger<Events.EventWorker<TEvent, TEventSubscriber>> logger
+                = provider.GetRequiredService<ILogger<Events.EventWorker<TEvent, TEventSubscriber>>>();
             IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
             BusHealth health = provider.GetRequiredService<BusHealth>();
             StartupSignal startupSignal = new StartupSignal();
@@ -199,7 +219,8 @@ public sealed class ConsumerConfigurator
     {
         if (!_groupIds.Add(groupId))
         {
-            throw new InvalidOperationException($"Consumer group id '{groupId}' is already registered; give each handler its own group id.");
+            throw new InvalidOperationException(
+                $"Consumer group id '{groupId}' is already registered; give each handler its own group id.");
         }
     }
 
@@ -212,22 +233,26 @@ public sealed class ConsumerConfigurator
     /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
     private static ConsumerConfiguration CreateConsumerConfiguration(IConfiguration configuration)
     {
-        ConsumerConfiguration consumerConfiguration = configuration.GetSection(ConsumerSection).Get<ConsumerConfiguration>()
+        ConsumerConfiguration consumerConfiguration
+            = configuration.GetSection(ConsumerSection).Get<ConsumerConfiguration>()
             ?? throw new InvalidOperationException($"'{ConsumerSection}' is null.");
 
         if (string.IsNullOrWhiteSpace(consumerConfiguration.BootstrapServers))
         {
-            throw new InvalidOperationException($"'{ConsumerSection}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ConsumerSection}:{nameof(consumerConfiguration.BootstrapServers)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslUsername))
         {
-            throw new InvalidOperationException($"'{ConsumerSection}:{nameof(consumerConfiguration.SaslUsername)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ConsumerSection}:{nameof(consumerConfiguration.SaslUsername)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(consumerConfiguration.SaslPassword))
         {
-            throw new InvalidOperationException($"'{ConsumerSection}:{nameof(consumerConfiguration.SaslPassword)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ConsumerSection}:{nameof(consumerConfiguration.SaslPassword)}' is null.");
         }
 
         return consumerConfiguration;
@@ -239,7 +264,14 @@ public sealed class ConsumerConfigurator
     /// <c>AllBrokersDown</c> flips the reachability tracker down), the commit results and the
     /// partition lifecycle to the worker's logger.
     /// </summary>
-    private static ConsumerBuilder<Ignore, byte[]> CreateBuilder(IServiceProvider provider, ConsumerConfig configuration, ILogger logger, IHostApplicationLifetime lifetime, BusHealth health, StartupSignal startupSignal)
+    private static ConsumerBuilder<Ignore, byte[]> CreateBuilder(
+        IServiceProvider provider,
+        ConsumerConfig configuration,
+        ILogger logger,
+        IHostApplicationLifetime lifetime,
+        BusHealth health,
+        StartupSignal startupSignal
+    )
     {
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
 

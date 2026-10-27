@@ -24,11 +24,18 @@ internal sealed class AdminWorker : IHostedService
     private readonly ILogger<AdminWorker> _logger;
 
     /// <summary>Creates the worker over the admin connection and the topic → partition-count map to create.</summary>
-    /// <param name="adminClientConfig">The admin client configuration (the dedicated <c>Bus:Admin</c> connection).</param>
-    /// <param name="topics">The topic → partition-count map to create (<c>-1</c> = the broker's default partition count).</param>
+    /// <param name="adminClientConfig">The admin client configuration (the dedicated <c>Bus:Admin</c>
+    /// connection).</param>
+    /// <param name="topics">The topic → partition-count map to create (<c>-1</c> = the broker's default partition
+    /// count).</param>
     /// <param name="topicsBatchSize">How many topics are created per request; clamped to at least 1.</param>
     /// <param name="logger">The logger.</param>
-    public AdminWorker(AdminClientConfig adminClientConfig, IReadOnlyDictionary<string, int> topics, int topicsBatchSize, ILogger<AdminWorker> logger)
+    public AdminWorker(
+        AdminClientConfig adminClientConfig,
+        IReadOnlyDictionary<string, int> topics,
+        int topicsBatchSize,
+        ILogger<AdminWorker> logger
+    )
     {
         _adminClientConfig = adminClientConfig;
         _topics = topics;
@@ -42,7 +49,8 @@ internal sealed class AdminWorker : IHostedService
     /// must not run as if healthy when it could not provision its topics.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel startup.</param>
-    /// <exception cref="CreateTopicsException">A topic could not be created for a reason other than already existing.</exception>
+    /// <exception cref="CreateTopicsException">A topic could not be created for a reason other than already
+    /// existing.</exception>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (_topics.Count == 0)
@@ -65,13 +73,16 @@ internal sealed class AdminWorker : IHostedService
             // spike the controller on a small cluster. Each batch is idempotent on its own.
             for (int index = 0; index < specifications.Count; index += _topicsBatchSize)
             {
-                List<TopicSpecification> batch = specifications.GetRange(index, Math.Min(_topicsBatchSize, specifications.Count - index));
+                List<TopicSpecification> batch = specifications.GetRange(
+                    index,
+                    Math.Min(_topicsBatchSize, specifications.Count - index));
 
                 try
                 {
                     await adminClient.CreateTopicsAsync(batch);
                 }
-                catch (CreateTopicsException exception) when (exception.Results.All(result => !result.Error.IsError || result.Error.Code == ErrorCode.TopicAlreadyExists))
+                catch (CreateTopicsException exception) when (exception.Results.All(
+                    result => !result.Error.IsError || result.Error.Code == ErrorCode.TopicAlreadyExists))
                 {
                     // every topic in the batch was created or already existed — idempotent, nothing to
                     // handle. A real creation failure does not match this filter and propagates as the

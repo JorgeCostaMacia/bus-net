@@ -25,7 +25,9 @@ public class BusLoggerTests
         // background commit would bury the failures that actually widen the redelivery window.
         RecordingLogger<BusLoggerTests> logger = new RecordingLogger<BusLoggerTests>();
 
-        BusLogger.LogCommit(logger, new CommittedOffsets(new List<TopicPartitionOffsetError>(), new Error(ErrorCode.NoError)));
+        BusLogger.LogCommit(
+            logger,
+            new CommittedOffsets(new List<TopicPartitionOffsetError>(), new Error(ErrorCode.NoError)));
 
         Assert.Empty(logger.Logged);
     }
@@ -35,7 +37,11 @@ public class BusLoggerTests
     {
         RecordingLogger<BusLoggerTests> logger = new RecordingLogger<BusLoggerTests>();
 
-        BusLogger.LogCommit(logger, new CommittedOffsets(new List<TopicPartitionOffsetError>(), new Error(ErrorCode.Local_TimedOut, "timeout")));
+        BusLogger.LogCommit(
+            logger,
+            new CommittedOffsets(
+                new List<TopicPartitionOffsetError>(),
+                new Error(ErrorCode.Local_TimedOut, "timeout")));
 
         Assert.Equal("Commit failed.", Assert.Single(logger.Logged).Message);
     }
@@ -133,7 +139,8 @@ public class BusLoggerTests
         // operator sees would be this one instead of the produce failure that caused it. The nulls are
         // forgiven deliberately — Message declares both non-nullable, but the logger guards them because
         // a message off the wire can carry neither, and that guard is what is under test.
-        LogEvent captured = Capture(() => BusLogger.ProducerContext("orders", new Message<Null, byte[]>() { Value = null!, Headers = null! }));
+        LogEvent captured = Capture(
+            () => BusLogger.ProducerContext("orders", new Message<Null, byte[]>() { Value = null!, Headers = null! }));
 
         Assert.Equal("orders", CapturingSink.Scalar(captured, "Topic"));
         Assert.Null(CapturingSink.Scalar(captured, "Body"));

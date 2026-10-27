@@ -14,7 +14,10 @@ public interface IPublisherBatchBus<TMessage> : IBus
     /// <typeparam name="T">The concrete message type.</typeparam>
     /// <param name="messages">The messages to publish.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Publish<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
+    Task Publish<T>(
+        IEnumerable<T> messages,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 
     /// <summary>
@@ -26,6 +29,10 @@ public interface IPublisherBatchBus<TMessage> : IBus
     /// <param name="messages">The messages to publish.</param>
     /// <param name="transport">The inbound message's transport, whose envelope headers are propagated.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Publish<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
+    Task Publish<T>(
+        IEnumerable<T> messages,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 }

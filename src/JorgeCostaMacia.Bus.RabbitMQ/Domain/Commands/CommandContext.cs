@@ -84,7 +84,10 @@ public record CommandContext<TCommand> :
     /// <summary>Builds the context over the delivered command and its transport.</summary>
     /// <param name="message">The command payload.</param>
     /// <param name="transport">The RabbitMQ transport for this delivery.</param>
-    public CommandContext(TCommand message, Transport transport)
+    public CommandContext(
+        TCommand message,
+        Transport transport
+    )
     {
         Message = message;
         Transport = transport;

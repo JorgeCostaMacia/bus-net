@@ -19,12 +19,19 @@ internal static class RabbitLogger
     /// </summary>
     public const string Category = "JorgeCostaMacia.Bus.RabbitMQ.Client";
 
-    /// <summary>Logs a connection shutdown — informational when the application closed it, a warning when the peer or the library dropped it (automatic recovery then kicks in).</summary>
+    /// <summary>Logs a connection shutdown — informational when the application closed it, a warning when the peer or
+    /// the library dropped it (automatic recovery then kicks in).</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="replyCode">The AMQP reply code of the shutdown.</param>
     /// <param name="replyText">The AMQP reply text of the shutdown.</param>
-    /// <param name="applicationInitiated">Whether the application initiated the shutdown (an orderly close) rather than the peer/library (a drop).</param>
-    public static void LogShutdown(ILogger logger, ushort replyCode, string replyText, bool applicationInitiated)
+    /// <param name="applicationInitiated">Whether the application initiated the shutdown (an orderly close) rather than
+    /// the peer/library (a drop).</param>
+    public static void LogShutdown(
+        ILogger logger,
+        ushort replyCode,
+        string replyText,
+        bool applicationInitiated
+    )
     {
         using (LogContext.Push(
             new PropertyEnricher("ReplyCode", replyCode),
@@ -34,17 +41,25 @@ internal static class RabbitLogger
         }
     }
 
-    /// <summary>Logs a successful automatic recovery — the connection (and its topology) is back after a drop.</summary>
+    /// <summary>Logs a successful automatic recovery — the connection (and its topology) is back after a
+    /// drop.</summary>
     /// <param name="logger">The logger.</param>
     public static void LogRecovered(ILogger logger) => logger.LogInformation("Connection recovered.");
 
     /// <summary>Logs a failed automatic-recovery attempt — the client keeps retrying on its own.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The recovery failure.</param>
-    public static void LogRecoveryError(ILogger logger, Exception exception) => logger.LogWarning(exception, "Connection recovery failed.");
+    public static void LogRecoveryError(
+        ILogger logger,
+        Exception exception
+    ) => logger.LogWarning(exception, "Connection recovery failed.");
 
-    /// <summary>Logs an exception thrown by a client callback — a bug in a handler the client invoked, swallowed by the client otherwise.</summary>
+    /// <summary>Logs an exception thrown by a client callback — a bug in a handler the client invoked, swallowed by the
+    /// client otherwise.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The callback failure.</param>
-    public static void LogCallbackException(ILogger logger, Exception exception) => logger.LogError(exception, "Client callback failed.");
+    public static void LogCallbackException(
+        ILogger logger,
+        Exception exception
+    ) => logger.LogError(exception, "Client callback failed.");
 }

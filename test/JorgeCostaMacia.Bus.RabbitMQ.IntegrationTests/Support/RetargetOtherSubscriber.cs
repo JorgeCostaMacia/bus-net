@@ -19,10 +19,14 @@ public sealed class RetargetOtherSubscriber : EventSubscriber<RequeueEvent>
         _probe = probe;
     }
 
-    /// <summary>Records its one invocation — the original delivery, never the failing subscriber's re-targeted retry.</summary>
+    /// <summary>Records its one invocation — the original delivery, never the failing subscriber's re-targeted
+    /// retry.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(EventContext<RequeueEvent> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        EventContext<RequeueEvent> context,
+        CancellationToken cancellationToken = default
+    )
     {
         _probe.RecordOther();
 

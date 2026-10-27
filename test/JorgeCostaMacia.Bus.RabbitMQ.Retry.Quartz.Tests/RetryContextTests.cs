@@ -13,7 +13,9 @@ public class RetryContextTests
 
         services.AddRetryContext();
 
-        ServiceDescriptor scheduler = Assert.Single(services, descriptor => descriptor.ServiceType == typeof(IRetryScheduler));
+        ServiceDescriptor scheduler = Assert.Single(
+            services,
+            descriptor => descriptor.ServiceType == typeof(IRetryScheduler));
         Assert.Equal(typeof(RetryScheduler), scheduler.ImplementationType);
         Assert.Equal(ServiceLifetime.Singleton, scheduler.Lifetime);
     }

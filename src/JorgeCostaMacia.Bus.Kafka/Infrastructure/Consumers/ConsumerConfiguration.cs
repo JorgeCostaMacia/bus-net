@@ -29,10 +29,12 @@ public sealed record ConsumerConfiguration
     /// <summary>Background commit of stored offsets, or <see langword="null"/> for the default (true).</summary>
     public bool? EnableAutoCommit { get; init; }
 
-    /// <summary>Store offsets automatically prior to delivery, or <see langword="null"/> for the default (false — the consumer stores after handling).</summary>
+    /// <summary>Store offsets automatically prior to delivery, or <see langword="null"/> for the default (false — the
+    /// consumer stores after handling).</summary>
     public bool? EnableAutoOffsetStore { get; init; }
 
-    /// <summary>Interval (ms) between background commits of the stored offsets, or <see langword="null"/> for the default (5000).</summary>
+    /// <summary>Interval (ms) between background commits of the stored offsets, or <see langword="null"/> for the
+    /// default (5000).</summary>
     public int? AutoCommitIntervalMs { get; init; }
 
     /// <summary>Auto-create topics, or <see langword="null"/> for the default.</summary>
@@ -41,7 +43,8 @@ public sealed record ConsumerConfiguration
     /// <summary>Offset reset behavior, or <see langword="null"/> for the default.</summary>
     public AutoOffsetReset? AutoOffsetReset { get; init; }
 
-    /// <summary>Partition assignment strategy, or <see langword="null"/> for the default (CooperativeSticky — incremental rebalancing).</summary>
+    /// <summary>Partition assignment strategy, or <see langword="null"/> for the default (CooperativeSticky —
+    /// incremental rebalancing).</summary>
     public PartitionAssignmentStrategy? PartitionAssignmentStrategy { get; init; }
 
     /// <summary>Socket timeout (ms), or <see langword="null"/> for the default.</summary>
@@ -68,19 +71,24 @@ public sealed record ConsumerConfiguration
     /// <summary>Static group instance id, or <see langword="null"/> for the default (machine name).</summary>
     public string? GroupInstanceId { get; init; }
 
-    /// <summary>Minimum messages the client prefetches per partition, or <see langword="null"/> for the client default (100000).</summary>
+    /// <summary>Minimum messages the client prefetches per partition, or <see langword="null"/> for the client default
+    /// (100000).</summary>
     public int? QueuedMinMessages { get; init; }
 
-    /// <summary>Maximum kbytes the client prefetches per partition — dominates the consumer's memory footprint when a process hosts many workers — or <see langword="null"/> for the client default (65536).</summary>
+    /// <summary>Maximum kbytes the client prefetches per partition — dominates the consumer's memory footprint when a
+    /// process hosts many workers — or <see langword="null"/> for the client default (65536).</summary>
     public int? QueuedMaxMessagesKbytes { get; init; }
 
-    /// <summary>Interval (ms) between statistics emissions (logged at Debug under the Kafka category), or <see langword="null"/> for none.</summary>
+    /// <summary>Interval (ms) between statistics emissions (logged at Debug under the Kafka category), or
+    /// <see langword="null"/> for none.</summary>
     public int? StatisticsIntervalMs { get; init; }
 
-    /// <summary>librdkafka debug contexts (comma-separated, e.g. <c>consumer,cgrp,topic,fetch</c>), or <see langword="null"/> for none.</summary>
+    /// <summary>librdkafka debug contexts (comma-separated, e.g. <c>consumer,cgrp,topic,fetch</c>), or
+    /// <see langword="null"/> for none.</summary>
     public string? Debug { get; init; }
 
-    /// <summary>Whether broker disconnects are logged, or <see langword="null"/> for the client default (true) — the classic idle-connection noise.</summary>
+    /// <summary>Whether broker disconnects are logged, or <see langword="null"/> for the client default (true) — the
+    /// classic idle-connection noise.</summary>
     public bool? LogConnectionClose { get; init; }
 
     /// <summary>
@@ -110,7 +118,8 @@ public sealed record ConsumerConfiguration
             AutoCommitIntervalMs = AutoCommitIntervalMs ?? ConsumerConfigurationDefaults.AutoCommitIntervalMs,
             AllowAutoCreateTopics = AllowAutoCreateTopics ?? ConsumerConfigurationDefaults.AllowAutoCreateTopics,
             AutoOffsetReset = AutoOffsetReset ?? ConsumerConfigurationDefaults.AutoOffsetReset,
-            PartitionAssignmentStrategy = PartitionAssignmentStrategy ?? ConsumerConfigurationDefaults.PartitionAssignmentStrategy,
+            PartitionAssignmentStrategy = PartitionAssignmentStrategy
+                ?? ConsumerConfigurationDefaults.PartitionAssignmentStrategy,
             SocketTimeoutMs = SocketTimeoutMs ?? ConsumerConfigurationDefaults.SocketTimeoutMs,
             MaxPollIntervalMs = MaxPollIntervalMs ?? ConsumerConfigurationDefaults.MaxPollIntervalMs,
             SessionTimeoutMs = SessionTimeoutMs ?? ConsumerConfigurationDefaults.SessionTimeoutMs,

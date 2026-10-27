@@ -14,7 +14,10 @@ public interface IPublisherBus<TMessage> : IBus
     /// <typeparam name="T">The concrete message type.</typeparam>
     /// <param name="message">The message to publish.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Publish<T>(T message, CancellationToken cancellationToken = default)
+    Task Publish<T>(
+        T message,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 
     /// <summary>
@@ -26,6 +29,10 @@ public interface IPublisherBus<TMessage> : IBus
     /// <param name="message">The message to publish.</param>
     /// <param name="transport">The inbound message's transport, whose envelope headers are propagated.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    Task Publish<T>(
+        T message,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 }

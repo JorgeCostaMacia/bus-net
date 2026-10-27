@@ -3,7 +3,8 @@ using IConnection = JorgeCostaMacia.Bus.RabbitMQ.Domain.IConnection;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 
-/// <summary>In-memory double of the shared connection — hands out the one <see cref="ChannelFake"/> the producer publishes through.</summary>
+/// <summary>In-memory double of the shared connection — hands out the one <see cref="ChannelFake"/> the producer
+/// publishes through.</summary>
 internal sealed class ConnectionFake : IConnection
 {
     private readonly ChannelFake _channel;

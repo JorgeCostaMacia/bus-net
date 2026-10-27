@@ -40,14 +40,27 @@ public sealed record EventError<TEvent> : IErrorMessage
     /// <summary>Whether the failed message had been redelivered.</summary>
     public bool Redelivered { get; init; }
 
-    /// <summary>The delivery's headers as browsable text — the envelope's binary GUID headers render as GUIDs.</summary>
+    /// <summary>The delivery's headers as browsable text — the envelope's binary GUID headers render as
+    /// GUIDs.</summary>
     public ImmutableList<KeyValuePair<string, string>> Headers { get; init; }
 
     /// <summary>The original event, fully typed.</summary>
     public TEvent Message { get; init; }
 
     /// <summary>Creates the parked body over the failure's details and the failed event.</summary>
-    public EventError(ErrorInfo error, DateTime errorOccurredAt, int retryCount, string queue, string machineName, string exchange, string routingKey, ulong deliveryTag, bool redelivered, ImmutableList<KeyValuePair<string, string>> headers, TEvent message)
+    public EventError(
+        ErrorInfo error,
+        DateTime errorOccurredAt,
+        int retryCount,
+        string queue,
+        string machineName,
+        string exchange,
+        string routingKey,
+        ulong deliveryTag,
+        bool redelivered,
+        ImmutableList<KeyValuePair<string, string>> headers,
+        TEvent message
+    )
     {
         Error = error;
         ErrorOccurredAt = errorOccurredAt;
@@ -62,11 +75,15 @@ public sealed record EventError<TEvent> : IErrorMessage
         Message = message;
     }
 
-    /// <summary>Builds the parked body from the error context the subscriber already built — stamping the failing queue.</summary>
+    /// <summary>Builds the parked body from the error context the subscriber already built — stamping the failing
+    /// queue.</summary>
     /// <param name="context">The failed delivery's error context.</param>
     /// <param name="queue">The queue whose subscriber failed.</param>
     /// <returns>The body parked to the error queue.</returns>
-    internal static EventError<TEvent> Create(EventErrorContext<TEvent> context, string queue)
+    internal static EventError<TEvent> Create(
+        EventErrorContext<TEvent> context,
+        string queue
+    )
         => new EventError<TEvent>(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,

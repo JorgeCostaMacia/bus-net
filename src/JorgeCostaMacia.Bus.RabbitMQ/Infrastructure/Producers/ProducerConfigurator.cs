@@ -64,11 +64,15 @@ public sealed class ProducerConfigurator
     /// (direct) and an event's (fanout) at once: the broker would reject the second declare, so the
     /// misconfiguration surfaces here, at registration, with a readable message.
     /// </summary>
-    private void RegisterExchange(string exchange, string exchangeType)
+    private void RegisterExchange(
+        string exchange,
+        string exchangeType
+    )
     {
         if (_exchanges.TryGetValue(exchange, out string? registered) && registered != exchangeType)
         {
-            throw new InvalidOperationException($"'{exchange}' is already mapped as a '{registered}' exchange; commands (direct) and events (fanout) cannot share one.");
+            throw new InvalidOperationException(
+                $"'{exchange}' is already mapped as a '{registered}' exchange; commands (direct) and events (fanout) cannot share one.");
         }
 
         _exchanges[exchange] = exchangeType;

@@ -27,11 +27,17 @@ internal sealed class Producer : IProducer
     private readonly string _hostBusVersion;
     private readonly string _hostOperatingSystemVersion;
 
-    /// <summary>Creates the gate over the shared Kafka producer, the reachability tracker and the logger, capturing the host once — it never changes while the process runs.</summary>
+    /// <summary>Creates the gate over the shared Kafka producer, the reachability tracker and the logger, capturing the
+    /// host once — it never changes while the process runs.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
-    /// <param name="health">The broker-reachability tracker — every broker-acked produce reports the brokers up.</param>
+    /// <param name="health">The broker-reachability tracker — every broker-acked produce reports the brokers
+    /// up.</param>
     /// <param name="logger">The logger for produce failures.</param>
-    public Producer(IProducer<Null, byte[]> producer, BusHealth health, ILogger<Producer> logger)
+    public Producer(
+        IProducer<Null, byte[]> producer,
+        BusHealth health,
+        ILogger<Producer> logger
+    )
     {
         _producer = producer;
         _health = health;
@@ -48,7 +54,11 @@ internal sealed class Producer : IProducer
     }
 
     /// <inheritdoc />
-    public async Task Produce(string topic, Message<Null, byte[]> message, CancellationToken cancellationToken = default)
+    public async Task Produce(
+        string topic,
+        Message<Null, byte[]> message,
+        CancellationToken cancellationToken = default
+    )
     {
         Stamp(message);
 
@@ -83,19 +93,40 @@ internal sealed class Producer : IProducer
     }
 
     /// <inheritdoc />
-    public Task Produce(IEnumerable<KeyValuePair<string, Message<Null, byte[]>>> messages, CancellationToken cancellationToken = default)
-        => Task.WhenAll(messages.Select(message => Produce(message.Key, message.Value, cancellationToken)));
+    public Task Produce(
+        IEnumerable<KeyValuePair<string, Message<Null, byte[]>>> messages,
+        CancellationToken cancellationToken = default
+    ) => Task.WhenAll(messages.Select(message => Produce(message.Key, message.Value, cancellationToken)));
 
-    /// <summary>Stamps the producing host onto the message — re-stamping so a cloned envelope carries the failing consumer's host, not the original sender's.</summary>
+    /// <summary>Stamps the producing host onto the message — re-stamping so a cloned envelope carries the failing
+    /// consumer's host, not the original sender's.</summary>
     private void Stamp(Message<Null, byte[]> message)
     {
         message.Headers ??= new Headers();
 
-        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostMachineName, TransportHeaders.ToHeader(_hostMachineName));
-        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostAssembly, TransportHeaders.ToHeader(_hostAssembly));
-        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostAssemblyVersion, TransportHeaders.ToHeader(_hostAssemblyVersion));
-        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostFrameworkVersion, TransportHeaders.ToHeader(_hostFrameworkVersion));
-        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostBusVersion, TransportHeaders.ToHeader(_hostBusVersion));
-        TransportHeaders.Restamp(message.Headers, TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader(_hostOperatingSystemVersion));
+        TransportHeaders.Restamp(
+            message.Headers,
+            TransportHeaders.HostMachineName,
+            TransportHeaders.ToHeader(_hostMachineName));
+        TransportHeaders.Restamp(
+            message.Headers,
+            TransportHeaders.HostAssembly,
+            TransportHeaders.ToHeader(_hostAssembly));
+        TransportHeaders.Restamp(
+            message.Headers,
+            TransportHeaders.HostAssemblyVersion,
+            TransportHeaders.ToHeader(_hostAssemblyVersion));
+        TransportHeaders.Restamp(
+            message.Headers,
+            TransportHeaders.HostFrameworkVersion,
+            TransportHeaders.ToHeader(_hostFrameworkVersion));
+        TransportHeaders.Restamp(
+            message.Headers,
+            TransportHeaders.HostBusVersion,
+            TransportHeaders.ToHeader(_hostBusVersion));
+        TransportHeaders.Restamp(
+            message.Headers,
+            TransportHeaders.HostOperatingSystemVersion,
+            TransportHeaders.ToHeader(_hostOperatingSystemVersion));
     }
 }

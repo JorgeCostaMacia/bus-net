@@ -14,12 +14,19 @@ public class EventFaultHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private EventFaultHandler<TestEvent, TestEventSubscriber> Fault(ILogger? logger = null)
-        => new EventFaultHandler<TestEvent, TestEventSubscriber>(_producer, logger ?? NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId);
+        => new EventFaultHandler<TestEvent, TestEventSubscriber>(
+            _producer,
+            logger ?? NullLogger.Instance,
+            Deliveries.Topic,
+            Deliveries.GroupId);
 
     [Fact]
     public async Task ParksToFaultTopic_WithTheBodyAsText()
     {
-        EventFaultContext context = EventFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
+        EventFaultContext context = EventFaultContext.Create(
+            "not json"u8.ToArray(),
+            Deliveries.Transport(),
+            new InvalidCastException("bad header"));
 
         EventFaultHandler<TestEvent, TestEventSubscriber> sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -38,9 +45,14 @@ public class EventFaultHandlerTests
     [Fact]
     public async Task ParkedBody_CarriesTheFullExceptionChain_AndTheHost()
     {
-        Exception failure = new InvalidCastException("outer", new FormatException("the real cause"));
+        Exception failure = new InvalidCastException(
+            "outer",
+            new FormatException("the real cause"));
         failure.Data["field"] = "required";
-        EventFaultContext context = EventFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), failure);
+        EventFaultContext context = EventFaultContext.Create(
+            "not json"u8.ToArray(),
+            Deliveries.Transport(),
+            failure);
 
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
@@ -55,7 +67,10 @@ public class EventFaultHandlerTests
     [Fact]
     public async Task ParkedHeaders_StampTheFailure()
     {
-        EventFaultContext context = EventFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
+        EventFaultContext context = EventFaultContext.Create(
+            "not json"u8.ToArray(),
+            Deliveries.Transport(),
+            new InvalidCastException("bad header"));
 
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
@@ -68,10 +83,17 @@ public class EventFaultHandlerTests
     [Fact]
     public async Task ProduceFails_LeavesUnhandled()
     {
-        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+        _producer.Failure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_MsgTimedOut),
+            new DeliveryResult<Null, byte[]>());
 
         EventFaultHandler<TestEvent, TestEventSubscriber> sut = Fault();
-        await sut.Handle(EventFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            EventFaultContext.Create(
+                "{}"u8.ToArray(),
+                Deliveries.Transport(),
+                new InvalidCastException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);
     }
@@ -87,7 +109,12 @@ public class EventFaultHandlerTests
         _producer.Failure = new OperationCanceledException();
         EventFaultHandler<TestEvent, TestEventSubscriber> sut = Fault(logger);
 
-        await sut.Handle(EventFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header")), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            EventFaultContext.Create(
+                "not json"u8.ToArray(),
+                Deliveries.Transport(),
+                new InvalidCastException("bad header")),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);
         Assert.Empty(_producer.Produced);

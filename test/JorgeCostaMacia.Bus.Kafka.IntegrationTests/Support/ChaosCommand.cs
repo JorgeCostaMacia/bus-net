@@ -12,7 +12,8 @@ namespace JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
 /// </summary>
 public sealed record ChaosCommand : Command
 {
-    /// <summary>The record's stable identity — deduplicated on the consuming side to tell a unique record from a redelivery.</summary>
+    /// <summary>The record's stable identity — deduplicated on the consuming side to tell a unique record from a
+    /// redelivery.</summary>
     public string Payload { get; init; }
 
     /// <summary>Hydrating constructor used by the serializer on the consuming side.</summary>
@@ -22,8 +23,18 @@ public sealed record ChaosCommand : Command
     /// <param name="aggregateConsumers">The target consumers.</param>
     /// <param name="payload">The payload.</param>
     [JsonConstructor]
-    public ChaosCommand(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string payload)
-        : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
+    public ChaosCommand(
+        Guid aggregateId,
+        Guid aggregateCorrelationId,
+        DateTime aggregateOccurredAt,
+        ImmutableList<string> aggregateConsumers,
+        string payload
+    ) : base(
+        aggregateId,
+        aggregateCorrelationId,
+        aggregateOccurredAt,
+        aggregateConsumers
+    )
     {
         Payload = payload;
     }
@@ -31,7 +42,12 @@ public sealed record ChaosCommand : Command
     /// <summary>Convenience constructor used to send the command, defaulting the metadata.</summary>
     /// <param name="payload">The payload.</param>
     public ChaosCommand(string payload)
-        : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
+        : base(
+            aggregateId: null,
+            aggregateCorrelationId: null,
+            aggregateOccurredAt: null,
+            aggregateConsumers: null
+        )
     {
         Payload = payload;
     }

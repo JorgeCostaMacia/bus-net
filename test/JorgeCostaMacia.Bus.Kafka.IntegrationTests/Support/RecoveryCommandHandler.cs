@@ -24,7 +24,10 @@ public sealed class RecoveryCommandHandler : CommandHandler<ChaosCommand>
     /// <summary>Delays briefly, then records the delivery on the probe by its payload identity.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override async Task Handle(CommandContext<ChaosCommand> context, CancellationToken cancellationToken = default)
+    public override async Task Handle(
+        CommandContext<ChaosCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         await Task.Delay(_perRecordDelay, cancellationToken);
 

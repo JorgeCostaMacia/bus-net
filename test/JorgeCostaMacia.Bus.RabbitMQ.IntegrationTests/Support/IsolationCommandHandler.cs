@@ -22,11 +22,15 @@ public sealed class IsolationCommandHandler : CommandHandler<IsolationCommand>
     /// <summary>Throws for a poison record; counts a good record on the probe.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<IsolationCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandContext<IsolationCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         if (context.Message.Payload.StartsWith("poison", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Failing a poison record on purpose so it is isolated to the error lane without stalling the batch.");
+            throw new InvalidOperationException(
+                "Failing a poison record on purpose so it is isolated to the error lane without stalling the batch.");
         }
 
         _probe.SignalGood();

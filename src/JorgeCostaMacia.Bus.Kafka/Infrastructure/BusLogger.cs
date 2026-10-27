@@ -37,7 +37,10 @@ internal static class BusLogger
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="committed">The commit result reported by the client.</param>
-    public static void LogCommit(ILogger logger, CommittedOffsets committed)
+    public static void LogCommit(
+        ILogger logger,
+        CommittedOffsets committed
+    )
     {
         if (!committed.Error.IsError && committed.Offsets.All(offset => !offset.Error.IsError))
         {
@@ -46,7 +49,9 @@ internal static class BusLogger
 
         using (LogContext.Push(
             new PropertyEnricher("KafkaError", committed.Error, destructureObjects: true),
-            new PropertyEnricher("KafkaOffsets", string.Join(", ", committed.Offsets.Where(offset => offset.Error.IsError))),
+            new PropertyEnricher(
+                "KafkaOffsets",
+                string.Join(", ", committed.Offsets.Where(offset => offset.Error.IsError))),
             new PropertyEnricher("BusDescription", BusLoggerDescriptions.RedeliveryWindowWidened)))
         {
             logger.LogWarning("Commit failed.");
@@ -56,7 +61,10 @@ internal static class BusLogger
     /// <summary>Logs the partitions incrementally assigned to the worker in a rebalance.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="partitions">The assigned partitions.</param>
-    public static void LogPartitionsAssigned(ILogger logger, List<TopicPartition> partitions)
+    public static void LogPartitionsAssigned(
+        ILogger logger,
+        List<TopicPartition> partitions
+    )
     {
         using (LogContext.PushProperty("KafkaPartitions", string.Join(", ", partitions)))
         {
@@ -67,7 +75,10 @@ internal static class BusLogger
     /// <summary>Logs the partitions incrementally revoked from the worker in a rebalance.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="partitions">The revoked partitions.</param>
-    public static void LogPartitionsRevoked(ILogger logger, List<TopicPartitionOffset> partitions)
+    public static void LogPartitionsRevoked(
+        ILogger logger,
+        List<TopicPartitionOffset> partitions
+    )
     {
         using (LogContext.PushProperty("KafkaPartitions", string.Join(", ", partitions)))
         {
@@ -78,7 +89,10 @@ internal static class BusLogger
     /// <summary>Logs the partitions the worker lost by falling out of the group — their new owners redeliver.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="partitions">The lost partitions.</param>
-    public static void LogPartitionsLost(ILogger logger, List<TopicPartitionOffset> partitions)
+    public static void LogPartitionsLost(
+        ILogger logger,
+        List<TopicPartitionOffset> partitions
+    )
     {
         using (LogContext.Push(
             new PropertyEnricher("KafkaPartitions", string.Join(", ", partitions)),
@@ -95,10 +109,10 @@ internal static class BusLogger
     /// <param name="topic">The Kafka topic the worker consumes.</param>
     /// <param name="groupId">The worker's consumer group id.</param>
     /// <returns>The context to dispose when the loop ends.</returns>
-    public static IDisposable WorkerContext(string topic, string groupId)
-        => LogContext.Push(
-            new PropertyEnricher("Topic", topic),
-            new PropertyEnricher("GroupId", groupId));
+    public static IDisposable WorkerContext(
+        string topic,
+        string groupId
+    ) => LogContext.Push(new PropertyEnricher("Topic", topic), new PropertyEnricher("GroupId", groupId));
 
     /// <summary>
     /// Opens the logging context carrying the whole inbound delivery — the partition/offset pointer to
@@ -114,7 +128,9 @@ internal static class BusLogger
         {
             new PropertyEnricher("Partition", result.Partition.Value),
             new PropertyEnricher("Offset", result.Offset.Value),
-            new PropertyEnricher("Body", result.Message.Value is null ? null : Encoding.UTF8.GetString(result.Message.Value))
+            new PropertyEnricher(
+                "Body",
+                result.Message.Value is null ? null : Encoding.UTF8.GetString(result.Message.Value))
         };
 
         Decode(context, result.Message.Headers);
@@ -130,7 +146,10 @@ internal static class BusLogger
     /// <param name="topic">The Kafka topic produced to.</param>
     /// <param name="message">The outbound message.</param>
     /// <returns>The context to dispose after logging the failure.</returns>
-    public static IDisposable ProducerContext(string topic, Message<Null, byte[]> message)
+    public static IDisposable ProducerContext(
+        string topic,
+        Message<Null, byte[]> message
+    )
     {
         List<ILogEventEnricher> context = new List<ILogEventEnricher>
         {
@@ -147,7 +166,11 @@ internal static class BusLogger
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The handling failure.</param>
     /// <param name="retry">The retry number stamped on the requeued delivery.</param>
-    public static void LogRetry(ILogger logger, Exception exception, int retry)
+    public static void LogRetry(
+        ILogger logger,
+        Exception exception,
+        int retry
+    )
     {
         using (LogContext.Push(
             new PropertyEnricher("Retry", retry),
@@ -157,12 +180,18 @@ internal static class BusLogger
         }
     }
 
-    /// <summary>Logs a failed handling parked for a delayed retry, with the retry number and its time in the context.</summary>
+    /// <summary>Logs a failed handling parked for a delayed retry, with the retry number and its time in the
+    /// context.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The handling failure.</param>
     /// <param name="retry">The retry number stamped on the parked delivery.</param>
     /// <param name="scheduledAt">The UTC time the retry is produced back at.</param>
-    public static void LogRetry(ILogger logger, Exception exception, int retry, DateTime scheduledAt)
+    public static void LogRetry(
+        ILogger logger,
+        Exception exception,
+        int retry,
+        DateTime scheduledAt
+    )
     {
         using (LogContext.Push(
             new PropertyEnricher("Retry", retry),
@@ -173,10 +202,16 @@ internal static class BusLogger
         }
     }
 
-    /// <summary>Decodes every envelope header into the context — Guids and counters typed, the rest as text, a duplicated key keeping its last value. A message with no headers (never set) contributes nothing, and a null-valued header contributes its key with a null value, rather than throwing — logging must never fault, least of all in a catch about to rethrow.</summary>
+    /// <summary>Decodes every envelope header into the context — Guids and counters typed, the rest as text, a
+    /// duplicated key keeping its last value. A message with no headers (never set) contributes nothing, and a
+    /// null-valued header contributes its key with a null value, rather than throwing — logging must never fault, least
+    /// of all in a catch about to rethrow.</summary>
     /// <param name="context">The enricher list to fill.</param>
     /// <param name="headers">The delivery's headers, or <see langword="null"/> when the message carries none.</param>
-    private static void Decode(List<ILogEventEnricher> context, Headers? headers)
+    private static void Decode(
+        List<ILogEventEnricher> context,
+        Headers? headers
+    )
     {
         if (headers is null)
         {
@@ -189,9 +224,17 @@ internal static class BusLogger
         {
             byte[]? value = header.GetValueBytes();
 
-            decoded[header.Key] = value is not null && TransportHeaders.GuidHeaders.Contains(header.Key) && value.Length == 16
+            decoded[header.Key] = value is not null
+                && TransportHeaders.GuidHeaders.Contains(header.Key)
+                && value.Length == 16
                 ? new Guid(value)
-                : value is not null && TransportHeaders.IntHeaders.Contains(header.Key) && int.TryParse(Encoding.UTF8.GetString(value), NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
+                : value is not null
+                    && TransportHeaders.IntHeaders.Contains(header.Key)
+                    && int.TryParse(
+                        Encoding.UTF8.GetString(value),
+                        NumberStyles.Integer,
+                        CultureInfo.InvariantCulture,
+                        out int count)
                     ? count
                     : value is not null
                         ? Encoding.UTF8.GetString(value)

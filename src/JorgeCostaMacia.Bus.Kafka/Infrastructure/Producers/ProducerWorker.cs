@@ -18,7 +18,10 @@ internal sealed class ProducerWorker : IHostedService
     /// <summary>Creates the worker over the shared producer whose lifecycle it manages.</summary>
     /// <param name="producer">The shared Kafka producer.</param>
     /// <param name="logger">The logger for an interrupted flush.</param>
-    public ProducerWorker(IProducer<Null, byte[]> producer, ILogger<ProducerWorker> logger)
+    public ProducerWorker(
+        IProducer<Null, byte[]> producer,
+        ILogger<ProducerWorker> logger
+    )
     {
         _producer = producer;
         _logger = logger;

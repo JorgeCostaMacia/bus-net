@@ -29,7 +29,8 @@ public sealed class RoundtripTests : IClassFixture<RabbitMqFixture>
     public async Task Send_ACommand_IsDeliveredToItsHandler()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
-        TaskCompletionSource<IntegrationCommand> received = new TaskCompletionSource<IntegrationCommand>(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<IntegrationCommand> received = new TaskCompletionSource<IntegrationCommand>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
 
         HostApplicationBuilder builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(received);

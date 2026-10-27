@@ -22,7 +22,8 @@ public sealed class IdempotencyProbe
     /// <summary>Distinct effects applied — one per id, no matter how many times it was delivered.</summary>
     public long Effects => Interlocked.Read(ref _effects);
 
-    /// <summary>Records a delivery of <paramref name="id"/>, applying its effect only the first time the id is seen.</summary>
+    /// <summary>Records a delivery of <paramref name="id"/>, applying its effect only the first time the id is
+    /// seen.</summary>
     /// <param name="id">The delivered record's stable identity.</param>
     public void Record(string id)
     {

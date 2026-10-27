@@ -13,9 +13,14 @@ public class RetryJobTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private static string EncodeHeaders(params (string Key, byte[]? Value)[] headers)
-        => JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.Value)));
+        => JsonSerializer.Serialize(
+            headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.Value)));
 
-    private static JobDataMap Data(string topic = "orders", byte[]? body = null, string? headers = null)
+    private static JobDataMap Data(
+        string topic = "orders",
+        byte[]? body = null,
+        string? headers = null
+    )
         => new JobDataMap()
         {
             [RetryJob.TopicKey] = topic,
@@ -36,7 +41,13 @@ public class RetryJobTests
     [Fact]
     public async Task Execute_DecodesHeaders_PreservingNullAndDuplicates()
     {
-        await Execute(Data(headers: EncodeHeaders(("k", "v"u8.ToArray()), ("n", null), ("dup", "1"u8.ToArray()), ("dup", "2"u8.ToArray()))));
+        await Execute(
+            Data(
+                headers: EncodeHeaders(
+                    ("k", "v"u8.ToArray()),
+                    ("n", null),
+                    ("dup", "1"u8.ToArray()),
+                    ("dup", "2"u8.ToArray()))));
 
         Message<Null, byte[]> message = Assert.Single(_producer.Produced).Message;
         Assert.Equal("v", Encoding.UTF8.GetString(message.Headers.GetLastBytes("k")));
@@ -137,8 +148,15 @@ public class RetryJobTests
         await Execute(data, job, trigger, scheduler);
     }
 
-    private Task Execute(JobDataMap data, IJobDetail job, ITrigger trigger, IScheduler scheduler)
-        => new RetryJob(_producer).Execute(new JobExecutionContextFake(data, job, trigger, scheduler), CancellationToken.None).AsTask();
+    private Task Execute(
+        JobDataMap data,
+        IJobDetail job,
+        ITrigger trigger,
+        IScheduler scheduler
+    )
+        => new RetryJob(_producer).Execute(
+            new JobExecutionContextFake(data, job, trigger, scheduler),
+            CancellationToken.None).AsTask();
 
     /// <summary>
     /// A real in-memory scheduler (never started) seeded with the durable job — with its repeating

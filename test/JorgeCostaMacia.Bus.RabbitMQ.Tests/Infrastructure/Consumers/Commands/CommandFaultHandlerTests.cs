@@ -4,7 +4,9 @@ using JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults;
 using JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using FaultHandler = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands.CommandFaultHandler<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
+using FaultHandler = JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands.CommandFaultHandler<
+    JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand,
+    JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Commands;
 
@@ -18,7 +20,10 @@ public class CommandFaultHandlerTests
     [Fact]
     public async Task ParksToFaultQueue_WithTheBodyAsText()
     {
-        CommandFaultContext context = CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
+        CommandFaultContext context = CommandFaultContext.Create(
+            "not json"u8.ToArray(),
+            Deliveries.Transport(),
+            new InvalidCastException("bad header"));
 
         FaultHandler sut = Fault();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -29,7 +34,9 @@ public class CommandFaultHandlerTests
         Assert.Equal($"{Deliveries.Queue}.fault", routingKey);
 
         JsonElement parked = JsonSerializer.Deserialize<JsonElement>(body);
-        Assert.Equal(typeof(InvalidCastException).FullName, parked.GetProperty("error").GetProperty("type").GetString());
+        Assert.Equal(
+            typeof(InvalidCastException).FullName,
+            parked.GetProperty("error").GetProperty("type").GetString());
         Assert.Equal("bad header", parked.GetProperty("error").GetProperty("message").GetString());
         Assert.Equal(Deliveries.Queue, parked.GetProperty("queue").GetString());
         Assert.Equal("not json", parked.GetProperty("message").GetString());
@@ -38,9 +45,14 @@ public class CommandFaultHandlerTests
     [Fact]
     public async Task ParkedBody_CarriesTheFullExceptionChain_AndTheHost()
     {
-        Exception failure = new InvalidCastException("outer", new FormatException("the real cause"));
+        Exception failure = new InvalidCastException(
+            "outer",
+            new FormatException("the real cause"));
         failure.Data["field"] = "required";
-        CommandFaultContext context = CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), failure);
+        CommandFaultContext context = CommandFaultContext.Create(
+            "not json"u8.ToArray(),
+            Deliveries.Transport(),
+            failure);
 
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
@@ -55,7 +67,10 @@ public class CommandFaultHandlerTests
     [Fact]
     public async Task ParkedHeaders_StampTheFailure()
     {
-        CommandFaultContext context = CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header"));
+        CommandFaultContext context = CommandFaultContext.Create(
+            "not json"u8.ToArray(),
+            Deliveries.Transport(),
+            new InvalidCastException("bad header"));
 
         await Fault().Handle(context, TestContext.Current.CancellationToken);
 
@@ -71,7 +86,12 @@ public class CommandFaultHandlerTests
         _producer.Failure = new InvalidOperationException("broker down");
 
         FaultHandler sut = Fault();
-        await sut.Handle(CommandFaultContext.Create("{}"u8.ToArray(), Deliveries.Transport(), new InvalidCastException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            CommandFaultContext.Create(
+                "{}"u8.ToArray(),
+                Deliveries.Transport(),
+                new InvalidCastException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);
     }
@@ -87,7 +107,12 @@ public class CommandFaultHandlerTests
         _producer.Failure = new OperationCanceledException();
         FaultHandler sut = Fault(logger);
 
-        await sut.Handle(CommandFaultContext.Create("not json"u8.ToArray(), Deliveries.Transport(), new InvalidCastException("bad header")), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            CommandFaultContext.Create(
+                "not json"u8.ToArray(),
+                Deliveries.Transport(),
+                new InvalidCastException("bad header")),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(FaultResult.Unhandled, sut.Result);
         Assert.Empty(_producer.Produced);

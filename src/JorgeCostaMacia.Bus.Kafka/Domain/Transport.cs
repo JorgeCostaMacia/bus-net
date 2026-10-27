@@ -39,7 +39,14 @@ public sealed record Transport : ITransport
     /// <param name="offset">The offset within the partition.</param>
     /// <param name="leaderEpoch">The leader epoch, when available.</param>
     /// <param name="timestamp">The Kafka timestamp.</param>
-    public Transport(ImmutableList<IHeader> headers, string topic, Partition partition, Offset offset, int? leaderEpoch, Timestamp timestamp)
+    public Transport(
+        ImmutableList<IHeader> headers,
+        string topic,
+        Partition partition,
+        Offset offset,
+        int? leaderEpoch,
+        Timestamp timestamp
+    )
     {
         Headers = headers;
         Topic = topic;
@@ -72,7 +79,8 @@ public sealed record Transport : ITransport
             .Select(header => new KeyValuePair<string, string>(header.Key, Decode(header)))
             .ToImmutableList();
 
-    /// <summary>Decodes one header's value: a GUID for the envelope's binary GUID keys, best-effort UTF-8 otherwise.</summary>
+    /// <summary>Decodes one header's value: a GUID for the envelope's binary GUID keys, best-effort UTF-8
+    /// otherwise.</summary>
     private static string Decode(IHeader header)
     {
         byte[] value = header.GetValueBytes();
@@ -105,7 +113,8 @@ public sealed record Transport : ITransport
     /// <exception cref="KeyNotFoundException">No header with <paramref name="key"/> is present.</exception>
     public byte[] GetHeader(string key)
     {
-        byte[]? header = Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes() ?? throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
+        byte[]? header = Headers.LastOrDefault(e => e.Key == key)?.GetValueBytes()
+            ?? throw new KeyNotFoundException($"The key '{key}' was not present in the headers collection.");
 
         return header;
     }
@@ -158,7 +167,11 @@ public sealed record Transport : ITransport
     {
         string header = GetHeaderString(key);
 
-        if (DateTime.TryParse(header, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime value))
+        if (DateTime.TryParse(
+            header,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+            out DateTime value))
         {
             return value;
         }

@@ -17,8 +17,13 @@ public static class BusContext
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration carrying the <c>Bus:Connection</c> section.</param>
     /// <param name="producer">Maps the messages this service sends/publishes to their exchanges.</param>
-    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a send-only service.</param>
+    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a
+    /// send-only service.</param>
     /// <returns>The same service collection, to allow method chaining.</returns>
-    public static IServiceCollection AddBusContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null)
-        => services.AddBusInfrastructureContext(configuration, producer, consumer);
+    public static IServiceCollection AddBusContext(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Action<ProducerConfigurator> producer,
+        Action<ConsumerConfigurator>? consumer = null
+    ) => services.AddBusInfrastructureContext(configuration, producer, consumer);
 }

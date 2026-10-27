@@ -20,15 +20,30 @@ public class CommandErrorHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
     private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
-    private CommandErrorHandler<TestCommand, RecordingCommandHandler> CommandError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true, ILogger? logger = null)
-        => new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, scheduler ? _scheduler : null, logger ?? NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, excludes ?? ImmutableList<Type>.Empty);
+    private CommandErrorHandler<TestCommand, RecordingCommandHandler> CommandError(
+        ImmutableList<TimeSpan>? intervals = null,
+        ImmutableList<Type>? excludes = null,
+        bool scheduler = true,
+        ILogger? logger = null
+    )
+        => new CommandErrorHandler<TestCommand, RecordingCommandHandler>(
+            _producer,
+            scheduler ? _scheduler : null,
+            logger ?? NullLogger.Instance,
+            Deliveries.Topic,
+            Deliveries.GroupId,
+            intervals ?? ImmutableList<TimeSpan>.Empty,
+            excludes ?? ImmutableList<Type>.Empty);
 
     [Fact]
     public async Task MissingRetryCountHeader_ReportsFaulted()
     {
         // an envelope whose retry count cannot be read is unreadable for the ladder: the handler
         // reports Faulted so the worker relays the delivery to the fault lane instead of retrying.
-        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.BareTransport(), new InvalidOperationException("boom"));
+        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(
+            new TestCommand("pepe"),
+            Deliveries.BareTransport(),
+            new InvalidOperationException("boom"));
 
         CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -40,7 +55,10 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task NoLadder_ParksToErrorTopic()
     {
-        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
+        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(
+            new TestCommand("pepe"),
+            Deliveries.Transport(),
+            new InvalidOperationException("boom"));
 
         CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -50,7 +68,9 @@ public class CommandErrorHandlerTests
         Assert.Equal($"{Deliveries.Topic}.error", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
-        Assert.Equal(typeof(InvalidOperationException).FullName, body.GetProperty("error").GetProperty("type").GetString());
+        Assert.Equal(
+            typeof(InvalidOperationException).FullName,
+            body.GetProperty("error").GetProperty("type").GetString());
         Assert.Equal("boom", body.GetProperty("error").GetProperty("message").GetString());
         Assert.Equal(Deliveries.GroupId, body.GetProperty("groupId").GetString());
         Assert.Equal(Deliveries.Topic, body.GetProperty("topic").GetString());
@@ -58,7 +78,9 @@ public class CommandErrorHandlerTests
         Assert.Equal(10, body.GetProperty("offset").GetInt64());
         Assert.Equal("pepe", body.GetProperty("message").GetProperty("name").GetString());
 
-        Assert.Equal(typeof(InvalidOperationException).FullName, Deliveries.Header(message, TransportHeaders.ErrorType));
+        Assert.Equal(
+            typeof(InvalidOperationException).FullName,
+            Deliveries.Header(message, TransportHeaders.ErrorType));
         Assert.Equal(Deliveries.GroupId, Deliveries.Header(message, TransportHeaders.ErrorGroupId));
     }
 
@@ -67,21 +89,33 @@ public class CommandErrorHandlerTests
     {
         Guid aggregateId = Guid.NewGuid();
         Guid aggregateCorrelationId = Guid.NewGuid();
-        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId), new InvalidOperationException());
+        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(
+            new TestCommand("pepe"),
+            Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId),
+            new InvalidOperationException());
 
         await CommandError().Handle(context, TestContext.Current.CancellationToken);
 
         Message<Null, byte[]> message = Assert.Single(_producer.Produced).Message;
-        Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateId, out byte[] id) && new Guid(id) == aggregateId);
-        Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateCorrelationId, out byte[] correlation) && new Guid(correlation) == aggregateCorrelationId);
+        Assert.True(
+            message.Headers.TryGetLastBytes(TransportHeaders.AggregateId, out byte[] id)
+                && new Guid(id) == aggregateId);
+        Assert.True(
+            message.Headers.TryGetLastBytes(TransportHeaders.AggregateCorrelationId, out byte[] correlation)
+                && new Guid(correlation) == aggregateCorrelationId);
     }
 
     [Fact]
     public async Task ParkedBody_CarriesTheFullExceptionChain_AndTheHost()
     {
-        Exception failure = new InvalidOperationException("outer", new FormatException("the real cause"));
+        Exception failure = new InvalidOperationException(
+            "outer",
+            new FormatException("the real cause"));
         failure.Data["field"] = "required";
-        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), failure);
+        CommandErrorContext<TestCommand> context = new CommandErrorContext<TestCommand>(
+            new TestCommand("pepe"),
+            Deliveries.Transport(),
+            failure);
 
         await CommandError().Handle(context, TestContext.Current.CancellationToken);
 
@@ -96,9 +130,15 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task ZeroInterval_RequeuesToTopicTail()
     {
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.Zero));
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.Zero));
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
@@ -110,24 +150,38 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_ParksThroughScheduler()
     {
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.FromMinutes(5)));
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)));
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Scheduled, sut.Result);
         Assert.Empty(_producer.Produced);
         (string topic, string groupId, _, Headers headers, _) = Assert.Single(_scheduler.Scheduled);
         Assert.Equal(Deliveries.Topic, topic);
         Assert.Equal(Deliveries.GroupId, groupId);
-        Assert.True(headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry) && Encoding.UTF8.GetString(retry) == "1");
+        Assert.True(
+            headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry)
+                && Encoding.UTF8.GetString(retry) == "1");
     }
 
     [Fact]
     public async Task LadderExhausted_Parks()
     {
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero));
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero));
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(retryCount: 2),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
@@ -136,9 +190,16 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task ExcludedException_Parks_InheritanceAware()
     {
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.Zero), ImmutableList.Create(typeof(BaseFailure)));
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.Zero),
+            ImmutableList.Create(typeof(BaseFailure)));
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new DerivedFailure()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
@@ -147,9 +208,16 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_WithoutScheduler_ParksAsTerminal()
     {
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.FromMinutes(5)), scheduler: false);
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)),
+            scheduler: false);
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
@@ -160,9 +228,15 @@ public class CommandErrorHandlerTests
     public async Task SchedulerFails_LeavesUnhandled()
     {
         _scheduler.Failure = new InvalidOperationException("scheduler down");
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.FromMinutes(5)));
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)));
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
         Assert.Empty(_producer.Produced);
@@ -171,10 +245,18 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task RequeueProduceFails_LeavesUnhandled()
     {
-        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.Zero));
+        _producer.Failure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_MsgTimedOut),
+            new DeliveryResult<Null, byte[]>());
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.Zero));
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
     }
@@ -182,9 +264,15 @@ public class CommandErrorHandlerTests
     [Fact]
     public async Task SecondRetry_ContinuesTheCumulativeCount()
     {
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero));
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero));
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(retryCount: 1), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(retryCount: 1),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
         Assert.Equal("2", Deliveries.Header(Assert.Single(_producer.Produced).Message, TransportHeaders.RetryCount));
@@ -200,7 +288,12 @@ public class CommandErrorHandlerTests
         _producer.Failure = new OperationCanceledException();
         CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(logger: logger);
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
         Assert.DoesNotContain(logger.Logged, entry => entry.Level >= LogLevel.Error);
@@ -212,9 +305,16 @@ public class CommandErrorHandlerTests
         // same during a delayed retry: cancelling the schedule must not read as a scheduler outage.
         RecordingLogger<TestCommand> logger = new RecordingLogger<TestCommand>();
         _scheduler.Failure = new OperationCanceledException();
-        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(ImmutableList.Create(TimeSpan.FromMinutes(5)), logger: logger);
+        CommandErrorHandler<TestCommand, RecordingCommandHandler> sut = CommandError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)),
+            logger: logger);
 
-        await sut.Handle(new CommandErrorContext<TestCommand>(new TestCommand("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new CommandErrorContext<TestCommand>(
+                new TestCommand("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
         Assert.Empty(_producer.Produced);

@@ -9,11 +9,18 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Retry.Quartz.Tests.Fakes;
 /// </summary>
 internal sealed class JobExecutionContextFake : IJobExecutionContext
 {
-    public JobExecutionContextFake(JobDataMap mergedJobDataMap, IJobDetail? jobDetail = null, ITrigger? trigger = null, IScheduler? scheduler = null)
+    public JobExecutionContextFake(
+        JobDataMap mergedJobDataMap,
+        IJobDetail? jobDetail = null,
+        ITrigger? trigger = null,
+        IScheduler? scheduler = null
+    )
     {
         MergedJobDataMap = mergedJobDataMap;
-        JobDetail = jobDetail ?? JobBuilder.Create<Infrastructure.RetryJob>().WithIdentity("message-1:0", "orders").Build();
-        Trigger = trigger ?? TriggerBuilder.Create().ForJob(JobDetail).WithIdentity("message-1:0", "orders").StartNow().Build();
+        JobDetail = jobDetail
+            ?? JobBuilder.Create<Infrastructure.RetryJob>().WithIdentity("message-1:0", "orders").Build();
+        Trigger = trigger
+            ?? TriggerBuilder.Create().ForJob(JobDetail).WithIdentity("message-1:0", "orders").StartNow().Build();
         _scheduler = scheduler;
     }
 

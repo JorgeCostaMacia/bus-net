@@ -8,8 +8,14 @@ public class BusHealthCheckTests
 {
     private readonly BusHealth _health = new BusHealth();
 
-    private static HealthCheckContext Context(IHealthCheck check, HealthStatus? failureStatus = null)
-        => new HealthCheckContext() { Registration = new HealthCheckRegistration("bus-kafka", check, failureStatus, tags: null) };
+    private static HealthCheckContext Context(
+        IHealthCheck check,
+        HealthStatus? failureStatus = null
+    )
+        => new HealthCheckContext()
+        {
+            Registration = new HealthCheckRegistration("bus-kafka", check, failureStatus, tags: null)
+        };
 
     [Fact]
     public async Task CheckHealthAsync_BrokersReachable_ReportsHealthy()
@@ -41,7 +47,9 @@ public class BusHealthCheckTests
         _health.Down();
         BusHealthCheck check = new BusHealthCheck(_health);
 
-        HealthCheckResult result = await check.CheckHealthAsync(Context(check, HealthStatus.Degraded), TestContext.Current.CancellationToken);
+        HealthCheckResult result = await check.CheckHealthAsync(
+            Context(check, HealthStatus.Degraded),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HealthStatus.Degraded, result.Status);
     }

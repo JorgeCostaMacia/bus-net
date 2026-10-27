@@ -9,9 +9,15 @@ public class CommandTests
     [Fact]
     public void Command_RoundTrips_ThroughTheSerializer()
     {
-        TestCommand command = new TestCommand("pepe", Guid.NewGuid(), Guid.NewGuid(), new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc), ImmutableList.Create("g1", "g2"));
+        TestCommand command = new TestCommand(
+            "pepe",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc),
+            ImmutableList.Create("g1", "g2"));
 
-        TestCommand roundTripped = JsonSerializer.Deserialize<TestCommand>(JsonSerializer.SerializeToUtf8Bytes(command))!;
+        TestCommand roundTripped = JsonSerializer.Deserialize<TestCommand>(
+            JsonSerializer.SerializeToUtf8Bytes(command))!;
 
         Assert.Equal(command.Name, roundTripped.Name);
         Assert.Equal(command.AggregateId, roundTripped.AggregateId);
@@ -40,7 +46,12 @@ public class CommandTests
         Guid correlation = Guid.NewGuid();
         DateTime occurredAt = new DateTime(2026, 7, 3, 10, 0, 0, DateTimeKind.Utc);
 
-        TestCommand command = new TestCommand("pepe", id, correlation, occurredAt, ImmutableList.Create("g1"));
+        TestCommand command = new TestCommand(
+            "pepe",
+            id,
+            correlation,
+            occurredAt,
+            ImmutableList.Create("g1"));
 
         Assert.Equal(id, command.AggregateId);
         Assert.Equal(correlation, command.AggregateCorrelationId);

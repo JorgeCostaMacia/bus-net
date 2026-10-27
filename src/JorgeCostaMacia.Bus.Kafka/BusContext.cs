@@ -24,11 +24,19 @@ public static class BusContext
     /// connection — omit it to leave provisioning to the broker.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The application configuration carrying the <c>Bus:Producer</c> section (and <c>Bus:Consumer</c> / <c>Bus:Admin</c> when their lambdas are supplied).</param>
+    /// <param name="configuration">The application configuration carrying the <c>Bus:Producer</c> section (and
+    /// <c>Bus:Consumer</c> / <c>Bus:Admin</c> when their lambdas are supplied).</param>
     /// <param name="producer">Maps the messages this service sends/publishes to their topics.</param>
-    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a send-only service.</param>
-    /// <param name="admin">Declares the topics to create at startup, or <see langword="null"/> to leave provisioning to the broker.</param>
+    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a
+    /// send-only service.</param>
+    /// <param name="admin">Declares the topics to create at startup, or <see langword="null"/> to leave provisioning to
+    /// the broker.</param>
     /// <returns>The same service collection, to allow method chaining.</returns>
-    public static IServiceCollection AddBusContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null, Action<AdminConfigurator>? admin = null)
-        => services.AddBusInfrastructureContext(configuration, producer, consumer, admin);
+    public static IServiceCollection AddBusContext(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Action<ProducerConfigurator> producer,
+        Action<ConsumerConfigurator>? consumer = null,
+        Action<AdminConfigurator>? admin = null
+    ) => services.AddBusInfrastructureContext(configuration, producer, consumer, admin);
 }

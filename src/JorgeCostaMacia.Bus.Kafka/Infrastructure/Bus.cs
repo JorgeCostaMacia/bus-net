@@ -26,54 +26,88 @@ internal sealed class Bus : IBus
     /// <summary>Creates the bus over the outbound gate and the type → topic routing map.</summary>
     /// <param name="producer">The outbound gate every send produces through.</param>
     /// <param name="messages">The type → topic routing map (commands and events).</param>
-    public Bus(IProducer producer, IReadOnlyDictionary<Type, string> messages)
+    public Bus(
+        IProducer producer,
+        IReadOnlyDictionary<Type, string> messages
+    )
     {
         _producer = producer;
         _messages = messages;
     }
 
     /// <inheritdoc />
-    public Task Send<T>(T message, CancellationToken cancellationToken = default)
+    public Task Send<T>(
+        T message,
+        CancellationToken cancellationToken = default
+    )
         where T : Command
         => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    public Task Send<T>(
+        T message,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : Command
         => Produce(message, transport, cancellationToken);
 
     /// <inheritdoc />
-    public Task Publish<T>(T message, CancellationToken cancellationToken = default)
+    public Task Publish<T>(
+        T message,
+        CancellationToken cancellationToken = default
+    )
         where T : Event
         => Produce(message, cancellationToken);
 
     /// <inheritdoc />
-    public Task Publish<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    public Task Publish<T>(
+        T message,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : Event
         => Produce(message, transport, cancellationToken);
 
     /// <inheritdoc />
-    public Task Send<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
+    public Task Send<T>(
+        IEnumerable<T> messages,
+        CancellationToken cancellationToken = default
+    )
         where T : Command
         => Produce(messages, cancellationToken);
 
     /// <inheritdoc />
-    public Task Send<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
+    public Task Send<T>(
+        IEnumerable<T> messages,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : Command
         => Produce(messages, transport, cancellationToken);
 
     /// <inheritdoc />
-    public Task Publish<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
+    public Task Publish<T>(
+        IEnumerable<T> messages,
+        CancellationToken cancellationToken = default
+    )
         where T : Event
         => Produce(messages, cancellationToken);
 
     /// <inheritdoc />
-    public Task Publish<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
+    public Task Publish<T>(
+        IEnumerable<T> messages,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : Event
         => Produce(messages, transport, cancellationToken);
 
     /// <summary>Produces a message with a fresh envelope to its topic.</summary>
-    private Task Produce<TMessage>(TMessage message, CancellationToken cancellationToken)
+    private Task Produce<TMessage>(
+        TMessage message,
+        CancellationToken cancellationToken
+    )
         where TMessage : ITracedMessage, IFilteredMessage
     {
         string topic = Topic(message);
@@ -82,7 +116,11 @@ internal sealed class Bus : IBus
     }
 
     /// <summary>Produces a message continuing an inbound flow to its topic.</summary>
-    private Task Produce<TMessage>(TMessage message, ITransport transport, CancellationToken cancellationToken)
+    private Task Produce<TMessage>(
+        TMessage message,
+        ITransport transport,
+        CancellationToken cancellationToken
+    )
         where TMessage : ITracedMessage, IFilteredMessage
     {
         string topic = Topic(message);
@@ -90,13 +128,22 @@ internal sealed class Bus : IBus
         return _producer.Produce(topic, Prepare(topic, message, transport), cancellationToken);
     }
 
-    /// <summary>Produces a batch, each with a fresh envelope, to their topics — enqueued in order and awaited together.</summary>
-    private Task Produce<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
+    /// <summary>Produces a batch, each with a fresh envelope, to their topics — enqueued in order and awaited
+    /// together.</summary>
+    private Task Produce<TMessage>(
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken
+    )
         where TMessage : ITracedMessage, IFilteredMessage
         => _producer.Produce(messages.Select(message => Pair(message)).ToList(), cancellationToken);
 
-    /// <summary>Produces a batch continuing an inbound flow to their topics — enqueued in order and awaited together.</summary>
-    private Task Produce<TMessage>(IEnumerable<TMessage> messages, ITransport transport, CancellationToken cancellationToken)
+    /// <summary>Produces a batch continuing an inbound flow to their topics — enqueued in order and awaited
+    /// together.</summary>
+    private Task Produce<TMessage>(
+        IEnumerable<TMessage> messages,
+        ITransport transport,
+        CancellationToken cancellationToken
+    )
         where TMessage : ITracedMessage, IFilteredMessage
         => _producer.Produce(messages.Select(message => Pair(message, transport)).ToList(), cancellationToken);
 
@@ -106,7 +153,8 @@ internal sealed class Bus : IBus
 
         if (!_messages.TryGetValue(type, out string? topic))
         {
-            throw new InvalidOperationException($"'{type.FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
+            throw new InvalidOperationException(
+                $"'{type.FullName}' is not mapped to a topic; map it with AddCommand/AddEvent first.");
         }
 
         return topic;
@@ -117,7 +165,10 @@ internal sealed class Bus : IBus
     /// id/address/time mirror this message), no origin, the retry counter at zero. The domain
     /// trace comes from the message itself.
     /// </summary>
-    private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message)
+    private Message<Null, byte[]> Prepare<TMessage>(
+        string topic,
+        TMessage message
+    )
         where TMessage : ITracedMessage, IFilteredMessage
     {
         Guid messageId = Guid.CreateVersion7();
@@ -135,12 +186,19 @@ internal sealed class Bus : IBus
             { TransportHeaders.ConversationOccurredAt, TransportHeaders.ToHeader(occurredAt) },
             { TransportHeaders.AggregateId, TransportHeaders.ToHeader(message.AggregateId) },
             { TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(message.AggregateCorrelationId) },
-            { TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")) },
+            {
+                TransportHeaders.AggregateOccurredAt,
+                TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O"))
+            },
             { TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers) },
             { TransportHeaders.RetryCount, TransportHeaders.ToHeader("0") }
         };
 
-        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options), Headers = headers };
+        return new Message<Null, byte[]>
+        {
+            Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options),
+            Headers = headers
+        };
     }
 
     /// <summary>
@@ -150,12 +208,17 @@ internal sealed class Bus : IBus
     /// trace from the message), and the conversation is carried over unchanged; the retry counter is
     /// re-stamped to zero — a continuation is a new message with its own retry budget.
     /// </summary>
-    private Message<Null, byte[]> Prepare<TMessage>(string topic, TMessage message, ITransport transport)
+    private Message<Null, byte[]> Prepare<TMessage>(
+        string topic,
+        TMessage message,
+        ITransport transport
+    )
         where TMessage : ITracedMessage, IFilteredMessage
     {
         if (transport is not Transport inbound)
         {
-            throw new InvalidOperationException($"'{transport.GetType().FullName}' is not the Kafka transport; the Kafka bus can only continue a delivery received over Kafka.");
+            throw new InvalidOperationException(
+                $"'{transport.GetType().FullName}' is not the Kafka transport; the Kafka bus can only continue a delivery received over Kafka.");
         }
 
         Guid messageId = Guid.CreateVersion7();
@@ -164,20 +227,43 @@ internal sealed class Bus : IBus
         Headers headers = inbound.CloneHeaders();
 
         TransportHeaders.Restamp(headers, TransportHeaders.MessageId, TransportHeaders.ToHeader(messageId));
-        TransportHeaders.Restamp(headers, TransportHeaders.MessageType, TransportHeaders.ToHeader(type.FullName ?? type.Name));
-        TransportHeaders.Restamp(headers, TransportHeaders.MessageOriginAddress, TransportHeaders.ToHeader(inbound.GetHeaderString(TransportHeaders.MessageDestinationAddress)));
+        TransportHeaders.Restamp(
+            headers,
+            TransportHeaders.MessageType,
+            TransportHeaders.ToHeader(type.FullName ?? type.Name));
+        TransportHeaders.Restamp(
+            headers,
+            TransportHeaders.MessageOriginAddress,
+            TransportHeaders.ToHeader(inbound.GetHeaderString(TransportHeaders.MessageDestinationAddress)));
         TransportHeaders.Restamp(headers, TransportHeaders.MessageDestinationAddress, TransportHeaders.ToHeader(topic));
-        TransportHeaders.Restamp(headers, TransportHeaders.MessageOccurredAt, TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
+        TransportHeaders.Restamp(
+            headers,
+            TransportHeaders.MessageOccurredAt,
+            TransportHeaders.ToHeader(DateTime.UtcNow.ToString("O")));
         TransportHeaders.Restamp(headers, TransportHeaders.AggregateId, TransportHeaders.ToHeader(message.AggregateId));
-        TransportHeaders.Restamp(headers, TransportHeaders.AggregateCorrelationId, TransportHeaders.ToHeader(message.AggregateCorrelationId));
-        TransportHeaders.Restamp(headers, TransportHeaders.AggregateOccurredAt, TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")));
-        TransportHeaders.Restamp(headers, TransportHeaders.AggregateConsumers, TransportHeaders.ToHeader(message.AggregateConsumers));
+        TransportHeaders.Restamp(
+            headers,
+            TransportHeaders.AggregateCorrelationId,
+            TransportHeaders.ToHeader(message.AggregateCorrelationId));
+        TransportHeaders.Restamp(
+            headers,
+            TransportHeaders.AggregateOccurredAt,
+            TransportHeaders.ToHeader(message.AggregateOccurredAt.ToString("O")));
+        TransportHeaders.Restamp(
+            headers,
+            TransportHeaders.AggregateConsumers,
+            TransportHeaders.ToHeader(message.AggregateConsumers));
         TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(0));
 
-        return new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options), Headers = headers };
+        return new Message<Null, byte[]>
+        {
+            Value = JsonSerializer.SerializeToUtf8Bytes(message, type, BusSerializer.Options),
+            Headers = headers
+        };
     }
 
-    /// <summary>The (topic, message) pair for a message with a fresh envelope — the batch counterpart of a single Send/Publish.</summary>
+    /// <summary>The (topic, message) pair for a message with a fresh envelope — the batch counterpart of a single
+    /// Send/Publish.</summary>
     private KeyValuePair<string, Message<Null, byte[]>> Pair<TMessage>(TMessage message)
         where TMessage : ITracedMessage, IFilteredMessage
     {
@@ -186,8 +272,12 @@ internal sealed class Bus : IBus
         return new KeyValuePair<string, Message<Null, byte[]>>(topic, Prepare(topic, message));
     }
 
-    /// <summary>The (topic, message) pair for a message continuing an inbound flow — the batch counterpart of a single Send/Publish with a transport.</summary>
-    private KeyValuePair<string, Message<Null, byte[]>> Pair<TMessage>(TMessage message, ITransport transport)
+    /// <summary>The (topic, message) pair for a message continuing an inbound flow — the batch counterpart of a single
+    /// Send/Publish with a transport.</summary>
+    private KeyValuePair<string, Message<Null, byte[]>> Pair<TMessage>(
+        TMessage message,
+        ITransport transport
+    )
         where TMessage : ITracedMessage, IFilteredMessage
     {
         string topic = Topic(message);

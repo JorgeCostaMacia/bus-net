@@ -35,7 +35,12 @@ public abstract record Event : IDomainEvent, ITracedMessage, IFilteredMessage
     /// <param name="aggregateCorrelationId">The correlation id, or <see langword="null"/> to default to the id.</param>
     /// <param name="aggregateOccurredAt">The UTC timestamp, or <see langword="null"/> for now.</param>
     /// <param name="aggregateConsumers">The target consumers, or <see langword="null"/> for none.</param>
-    protected Event(Guid? aggregateId, Guid? aggregateCorrelationId, DateTime? aggregateOccurredAt, IEnumerable<string>? aggregateConsumers)
+    protected Event(
+        Guid? aggregateId,
+        Guid? aggregateCorrelationId,
+        DateTime? aggregateOccurredAt,
+        IEnumerable<string>? aggregateConsumers
+    )
     {
         AggregateId = aggregateId ?? Guid.CreateVersion7();
         AggregateCorrelationId = aggregateCorrelationId ?? AggregateId;

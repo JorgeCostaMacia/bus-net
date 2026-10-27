@@ -35,7 +35,8 @@ public sealed class ErrorParkingTests : IClassFixture<RabbitMqFixture>
         _fixture = fixture;
     }
 
-    /// <summary>A handler that always throws exhausts its retry ladder and the failure is parked to the queue's <c>.error</c>.</summary>
+    /// <summary>A handler that always throws exhausts its retry ladder and the failure is parked to the queue's
+    /// <c>.error</c>.</summary>
     [Fact]
     public async Task Send_ToAnAlwaysThrowingHandler_ParksToTheErrorQueue()
     {
@@ -48,7 +49,9 @@ public sealed class ErrorParkingTests : IClassFixture<RabbitMqFixture>
             producer => producer.AddCommand<ParkingCommand>(Exchange),
             // A single 00:00 rung: the original fails and is re-published immediately, the redelivery
             // fails again, the budget is spent — so the failure parks to .error as terminal.
-            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(Queue, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
+            consumer => consumer.AddCommandHandler<ParkingCommand, ParkingCommandHandler>(
+                Queue,
+                retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);
@@ -63,7 +66,11 @@ public sealed class ErrorParkingTests : IClassFixture<RabbitMqFixture>
                 await bus.Send(new ParkingCommand("hello-error-park"), cancellationToken);
             }
 
-            BasicGetResult? parked = await Broker.WaitForParkedAsync(connection, ErrorQueue, TimeSpan.FromSeconds(45), cancellationToken);
+            BasicGetResult? parked = await Broker.WaitForParkedAsync(
+                connection,
+                ErrorQueue,
+                TimeSpan.FromSeconds(45),
+                cancellationToken);
 
             Assert.True(parked is not null, $"Nothing was parked to '{ErrorQueue}' within 45 seconds.");
             Assert.Equal(Queue, Broker.Header(parked, ErrorGroupIdHeader));

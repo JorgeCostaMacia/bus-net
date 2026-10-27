@@ -6,7 +6,8 @@ namespace JorgeCostaMacia.Bus.Domain.Buses;
 /// conversation, or pass the inbound transport to continue from a message being handled — its
 /// envelope (conversation, resilience counters) is propagated from there.
 /// </summary>
-/// <typeparam name="TMessage">The message family this bus accepts (e.g. the transport's <c>Command</c> base).</typeparam>
+/// <typeparam name="TMessage">The message family this bus accepts (e.g. the transport's <c>Command</c>
+/// base).</typeparam>
 public interface ISenderBus<TMessage> : IBus
     where TMessage : IMessage
 {
@@ -14,7 +15,10 @@ public interface ISenderBus<TMessage> : IBus
     /// <typeparam name="T">The concrete message type.</typeparam>
     /// <param name="message">The message to send.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Send<T>(T message, CancellationToken cancellationToken = default)
+    Task Send<T>(
+        T message,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 
     /// <summary>
@@ -26,6 +30,10 @@ public interface ISenderBus<TMessage> : IBus
     /// <param name="message">The message to send.</param>
     /// <param name="transport">The inbound message's transport, whose envelope headers are propagated.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Send<T>(T message, ITransport transport, CancellationToken cancellationToken = default)
+    Task Send<T>(
+        T message,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 }

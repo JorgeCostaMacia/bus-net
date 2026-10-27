@@ -32,12 +32,21 @@ internal static class BusInfrastructureContext
     /// section.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The application configuration carrying the <c>Bus:Producer</c> section (and <c>Bus:Consumer</c> when a consumer lambda is supplied).</param>
+    /// <param name="configuration">The application configuration carrying the <c>Bus:Producer</c> section (and
+    /// <c>Bus:Consumer</c> when a consumer lambda is supplied).</param>
     /// <param name="producer">Maps the messages this service sends/publishes to their topics.</param>
-    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a send-only service.</param>
-    /// <param name="admin">Declares the topics to create at startup (over the dedicated <c>Bus:Admin</c> connection), or <see langword="null"/> to leave provisioning to the broker.</param>
+    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a
+    /// send-only service.</param>
+    /// <param name="admin">Declares the topics to create at startup (over the dedicated <c>Bus:Admin</c> connection),
+    /// or <see langword="null"/> to leave provisioning to the broker.</param>
     /// <returns>The same service collection, to allow method chaining.</returns>
-    internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null, Action<AdminConfigurator>? admin = null)
+    internal static IServiceCollection AddBusInfrastructureContext(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Action<ProducerConfigurator> producer,
+        Action<ConsumerConfigurator>? consumer = null,
+        Action<AdminConfigurator>? admin = null
+    )
     {
         ProducerConfigurator producerConfigurator = new ProducerConfigurator(configuration);
 
@@ -58,7 +67,12 @@ internal static class BusInfrastructureContext
             IReadOnlyDictionary<string, int> topicSpecifications = adminConfigurator.Topics;
             int topicsBatchSize = adminConfigurator.TopicsBatchSize;
 
-            services.AddHostedService(provider => new AdminWorker(adminClientConfig, topicSpecifications, topicsBatchSize, provider.GetRequiredService<ILogger<AdminWorker>>()));
+            services.AddHostedService(
+                provider => new AdminWorker(
+                    adminClientConfig,
+                    topicSpecifications,
+                    topicsBatchSize,
+                    provider.GetRequiredService<ILogger<AdminWorker>>()));
         }
 
         // the broker-reachability tracker the transport feeds and the health-check package reads —
@@ -66,17 +80,25 @@ internal static class BusInfrastructureContext
         services.TryAddSingleton<BusHealth>();
 
         services.AddSingleton(provider => CreateProducer(provider, producerConfigurator.ProducerConfig));
-        services.AddSingleton<IProducer>(provider => new Producer(provider.GetRequiredService<IProducer<Null, byte[]>>(), provider.GetRequiredService<BusHealth>(), provider.GetRequiredService<ILogger<Producer>>()));
+        services.AddSingleton<IProducer>(
+            provider => new Producer(
+                provider.GetRequiredService<IProducer<Null, byte[]>>(),
+                provider.GetRequiredService<BusHealth>(),
+                provider.GetRequiredService<ILogger<Producer>>()));
         services.AddHostedService<ProducerWorker>();
 
         if (consumer is not null)
         {
-            ConsumerConfigurator consumerConfigurator = new ConsumerConfigurator(services, configuration, producerConfigurator.Messages);
+            ConsumerConfigurator consumerConfigurator = new ConsumerConfigurator(
+                services,
+                configuration,
+                producerConfigurator.Messages);
 
             consumer(consumerConfigurator);
         }
 
-        services.AddSingleton<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
+        services.AddSingleton<IBus>(
+            provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 
         return services;
     }
@@ -87,7 +109,10 @@ internal static class BusInfrastructureContext
     /// A fatal error stops the application; every other error the client recovers from on its own —
     /// an <c>AllBrokersDown</c> among them, which additionally flips the reachability tracker down.
     /// </summary>
-    private static IProducer<Null, byte[]> CreateProducer(IServiceProvider provider, ProducerConfig configuration)
+    private static IProducer<Null, byte[]> CreateProducer(
+        IServiceProvider provider,
+        ProducerConfig configuration
+    )
     {
         ILogger kafkaLogger = provider.GetRequiredService<ILoggerFactory>().CreateLogger(KafkaLogger.Category);
         IHostApplicationLifetime lifetime = provider.GetRequiredService<IHostApplicationLifetime>();

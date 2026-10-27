@@ -29,23 +29,40 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
     private readonly ConcurrentDictionary<string, IChannel> _channels = new ConcurrentDictionary<string, IChannel>();
 
-    /// <summary>Creates the producer over the shared connection and the logger a failed produce is written through.</summary>
+    /// <summary>Creates the producer over the shared connection and the logger a failed produce is written
+    /// through.</summary>
     /// <param name="connection">The shared RabbitMQ connection the destination channels are opened on.</param>
-    /// <param name="logger">The logger a failed produce is written through, with the outbound delivery attached.</param>
-    public Producer(Domain.IConnection connection, ILogger<Producer> logger)
+    /// <param name="logger">The logger a failed produce is written through, with the outbound delivery
+    /// attached.</param>
+    public Producer(
+        Domain.IConnection connection,
+        ILogger<Producer> logger
+    )
     {
         _connection = connection;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task Produce(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
+    public async Task Produce(
+        string exchange,
+        string routingKey,
+        ReadOnlyMemory<byte> body,
+        IReadOnlyDictionary<string, string> headers,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             IChannel channel = await ChannelAsync(exchange, cancellationToken);
 
-            await channel.BasicPublishAsync(exchange, routingKey, mandatory: false, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+            await channel.BasicPublishAsync(
+                exchange,
+                routingKey,
+                mandatory: false,
+                basicProperties: Properties(headers),
+                body: body,
+                cancellationToken: cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -60,7 +77,12 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task Park(string queue, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
+    public async Task Park(
+        string queue,
+        ReadOnlyMemory<byte> body,
+        IReadOnlyDictionary<string, string> headers,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -69,8 +91,19 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
             // self-healing: the idempotent declare recreates a park queue deleted at runtime, with the
             // consumers' exact options; mandatory is the tripwire — an unroutable park throws instead of
             // being dropped (and confirmed) silently, so the failure lane can never lose a message here.
-            await channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
-            await channel.BasicPublishAsync(string.Empty, queue, mandatory: true, basicProperties: Properties(headers), body: body, cancellationToken: cancellationToken);
+            await channel.QueueDeclareAsync(
+                queue,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                cancellationToken: cancellationToken);
+            await channel.BasicPublishAsync(
+                string.Empty,
+                queue,
+                mandatory: true,
+                basicProperties: Properties(headers),
+                body: body,
+                cancellationToken: cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -84,8 +117,15 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
         }
     }
 
-    /// <summary>Logs a failed produce with the outbound delivery attached (exchange, routing key, body, envelope); the caller rethrows, so the send's task still faults.</summary>
-    private void LogFaulted(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers, Exception exception)
+    /// <summary>Logs a failed produce with the outbound delivery attached (exchange, routing key, body, envelope); the
+    /// caller rethrows, so the send's task still faults.</summary>
+    private void LogFaulted(
+        string exchange,
+        string routingKey,
+        ReadOnlyMemory<byte> body,
+        IReadOnlyDictionary<string, string> headers,
+        Exception exception
+    )
     {
         using (BusLogger.ProducerContext(exchange, routingKey, body, headers))
         using (BusLogger.DescriptionContext(BusLoggerDescriptions.SendFaulted))
@@ -134,7 +174,10 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
     /// source of truth; this is a write-only convenience on produce. A missing/undecodable header just
     /// leaves its property unset.
     /// </summary>
-    private static void Native(BasicProperties properties, IReadOnlyDictionary<string, string> headers)
+    private static void Native(
+        BasicProperties properties,
+        IReadOnlyDictionary<string, string> headers
+    )
     {
         if (GuidText(headers, TransportHeaders.MessageId) is { } messageId)
         {
@@ -157,26 +200,38 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
         }
 
         if (Text(headers, TransportHeaders.MessageOccurredAt) is { } occurredAt
-            && DateTimeOffset.TryParse(occurredAt, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTimeOffset moment))
+            && DateTimeOffset.TryParse(
+                occurredAt,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+                out DateTimeOffset moment))
         {
             properties.Timestamp = new AmqpTimestamp(moment.ToUnixTimeSeconds());
         }
     }
 
     /// <summary>Reads a header's text, or <see langword="null"/> when absent.</summary>
-    private static string? Text(IReadOnlyDictionary<string, string> headers, string key)
-        => headers.TryGetValue(key, out string? value) ? value : null;
+    private static string? Text(
+        IReadOnlyDictionary<string, string> headers,
+        string key
+    ) => headers.TryGetValue(key, out string? value) ? value : null;
 
-    /// <summary>Reads a GUID header as its canonical text, or <see langword="null"/> when absent (or not valid GUID text).</summary>
-    private static string? GuidText(IReadOnlyDictionary<string, string> headers, string key)
-        => headers.TryGetValue(key, out string? value) && Guid.TryParse(value, out Guid id) ? id.ToString() : null;
+    /// <summary>Reads a GUID header as its canonical text, or <see langword="null"/> when absent (or not valid GUID
+    /// text).</summary>
+    private static string? GuidText(
+        IReadOnlyDictionary<string, string> headers,
+        string key
+    ) => headers.TryGetValue(key, out string? value) && Guid.TryParse(value, out Guid id) ? id.ToString() : null;
 
     /// <summary>
     /// The destination's channel — opened on the first publish to the exchange and reused for the
     /// application's lifetime; a channel the broker has closed (e.g. an async publish error) is
     /// replaced under the gate instead of handed out dead.
     /// </summary>
-    private async Task<IChannel> ChannelAsync(string exchange, CancellationToken cancellationToken)
+    private async Task<IChannel> ChannelAsync(
+        string exchange,
+        CancellationToken cancellationToken
+    )
     {
         if (_channels.TryGetValue(exchange, out IChannel? channel) && channel.IsOpen)
         {
@@ -216,12 +271,24 @@ internal sealed class Producer : Domain.IProducer, IAsyncDisposable
 
         return new KeyValuePair<string, string>[]
         {
-            new KeyValuePair<string, string>(TransportHeaders.HostMachineName, TransportHeaders.ToHeader(Environment.MachineName)),
-            new KeyValuePair<string, string>(TransportHeaders.HostAssembly, TransportHeaders.ToHeader(entry?.Name ?? "unknown")),
-            new KeyValuePair<string, string>(TransportHeaders.HostAssemblyVersion, TransportHeaders.ToHeader(entry?.Version?.ToString() ?? "0.0.0")),
-            new KeyValuePair<string, string>(TransportHeaders.HostFrameworkVersion, TransportHeaders.ToHeader(Environment.Version.ToString())),
-            new KeyValuePair<string, string>(TransportHeaders.HostBusVersion, TransportHeaders.ToHeader(typeof(Producer).Assembly.GetName().Version?.ToString() ?? "0.0.0")),
-            new KeyValuePair<string, string>(TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader(Environment.OSVersion.ToString()))
+            new KeyValuePair<string, string>(
+                TransportHeaders.HostMachineName,
+                TransportHeaders.ToHeader(Environment.MachineName)),
+            new KeyValuePair<string, string>(
+                TransportHeaders.HostAssembly,
+                TransportHeaders.ToHeader(entry?.Name ?? "unknown")),
+            new KeyValuePair<string, string>(
+                TransportHeaders.HostAssemblyVersion,
+                TransportHeaders.ToHeader(entry?.Version?.ToString() ?? "0.0.0")),
+            new KeyValuePair<string, string>(
+                TransportHeaders.HostFrameworkVersion,
+                TransportHeaders.ToHeader(Environment.Version.ToString())),
+            new KeyValuePair<string, string>(
+                TransportHeaders.HostBusVersion,
+                TransportHeaders.ToHeader(typeof(Producer).Assembly.GetName().Version?.ToString() ?? "0.0.0")),
+            new KeyValuePair<string, string>(
+                TransportHeaders.HostOperatingSystemVersion,
+                TransportHeaders.ToHeader(Environment.OSVersion.ToString()))
         };
     }
 

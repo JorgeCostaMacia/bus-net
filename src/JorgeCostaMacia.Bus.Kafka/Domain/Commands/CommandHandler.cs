@@ -21,5 +21,8 @@ public abstract class CommandHandler<TCommand> : IHandler<TCommand, CommandConte
     /// <summary>Handles the delivered command.</summary>
     /// <param name="context">The delivery's context — command, transport and read-only envelope.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public abstract Task Handle(CommandContext<TCommand> context, CancellationToken cancellationToken = default);
+    public abstract Task Handle(
+        CommandContext<TCommand> context,
+        CancellationToken cancellationToken = default
+    );
 }

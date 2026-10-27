@@ -23,7 +23,8 @@ internal sealed class Consumer : IConsumer
     public void Subscribe(string topic) => _consumer.Subscribe(topic);
 
     /// <inheritdoc />
-    public ConsumeResult<Ignore, byte[]> Consume(CancellationToken cancellationToken) => _consumer.Consume(cancellationToken);
+    public ConsumeResult<Ignore, byte[]> Consume(CancellationToken cancellationToken)
+        => _consumer.Consume(cancellationToken);
 
     /// <inheritdoc />
     public void StoreOffset(ConsumeResult<Ignore, byte[]> result) => _consumer.StoreOffset(result);

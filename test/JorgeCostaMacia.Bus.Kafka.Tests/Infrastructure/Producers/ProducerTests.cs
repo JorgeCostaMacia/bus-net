@@ -15,7 +15,8 @@ public class ProducerTests
 
     private KafkaProducer Sut() => new KafkaProducer(_kafka, _health, NullLogger<KafkaProducer>.Instance);
 
-    private static Message<Null, byte[]> Message(string value = "{}") => new Message<Null, byte[]>() { Value = Encoding.UTF8.GetBytes(value) };
+    private static Message<Null, byte[]> Message(string value = "{}")
+        => new Message<Null, byte[]>() { Value = Encoding.UTF8.GetBytes(value) };
 
     [Fact]
     public async Task Produce_Success_ForwardsToTheClient()
@@ -42,9 +43,12 @@ public class ProducerTests
         // only a broker-acked produce is the reachability proof: a failed one must leave the state
         // where it was, so a down bus does not flip up on a produce that never reached a broker.
         _health.Down();
-        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_MsgTimedOut),
+            new DeliveryResult<Null, byte[]>());
 
-        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(
+            () => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
 
         Assert.False(_health.IsUp);
     }
@@ -52,17 +56,23 @@ public class ProducerTests
     [Fact]
     public async Task Produce_QueueFull_Rethrows()
     {
-        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_QueueFull), new DeliveryResult<Null, byte[]>());
+        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_QueueFull),
+            new DeliveryResult<Null, byte[]>());
 
-        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(
+            () => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task Produce_GenericProduceException_Rethrows()
     {
-        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_MsgTimedOut),
+            new DeliveryResult<Null, byte[]>());
 
-        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(
+            () => Sut().Produce("orders", Message(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -92,7 +102,8 @@ public class ProducerTests
     [Fact]
     public async Task Produce_Batch_ProducesEveryPairInOrder()
     {
-        List<KeyValuePair<string, Message<Null, byte[]>>> messages = new List<KeyValuePair<string, Message<Null, byte[]>>>
+        List<KeyValuePair<string, Message<Null, byte[]>>> messages
+            = new List<KeyValuePair<string, Message<Null, byte[]>>>
         {
             new KeyValuePair<string, Message<Null, byte[]>>("orders", Message("a")),
             new KeyValuePair<string, Message<Null, byte[]>>("payments", Message("b"))
@@ -109,16 +120,20 @@ public class ProducerTests
         // the pairs are enqueued together and awaited together: one failing pair faults the await
         // (awaiting still means broker-acked for EVERY message), while the other pairs are still
         // produced — a partial batch failure does not roll back nor stop the rest.
-        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+        _kafka.ProduceFailure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_MsgTimedOut),
+            new DeliveryResult<Null, byte[]>());
         _kafka.FailingTopics.Add("payments");
-        List<KeyValuePair<string, Message<Null, byte[]>>> messages = new List<KeyValuePair<string, Message<Null, byte[]>>>
+        List<KeyValuePair<string, Message<Null, byte[]>>> messages
+            = new List<KeyValuePair<string, Message<Null, byte[]>>>
         {
             new KeyValuePair<string, Message<Null, byte[]>>("orders", Message("a")),
             new KeyValuePair<string, Message<Null, byte[]>>("payments", Message("b")),
             new KeyValuePair<string, Message<Null, byte[]>>("shipping", Message("c"))
         };
 
-        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(() => Sut().Produce(messages, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ProduceException<Null, byte[]>>(
+            () => Sut().Produce(messages, TestContext.Current.CancellationToken));
 
         Assert.Equal(new string[] { "orders", "shipping" }, _kafka.Produced.Select(produced => produced.Topic));
     }

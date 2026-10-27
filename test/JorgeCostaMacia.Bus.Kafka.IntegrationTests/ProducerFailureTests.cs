@@ -38,7 +38,8 @@ public sealed class ProducerFailureTests : IClassFixture<KafkaFixture>
         _fixture = fixture;
     }
 
-    /// <summary>An oversized produce to a size-capped topic throws <see cref="ProduceException{Null, Byte}"/> with <see cref="ErrorCode.MsgSizeTooLarge"/> — the type the bus's produce catch-blocks depend on.</summary>
+    /// <summary>An oversized produce to a size-capped topic throws <see cref="ProduceException{Null, Byte}"/> with
+    /// <see cref="ErrorCode.MsgSizeTooLarge"/> — the type the bus's produce catch-blocks depend on.</summary>
     [Fact]
     public async Task Produce_aMessageLargerThanTheTopicAllows_ThrowsAProduceExceptionClassifiedByErrorCode()
     {

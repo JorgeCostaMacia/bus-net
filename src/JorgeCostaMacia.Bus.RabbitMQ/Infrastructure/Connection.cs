@@ -24,7 +24,10 @@ internal sealed class Connection : Domain.IConnection
     /// <summary>Creates the connection wrapper over the configured factory.</summary>
     /// <param name="factory">The RabbitMQ connection factory (host, credentials, vhost, recovery).</param>
     /// <param name="logger">The client logger — connection shutdown/recovery/callback events log through it.</param>
-    public Connection(ConnectionFactory factory, ILogger logger)
+    public Connection(
+        ConnectionFactory factory,
+        ILogger logger
+    )
     {
         _factory = factory;
         _logger = logger;
@@ -37,7 +40,9 @@ internal sealed class Connection : Domain.IConnection
 
         // confirmations on: BasicPublishAsync completes when the broker accepts the message, not
         // when the frame hits the socket — the ack protocol of the failure lanes depends on it.
-        CreateChannelOptions options = new CreateChannelOptions(publisherConfirmationsEnabled: true, publisherConfirmationTrackingEnabled: true);
+        CreateChannelOptions options = new CreateChannelOptions(
+            publisherConfirmationsEnabled: true,
+            publisherConfirmationTrackingEnabled: true);
 
         return await connection.CreateChannelAsync(options, cancellationToken);
     }
@@ -85,12 +90,17 @@ internal sealed class Connection : Domain.IConnection
         }
     }
 
-    /// <summary>Routes the connection's client callbacks (shutdown, automatic recovery, callback exceptions) to the client logger.</summary>
+    /// <summary>Routes the connection's client callbacks (shutdown, automatic recovery, callback exceptions) to the
+    /// client logger.</summary>
     private void Wire(IConnection connection)
     {
         connection.ConnectionShutdownAsync += (_, args) =>
         {
-            RabbitLogger.LogShutdown(_logger, args.ReplyCode, args.ReplyText, args.Initiator == ShutdownInitiator.Application);
+            RabbitLogger.LogShutdown(
+                _logger,
+                args.ReplyCode,
+                args.ReplyText,
+                args.Initiator == ShutdownInitiator.Application);
 
             return Task.CompletedTask;
         };
