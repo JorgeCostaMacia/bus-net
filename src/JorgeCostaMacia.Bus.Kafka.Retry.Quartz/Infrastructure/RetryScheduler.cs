@@ -43,7 +43,14 @@ internal sealed class RetryScheduler : IRetryScheduler
     }
 
     /// <inheritdoc />
-    public async Task Schedule(string topic, string groupId, byte[] body, Headers headers, DateTime scheduledAt, CancellationToken cancellationToken)
+    public async Task Schedule(
+        string topic,
+        string groupId,
+        byte[] body,
+        Headers headers,
+        DateTime scheduledAt,
+        CancellationToken cancellationToken
+    )
     {
         IScheduler scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
 
@@ -54,7 +61,10 @@ internal sealed class RetryScheduler : IRetryScheduler
             .WithDescription(groupId)
             .UsingJobData(RetryJob.TopicKey, topic)
             .UsingJobData(RetryJob.BodyKey, Convert.ToBase64String(body))
-            .UsingJobData(RetryJob.HeadersKey, JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.GetValueBytes()))))
+            .UsingJobData(
+                RetryJob.HeadersKey,
+                JsonSerializer.Serialize(
+                    headers.Select(header => new KeyValuePair<string, byte[]?>(header.Key, header.GetValueBytes()))))
             .StoreDurably()
             .RequestRecovery()
             .Build();
@@ -83,7 +93,11 @@ internal sealed class RetryScheduler : IRetryScheduler
 
     private static int RetryCount(Headers headers)
         => headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry)
-            && int.TryParse(Encoding.UTF8.GetString(retry), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+            && int.TryParse(
+                Encoding.UTF8.GetString(retry),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out int value)
             ? value
             : 0;
 }

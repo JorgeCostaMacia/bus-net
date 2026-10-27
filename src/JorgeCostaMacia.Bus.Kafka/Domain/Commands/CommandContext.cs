@@ -7,7 +7,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands;
 /// <see cref="Transport"/> (all but the filtering one: commands are point-to-point and never
 /// filtered), carrying only the command and the transport: every envelope property reads straight
 /// from the transport's headers on access, nothing duplicated in memory. Built by the consumer,
-/// which deserializes the message once per delivery; the <b>outbound</b> envelope (new flow / correlated) is computed by
+/// which deserializes the message once per delivery; the <b>outbound</b> envelope (new flow / correlated) is computed
+/// by
 /// the bus when producing, not here.
 /// </summary>
 /// <typeparam name="TCommand">The command type.</typeparam>
@@ -84,7 +85,10 @@ public record CommandContext<TCommand> :
     /// <summary>Builds the context over the delivered command and its transport.</summary>
     /// <param name="message">The command payload.</param>
     /// <param name="transport">The Kafka transport for this delivery.</param>
-    public CommandContext(TCommand message, Transport transport)
+    public CommandContext(
+        TCommand message,
+        Transport transport
+    )
     {
         Message = message;
         Transport = transport;

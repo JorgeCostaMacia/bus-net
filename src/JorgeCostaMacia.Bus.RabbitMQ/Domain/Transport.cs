@@ -38,7 +38,13 @@ public sealed record Transport : ITransport
     /// <param name="routingKey">The routing key.</param>
     /// <param name="deliveryTag">The delivery tag used to ack/nack.</param>
     /// <param name="redelivered">Whether the message was redelivered.</param>
-    public Transport(IReadOnlyDictionary<string, object?> headers, string exchange, string routingKey, ulong deliveryTag, bool redelivered)
+    public Transport(
+        IReadOnlyDictionary<string, object?> headers,
+        string exchange,
+        string routingKey,
+        ulong deliveryTag,
+        bool redelivered
+    )
     {
         Headers = headers;
         Exchange = exchange;
@@ -52,7 +58,9 @@ public sealed record Transport : ITransport
     /// <returns>The delivery's transport.</returns>
     public static Transport Create(BasicDeliverEventArgs args)
         => new Transport(
-            args.BasicProperties.Headers is { } headers ? new Dictionary<string, object?>(headers) : new Dictionary<string, object?>(),
+            args.BasicProperties.Headers is { } headers
+                ? new Dictionary<string, object?>(headers)
+                : new Dictionary<string, object?>(),
             args.Exchange,
             args.RoutingKey,
             args.DeliveryTag,
@@ -68,8 +76,12 @@ public sealed record Transport : ITransport
             .Select(header => new KeyValuePair<string, string>(header.Key, DecodeHeader(header.Key, header.Value)))
             .ToImmutableList();
 
-    /// <summary>Decodes one header's value: a canonical GUID for the envelope's GUID keys, its decoded text otherwise.</summary>
-    private static string DecodeHeader(string key, object? value)
+    /// <summary>Decodes one header's value: a canonical GUID for the envelope's GUID keys, its decoded text
+    /// otherwise.</summary>
+    private static string DecodeHeader(
+        string key,
+        object? value
+    )
     {
         string text = Decode(value);
 
@@ -96,7 +108,8 @@ public sealed record Transport : ITransport
         return clonedHeaders;
     }
 
-    /// <summary>Decodes a raw incoming header value to text: <see cref="byte"/>[] as UTF-8, a string as-is, any other primitive through its invariant text, an absent value as empty.</summary>
+    /// <summary>Decodes a raw incoming header value to text: <see cref="byte"/>[] as UTF-8, a string as-is, any other
+    /// primitive through its invariant text, an absent value as empty.</summary>
     /// <param name="value">The header value from the field table.</param>
     /// <returns>The value's decoded text.</returns>
     private static string Decode(object? value)
@@ -122,13 +135,15 @@ public sealed record Transport : ITransport
         return Decode(value);
     }
 
-    /// <summary>Reads the header with the given <paramref name="key"/> decoded to text, or <see langword="null"/> when the header is absent — for optional envelope fields.</summary>
+    /// <summary>Reads the header with the given <paramref name="key"/> decoded to text, or <see langword="null"/> when
+    /// the header is absent — for optional envelope fields.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value decoded to text, or <see langword="null"/> when absent.</returns>
     public string? GetHeaderStringOrDefault(string key)
         => Headers.TryGetValue(key, out object? value) && value is not null ? Decode(value) : null;
 
-    /// <summary>Reads the header with the given <paramref name="key"/> as a <see cref="Guid"/>, parsed from its canonical text.</summary>
+    /// <summary>Reads the header with the given <paramref name="key"/> as a <see cref="Guid"/>, parsed from its
+    /// canonical text.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value parsed as a <see cref="Guid"/>.</returns>
     /// <exception cref="InvalidCastException">The header text is not a valid GUID.</exception>
@@ -142,13 +157,18 @@ public sealed record Transport : ITransport
         throw new InvalidCastException($"The key '{key}' was not a valid Guid.");
     }
 
-    /// <summary>Reads the header with the given <paramref name="key"/> as a UTC <see cref="DateTime"/>, parsed from its ISO text.</summary>
+    /// <summary>Reads the header with the given <paramref name="key"/> as a UTC <see cref="DateTime"/>, parsed from its
+    /// ISO text.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value parsed as a UTC <see cref="DateTime"/>.</returns>
     /// <exception cref="InvalidCastException">The header text is not a valid date/time.</exception>
     public DateTime GetHeaderDateTime(string key)
     {
-        if (DateTime.TryParse(GetHeaderString(key), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime value))
+        if (DateTime.TryParse(
+            GetHeaderString(key),
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+            out DateTime value))
         {
             return value;
         }
@@ -166,7 +186,8 @@ public sealed record Transport : ITransport
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .ToImmutableList();
 
-    /// <summary>Reads the header with the given <paramref name="key"/> as an <see cref="int"/>, parsed from its invariant text.</summary>
+    /// <summary>Reads the header with the given <paramref name="key"/> as an <see cref="int"/>, parsed from its
+    /// invariant text.</summary>
     /// <param name="key">The header key.</param>
     /// <returns>The header value parsed as an <see cref="int"/>.</returns>
     /// <exception cref="InvalidCastException">The header text is not a valid integer.</exception>

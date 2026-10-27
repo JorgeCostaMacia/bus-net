@@ -33,7 +33,12 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
     /// <param name="logger">The consumer's logger.</param>
     /// <param name="topic">The Kafka topic — faults park to its <c>.fault</c>.</param>
     /// <param name="groupId">The consumer group id, stamped on the parked fault as the failing group.</param>
-    public EventFaultHandler(IProducer producer, ILogger logger, string topic, string groupId)
+    public EventFaultHandler(
+        IProducer producer,
+        ILogger logger,
+        string topic,
+        string groupId
+    )
     {
         _producer = producer;
         _logger = logger;
@@ -42,13 +47,25 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
     }
 
     /// <inheritdoc />
-    public override async Task Handle(EventFaultContext context, CancellationToken cancellationToken = default)
+    public override async Task Handle(
+        EventFaultContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            EventFault fault = EventFault.Create(context, _groupId);
+            EventFault fault = EventFault.Create(
+                context,
+                _groupId);
 
-            await _producer.Produce(_topic + FaultTopicSuffix, new Message<Null, byte[]> { Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options), Headers = FaultHeaders(context) }, cancellationToken);
+            await _producer.Produce(
+                _topic + FaultTopicSuffix,
+                new Message<Null, byte[]>
+                {
+                    Value = JsonSerializer.SerializeToUtf8Bytes(fault, BusSerializer.Options),
+                    Headers = FaultHeaders(context)
+                },
+                cancellationToken);
 
             using (BusLogger.DescriptionContext(BusLoggerDescriptions.ParkedToFaultTopic))
             {
@@ -72,7 +89,8 @@ internal sealed class EventFaultHandler<TEvent, TEventSubscriber> : EventFaultHa
         }
     }
 
-    /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing group, the UTC time) — filterable and reinjectable header-side.</summary>
+    /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing
+    /// group, the UTC time) — filterable and reinjectable header-side.</summary>
     private Headers FaultHeaders(EventFaultContext context)
     {
         Headers headers = context.Transport.CloneHeaders();

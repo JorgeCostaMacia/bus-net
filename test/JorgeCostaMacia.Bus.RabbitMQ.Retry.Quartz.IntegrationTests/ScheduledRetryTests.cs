@@ -34,7 +34,8 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
         _fixture = fixture;
     }
 
-    /// <summary>A failed delivery is parked as a durable Quartz job in Postgres and redelivered when its trigger fires.</summary>
+    /// <summary>A failed delivery is parked as a durable Quartz job in Postgres and redelivered when its trigger
+    /// fires.</summary>
     [Fact]
     public async Task A_failed_delivery_is_parked_in_Postgres_and_redelivered_by_the_Quartz_scheduler()
     {
@@ -46,7 +47,9 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
         builder.Services.AddBusContext(
             _fixture.BuildConfiguration(),
             producer => producer.AddCommand<RetryCommand>(Exchange),
-            consumer => consumer.AddCommandHandler<RetryCommand, RetryCommandHandler>(Queue, retryIntervals: ImmutableList.Create(_retryInterval)));
+            consumer => consumer.AddCommandHandler<RetryCommand, RetryCommandHandler>(
+                Queue,
+                retryIntervals: ImmutableList.Create(_retryInterval)));
         builder.Services.AddQuartz(quartz => quartz.UsePersistentStore(store =>
         {
             store.UsePostgres(_fixture.PostgresConnectionString);
@@ -72,12 +75,20 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
 
             bool observedParkedJob = await ObserveParkedJob(probe, cancellationToken);
 
-            Task completed = await Task.WhenAny(probe.Redelivered, Task.Delay(TimeSpan.FromSeconds(60), cancellationToken));
-            Assert.True(completed == probe.Redelivered, "The scheduled retry was not redelivered to the handler within 60 seconds.");
+            Task completed = await Task.WhenAny(
+                probe.Redelivered,
+                Task.Delay(TimeSpan.FromSeconds(60), cancellationToken));
+            Assert.True(
+                completed == probe.Redelivered,
+                "The scheduled retry was not redelivered to the handler within 60 seconds.");
 
             // The retry came back: the durable job was persisted to the real Postgres store and fired.
-            Assert.True(observedParkedJob, "The retry was never observed parked as a durable job in the Postgres store.");
-            Assert.True(probe.Invocations >= 2, $"The handler ran {probe.Invocations} time(s); the original delivery plus the scheduled retry were expected.");
+            Assert.True(
+                observedParkedJob,
+                "The retry was never observed parked as a durable job in the Postgres store.");
+            Assert.True(
+                probe.Invocations >= 2,
+                $"The handler ran {probe.Invocations} time(s); the original delivery plus the scheduled retry were expected.");
 
             // The redelivery took the scheduled delay — not an instant broker requeue — which is what
             // proves it travelled through the timed Quartz trigger and its Postgres store rather than a
@@ -96,7 +107,10 @@ public sealed class ScheduledRetryTests : IClassFixture<RetryQuartzFixture>
     /// Polls the Quartz store until the failed delivery shows up as a durable job — the retry parked
     /// in Postgres — or the handler has already been redelivered, or the parked window elapses.
     /// </summary>
-    private async Task<bool> ObserveParkedJob(RetryProbe probe, CancellationToken cancellationToken)
+    private async Task<bool> ObserveParkedJob(
+        RetryProbe probe,
+        CancellationToken cancellationToken
+    )
     {
         DateTime deadline = DateTime.UtcNow.Add(TimeSpan.FromSeconds(30));
 

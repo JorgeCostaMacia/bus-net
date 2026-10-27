@@ -35,10 +35,10 @@ internal static class BusLogger
     /// <param name="exchange">The exchange the worker's queue binds to.</param>
     /// <param name="queue">The queue the worker consumes.</param>
     /// <returns>The context to dispose when the delivery ends.</returns>
-    public static IDisposable WorkerContext(string exchange, string queue)
-        => LogContext.Push(
-            new PropertyEnricher("Exchange", exchange),
-            new PropertyEnricher("Queue", queue));
+    public static IDisposable WorkerContext(
+        string exchange,
+        string queue
+    ) => LogContext.Push(new PropertyEnricher("Exchange", exchange), new PropertyEnricher("Queue", queue));
 
     /// <summary>
     /// Opens the logging context carrying the whole inbound delivery — the routing key, delivery tag
@@ -73,7 +73,12 @@ internal static class BusLogger
     /// <param name="body">The serialized message body.</param>
     /// <param name="headers">The outbound envelope headers.</param>
     /// <returns>The context to dispose after logging the failure.</returns>
-    public static IDisposable ProducerContext(string exchange, string routingKey, ReadOnlyMemory<byte> body, IReadOnlyDictionary<string, string> headers)
+    public static IDisposable ProducerContext(
+        string exchange,
+        string routingKey,
+        ReadOnlyMemory<byte> body,
+        IReadOnlyDictionary<string, string> headers
+    )
     {
         List<ILogEventEnricher> context = new List<ILogEventEnricher>
         {
@@ -88,7 +93,8 @@ internal static class BusLogger
                 key,
                 TransportHeaders.GuidHeaders.Contains(key) && Guid.TryParse(value, out Guid id)
                     ? id
-                    : TransportHeaders.IntHeaders.Contains(key) && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
+                    : TransportHeaders.IntHeaders.Contains(key)
+                        && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
                         ? count
                         : value));
         }
@@ -100,7 +106,8 @@ internal static class BusLogger
     /// Opens the logging context carrying the channel's shutdown reason — the broker's reply code and
     /// text when the close carried them.
     /// </summary>
-    /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer without one.</param>
+    /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer
+    /// without one.</param>
     /// <returns>The context to dispose after logging the outcome.</returns>
     public static IDisposable ShutdownContext(ShutdownEventArgs? reason)
         => LogContext.Push(
@@ -111,7 +118,11 @@ internal static class BusLogger
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The handling failure.</param>
     /// <param name="retry">The retry number stamped on the republished delivery.</param>
-    public static void LogRetry(ILogger logger, Exception exception, int retry)
+    public static void LogRetry(
+        ILogger logger,
+        Exception exception,
+        int retry
+    )
     {
         using (LogContext.Push(
             new PropertyEnricher("Retry", retry),
@@ -121,12 +132,18 @@ internal static class BusLogger
         }
     }
 
-    /// <summary>Logs a failed handling parked for a delayed retry, with the retry number and its time in the context.</summary>
+    /// <summary>Logs a failed handling parked for a delayed retry, with the retry number and its time in the
+    /// context.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="exception">The handling failure.</param>
     /// <param name="retry">The retry number stamped on the parked delivery.</param>
     /// <param name="scheduledAt">The UTC time the retry is produced back at.</param>
-    public static void LogRetry(ILogger logger, Exception exception, int retry, DateTime scheduledAt)
+    public static void LogRetry(
+        ILogger logger,
+        Exception exception,
+        int retry,
+        DateTime scheduledAt
+    )
     {
         using (LogContext.Push(
             new PropertyEnricher("Retry", retry),
@@ -137,10 +154,15 @@ internal static class BusLogger
         }
     }
 
-    /// <summary>Decodes every envelope header into the context — Guids and counters typed, the rest as text. A delivery with no headers contributes nothing rather than throwing — logging must never fault, least of all in a catch about to rethrow.</summary>
+    /// <summary>Decodes every envelope header into the context — Guids and counters typed, the rest as text. A delivery
+    /// with no headers contributes nothing rather than throwing — logging must never fault, least of all in a catch
+    /// about to rethrow.</summary>
     /// <param name="context">The enricher list to fill.</param>
     /// <param name="headers">The delivery's headers, or <see langword="null"/> when the message carries none.</param>
-    private static void Decode(List<ILogEventEnricher> context, IDictionary<string, object?>? headers)
+    private static void Decode(
+        List<ILogEventEnricher> context,
+        IDictionary<string, object?>? headers
+    )
     {
         if (headers is null)
         {
@@ -162,7 +184,8 @@ internal static class BusLogger
                 key,
                 TransportHeaders.GuidHeaders.Contains(key) && Guid.TryParse(text, out Guid id)
                     ? id
-                    : TransportHeaders.IntHeaders.Contains(key) && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
+                    : TransportHeaders.IntHeaders.Contains(key)
+                        && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
                         ? count
                         : text));
         }

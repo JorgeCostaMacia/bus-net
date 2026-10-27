@@ -25,7 +25,8 @@ public sealed record ErrorInfo
     /// <summary>The exception's stack trace, when available.</summary>
     public string? StackTrace { get; init; }
 
-    /// <summary>The inner exception as its own <see cref="ErrorInfo"/>, or <see langword="null"/> when there is none — the cause chain, all the way down.</summary>
+    /// <summary>The inner exception as its own <see cref="ErrorInfo"/>, or <see langword="null"/> when there is none —
+    /// the cause chain, all the way down.</summary>
     public ErrorInfo? InnerError { get; init; }
 
     /// <summary>
@@ -42,7 +43,14 @@ public sealed record ErrorInfo
     /// <param name="stackTrace">The exception's stack trace, when available.</param>
     /// <param name="data">The exception's attached key/value diagnostics.</param>
     /// <param name="innerError">The inner exception as its own model, or <see langword="null"/>.</param>
-    public ErrorInfo(string type, string message, string? source, string? stackTrace, ImmutableDictionary<string, object?> data, ErrorInfo? innerError)
+    public ErrorInfo(
+        string type,
+        string message,
+        string? source,
+        string? stackTrace,
+        ImmutableDictionary<string, object?> data,
+        ErrorInfo? innerError
+    )
     {
         Type = type;
         Message = message;
@@ -68,7 +76,8 @@ public sealed record ErrorInfo
             exception.InnerException is null ? null : Create(exception.InnerException));
     }
 
-    /// <summary>Captures the exception's <see cref="Exception.Data"/> as a serializable dictionary — keys as text, the last wins on a collision, values sanitized through <see cref="Sanitize"/>; empty when there is none.</summary>
+    /// <summary>Captures the exception's <see cref="Exception.Data"/> as a serializable dictionary — keys as text, the
+    /// last wins on a collision, values sanitized through <see cref="Sanitize"/>; empty when there is none.</summary>
     private static ImmutableDictionary<string, object?> ExtractData(Exception exception)
     {
         if (exception.Data.Count == 0)

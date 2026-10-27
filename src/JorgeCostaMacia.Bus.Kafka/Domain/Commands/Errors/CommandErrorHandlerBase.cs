@@ -12,8 +12,10 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain.Commands.Errors;
 /// type and gets fully-typed access to the failed command, its envelope and the exception.
 /// </summary>
 /// <typeparam name="TCommand">The command type whose handling failures this handler manages.</typeparam>
-/// <typeparam name="TCommandHandler">The command handler this error handler is paired with — ties the error handler to its command and handler, so each pairing is a distinct type resolvable on its own.</typeparam>
-internal abstract class CommandErrorHandlerBase<TCommand, TCommandHandler> : IHandler<TCommand, CommandErrorContext<TCommand>>
+/// <typeparam name="TCommandHandler">The command handler this error handler is paired with — ties the error handler to
+/// its command and handler, so each pairing is a distinct type resolvable on its own.</typeparam>
+internal abstract class CommandErrorHandlerBase<TCommand, TCommandHandler> :
+    IHandler<TCommand, CommandErrorContext<TCommand>>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
@@ -27,5 +29,8 @@ internal abstract class CommandErrorHandlerBase<TCommand, TCommandHandler> : IHa
     /// <summary>Handles the terminal failure of a command delivery.</summary>
     /// <param name="context">The delivery's error context — the failed command, its envelope and the exception.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public abstract Task Handle(CommandErrorContext<TCommand> context, CancellationToken cancellationToken = default);
+    public abstract Task Handle(
+        CommandErrorContext<TCommand> context,
+        CancellationToken cancellationToken = default
+    );
 }

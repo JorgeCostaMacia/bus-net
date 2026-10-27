@@ -16,7 +16,8 @@ internal sealed class BusHealth
     private bool _isUp = true;
     private DateTime _changedAt = DateTime.UtcNow;
 
-    /// <summary>Whether the brokers are reachable — up until the client reports every broker down, up again on the first successful produce or consumed delivery.</summary>
+    /// <summary>Whether the brokers are reachable — up until the client reports every broker down, up again on the
+    /// first successful produce or consumed delivery.</summary>
     public bool IsUp
     {
         get
@@ -40,13 +41,16 @@ internal sealed class BusHealth
         }
     }
 
-    /// <summary>Reports the brokers reachable — a successful produce or consumed delivery; stamps <see cref="ChangedAt"/> only on an actual flip.</summary>
+    /// <summary>Reports the brokers reachable — a successful produce or consumed delivery; stamps
+    /// <see cref="ChangedAt"/> only on an actual flip.</summary>
     public void Up() => Set(up: true);
 
-    /// <summary>Reports every broker unreachable — the client's <c>AllBrokersDown</c>; stamps <see cref="ChangedAt"/> only on an actual flip.</summary>
+    /// <summary>Reports every broker unreachable — the client's <c>AllBrokersDown</c>; stamps <see cref="ChangedAt"/>
+    /// only on an actual flip.</summary>
     public void Down() => Set(up: false);
 
-    /// <summary>Flips the state under the gate — only on an actual change, so <see cref="ChangedAt"/> keeps the instant of the flip, not of the last report.</summary>
+    /// <summary>Flips the state under the gate — only on an actual change, so <see cref="ChangedAt"/> keeps the instant
+    /// of the flip, not of the last report.</summary>
     private void Set(bool up)
     {
         lock (_gate)

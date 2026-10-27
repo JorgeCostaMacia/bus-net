@@ -25,17 +25,42 @@ internal sealed class ConsumerChannel : IConsumerChannel
     public bool IsOpen => _channel.IsOpen;
 
     /// <inheritdoc />
-    public async Task DeclareAsync(string exchange, string exchangeType, string queue, ushort prefetchCount, CancellationToken cancellationToken = default)
+    public async Task DeclareAsync(
+        string exchange,
+        string exchangeType,
+        string queue,
+        ushort prefetchCount,
+        CancellationToken cancellationToken = default
+    )
     {
-        await _channel.ExchangeDeclareAsync(exchange, exchangeType, durable: true, autoDelete: false, cancellationToken: cancellationToken);
-        await _channel.QueueDeclareAsync(queue, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
+        await _channel.ExchangeDeclareAsync(
+            exchange,
+            exchangeType,
+            durable: true,
+            autoDelete: false,
+            cancellationToken: cancellationToken);
+        await _channel.QueueDeclareAsync(
+            queue,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            cancellationToken: cancellationToken);
         await _channel.QueueBindAsync(queue, exchange, routingKey: string.Empty, cancellationToken: cancellationToken);
 
-        await _channel.BasicQosAsync(prefetchSize: 0, prefetchCount: prefetchCount, global: false, cancellationToken: cancellationToken);
+        await _channel.BasicQosAsync(
+            prefetchSize: 0,
+            prefetchCount: prefetchCount,
+            global: false,
+            cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task ConsumeAsync(string queue, Func<BasicDeliverEventArgs, Task> onReceived, Func<ShutdownEventArgs?, Task> onClosed, CancellationToken cancellationToken = default)
+    public async Task ConsumeAsync(
+        string queue,
+        Func<BasicDeliverEventArgs, Task> onReceived,
+        Func<ShutdownEventArgs?, Task> onClosed,
+        CancellationToken cancellationToken = default
+    )
     {
         AsyncEventingBasicConsumer consumer = new AsyncEventingBasicConsumer(_channel);
         consumer.ReceivedAsync += (_, args) => onReceived(args);
@@ -47,12 +72,17 @@ internal sealed class ConsumerChannel : IConsumerChannel
     }
 
     /// <inheritdoc />
-    public async Task AckAsync(ulong deliveryTag, CancellationToken cancellationToken = default)
-        => await _channel.BasicAckAsync(deliveryTag, multiple: false, cancellationToken);
+    public async Task AckAsync(
+        ulong deliveryTag,
+        CancellationToken cancellationToken = default
+    ) => await _channel.BasicAckAsync(deliveryTag, multiple: false, cancellationToken);
 
     /// <inheritdoc />
-    public async Task NackAsync(ulong deliveryTag, bool requeue, CancellationToken cancellationToken = default)
-        => await _channel.BasicNackAsync(deliveryTag, multiple: false, requeue, cancellationToken);
+    public async Task NackAsync(
+        ulong deliveryTag,
+        bool requeue,
+        CancellationToken cancellationToken = default
+    ) => await _channel.BasicNackAsync(deliveryTag, multiple: false, requeue, cancellationToken);
 
     /// <inheritdoc />
     public ValueTask DisposeAsync() => _channel.DisposeAsync();

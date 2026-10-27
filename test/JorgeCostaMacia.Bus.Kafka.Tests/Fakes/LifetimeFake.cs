@@ -2,7 +2,8 @@ using Microsoft.Extensions.Hosting;
 
 namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 
-/// <summary>Application lifetime double — records whether the consumer asked to stop the application on a fatal client error.</summary>
+/// <summary>Application lifetime double — records whether the consumer asked to stop the application on a fatal client
+/// error.</summary>
 internal sealed class LifetimeFake : IHostApplicationLifetime
 {
     private readonly CancellationTokenSource _stopping = new CancellationTokenSource();

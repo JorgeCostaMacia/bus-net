@@ -12,6 +12,8 @@ public sealed class FaultCommandHandler : CommandHandler<FaultCommand>
     /// <summary>Never invoked — the malformed body breaks the delivery before the handler.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<FaultCommand> context, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
+    public override Task Handle(
+        CommandContext<FaultCommand> context,
+        CancellationToken cancellationToken = default
+    ) => Task.CompletedTask;
 }

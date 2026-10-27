@@ -59,7 +59,11 @@ public sealed class ResurrectionTests : IClassFixture<RabbitMqFixture>
             // the interruption: delete the consumer's queue, so the broker cancels the subscription
             await using (IChannel channel = await admin.CreateChannelAsync(cancellationToken: cancellationToken))
             {
-                await channel.QueueDeleteAsync(Queue, ifUnused: false, ifEmpty: false, cancellationToken: cancellationToken);
+                await channel.QueueDeleteAsync(
+                    Queue,
+                    ifUnused: false,
+                    ifEmpty: false,
+                    cancellationToken: cancellationToken);
             }
 
             // the worker heals itself: it redeclares the queue and re-subscribes a consumer
@@ -76,15 +80,25 @@ public sealed class ResurrectionTests : IClassFixture<RabbitMqFixture>
     }
 
     /// <summary>Sends a command through a fresh scope's <see cref="IBus"/>.</summary>
-    private static async Task SendAsync(IHost host, string payload, CancellationToken cancellationToken)
+    private static async Task SendAsync(
+        IHost host,
+        string payload,
+        CancellationToken cancellationToken
+    )
     {
         await using AsyncServiceScope scope = host.Services.CreateAsyncScope();
 
-        await scope.ServiceProvider.GetRequiredService<IBus>().Send(new ResurrectionCommand(payload), cancellationToken);
+        await scope.ServiceProvider.GetRequiredService<IBus>().Send(
+            new ResurrectionCommand(payload),
+            cancellationToken);
     }
 
     /// <summary>Waits until the given payload has been recorded by the handler, failing after 30 seconds.</summary>
-    private static async Task WaitForHandledAsync(ConcurrentQueue<string> handled, string payload, CancellationToken cancellationToken)
+    private static async Task WaitForHandledAsync(
+        ConcurrentQueue<string> handled,
+        string payload,
+        CancellationToken cancellationToken
+    )
     {
         DateTime deadline = DateTime.UtcNow.AddSeconds(30);
 
@@ -105,7 +119,10 @@ public sealed class ResurrectionTests : IClassFixture<RabbitMqFixture>
     /// Waits until the queue exists again with a consumer subscribed — the observable proof the worker
     /// resurrected (the first backoff step is five real seconds, so the timeout is generous).
     /// </summary>
-    private static async Task WaitForResurrectionAsync(IConnection admin, CancellationToken cancellationToken)
+    private static async Task WaitForResurrectionAsync(
+        IConnection admin,
+        CancellationToken cancellationToken
+    )
     {
         DateTime deadline = DateTime.UtcNow.AddSeconds(30);
 

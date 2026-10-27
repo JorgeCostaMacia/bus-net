@@ -28,7 +28,10 @@ public sealed class IdempotencyTests : IClassFixture<KafkaFixture>
     /// <summary>Takes the shared broker fixture and the test output sink.</summary>
     /// <param name="fixture">The running Kafka container.</param>
     /// <param name="output">The sink the dedup evidence is written to.</param>
-    public IdempotencyTests(KafkaFixture fixture, ITestOutputHelper output)
+    public IdempotencyTests(
+        KafkaFixture fixture,
+        ITestOutputHelper output
+    )
     {
         _fixture = fixture;
         _output = output;
@@ -74,9 +77,12 @@ public sealed class IdempotencyTests : IClassFixture<KafkaFixture>
 
             // Dedup held: exactly one effect per distinct record, despite every record arriving twice.
             Assert.Equal(Records, probe.Effects);
-            Assert.True(probe.Received >= Deliveries, $"Expected at least {Deliveries} deliveries but saw {probe.Received}.");
+            Assert.True(
+                probe.Received >= Deliveries,
+                $"Expected at least {Deliveries} deliveries but saw {probe.Received}.");
 
-            _output.WriteLine($"Kafka idempotency: {probe.Received} deliveries collapsed to {probe.Effects} effects ({Records} distinct records sent twice).");
+            _output.WriteLine(
+                $"Kafka idempotency: {probe.Received} deliveries collapsed to {probe.Effects} effects ({Records} distinct records sent twice).");
         }
         finally
         {
@@ -88,7 +94,11 @@ public sealed class IdempotencyTests : IClassFixture<KafkaFixture>
     /// <param name="condition">The condition awaited.</param>
     /// <param name="timeout">The longest time to wait.</param>
     /// <param name="cancellationToken">A token to cancel the wait.</param>
-    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout, CancellationToken cancellationToken)
+    private static async Task WaitUntilAsync(
+        Func<bool> condition,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
     {
         DateTime deadline = DateTime.UtcNow.Add(timeout);
 

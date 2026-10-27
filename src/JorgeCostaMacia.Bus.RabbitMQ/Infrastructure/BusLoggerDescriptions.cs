@@ -15,10 +15,14 @@ internal static class BusLoggerDescriptions
     public const string ScheduleFailed = "The scheduling failed; the delivery is not acked.";
     public const string SendFaulted = "The send faulted.";
     public const string NackedWithRequeue = "Nacked with requeue; the broker redelivers the delivery.";
-    public const string RedeliveredOnRecovery = "The delivery is resolved but stays unacked; the broker redelivers it on channel recovery and the idempotent handler absorbs it.";
+    public const string RedeliveredOnRecovery
+        = "The delivery is resolved but stays unacked; the broker redelivers it on channel recovery and the idempotent handler absorbs it.";
     public const string HandedToFaultHandler = "The envelope is unreadable; handed to the fault handler.";
-    public const string RetrySchedulerMissing = "No retry scheduler is registered; parked to the error queue as terminal.";
+    public const string RetrySchedulerMissing
+        = "No retry scheduler is registered; parked to the error queue as terminal.";
     public const string WorkerStopped = "The worker stopped.";
-    public const string ConsumerChannelClosed = "The consumer channel closed; automatic recovery restores it, or the worker reopens it itself after a backoff.";
-    public const string ConsumerChannelRestored = "The consumer channel was reopened and the topology redeclared; deliveries resume.";
+    public const string ConsumerChannelClosed
+        = "The consumer channel closed; automatic recovery restores it, or the worker reopens it itself after a backoff.";
+    public const string ConsumerChannelRestored
+        = "The consumer channel was reopened and the topology redeclared; deliveries resume.";
 }

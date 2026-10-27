@@ -27,5 +27,8 @@ internal abstract class EventFaultHandlerBase<TEvent, TEventSubscriber> : IHandl
     /// <summary>Handles a broken event delivery.</summary>
     /// <param name="context">The fault context — the raw body as text, the transport and the failure.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public abstract Task Handle(EventFaultContext context, CancellationToken cancellationToken = default);
+    public abstract Task Handle(
+        EventFaultContext context,
+        CancellationToken cancellationToken = default
+    );
 }

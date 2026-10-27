@@ -23,5 +23,8 @@ public interface IHandler<TMessage, TContext> : IHandler
     /// <summary>Handles the delivery carried by <paramref name="context"/>.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Handle(TContext context, CancellationToken cancellationToken = default);
+    Task Handle(
+        TContext context,
+        CancellationToken cancellationToken = default
+    );
 }

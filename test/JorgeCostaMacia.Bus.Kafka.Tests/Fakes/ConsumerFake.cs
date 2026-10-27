@@ -14,7 +14,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Fakes;
 internal sealed class ConsumerFake : IConsumer
 {
     private readonly Queue<ConsumeResult<Ignore, byte[]>> _pending;
-    private readonly TaskCompletionSource _drained = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _drained = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ManualResetEventSlim _park = new ManualResetEventSlim(false);
 
     /// <summary>Creates the fake over the deliveries the loop will consume, in order.</summary>
@@ -42,13 +43,15 @@ internal sealed class ConsumerFake : IConsumer
     /// <summary>When set, thrown ONCE by the next consume after the queue drains — the broker-failure seam.</summary>
     public ConsumeException? ConsumeFailure { get; set; }
 
-    /// <summary>When set, thrown ONCE by the FIRST consume, before any delivery — the transient-failure-then-recovery seam.</summary>
+    /// <summary>When set, thrown ONCE by the FIRST consume, before any delivery — the transient-failure-then-recovery
+    /// seam.</summary>
     public ConsumeException? FirstConsumeFailure { get; set; }
 
     /// <summary>When set, thrown ONCE by the next store — the ack-failure seam.</summary>
     public Exception? StoreFailure { get; set; }
 
-    /// <summary>When set, the drained consume blocks IGNORING the loop's token — the stuck-consumer seam for the abandoned-stop lane; <see cref="Release"/> unblocks it.</summary>
+    /// <summary>When set, the drained consume blocks IGNORING the loop's token — the stuck-consumer seam for the
+    /// abandoned-stop lane; <see cref="Release"/> unblocks it.</summary>
     public bool Hang { get; set; }
 
     /// <summary>Unblocks a consume parked by <see cref="Hang"/>, letting the abandoned loop unwind.</summary>

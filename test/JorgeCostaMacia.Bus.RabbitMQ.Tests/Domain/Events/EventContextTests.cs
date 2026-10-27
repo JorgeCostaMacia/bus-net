@@ -37,10 +37,17 @@ public class EventContextTests
             [TransportHeaders.HostOperatingSystemVersion] = TransportHeaders.ToHeader("Unix 6.8")
         };
 
-        return new Transport(headers, "orders.created", string.Empty, deliveryTag: 10, redelivered: false);
+        return new Transport(
+            headers,
+            "orders.created",
+            string.Empty,
+            deliveryTag: 10,
+            redelivered: false);
     }
 
-    private static EventContext<TestEvent> CreateSut() => new EventContext<TestEvent>(new TestEvent("pepe"), Transport());
+    private static EventContext<TestEvent> CreateSut() => new EventContext<TestEvent>(
+        new TestEvent("pepe"),
+        Transport());
 
     [Fact]
     public void MessageAndTransport_AreTheDeliveredPair()
@@ -48,7 +55,9 @@ public class EventContextTests
         TestEvent @event = new TestEvent("pepe");
         Transport transport = Transport();
 
-        EventContext<TestEvent> context = new EventContext<TestEvent>(@event, transport);
+        EventContext<TestEvent> context = new EventContext<TestEvent>(
+            @event,
+            transport);
 
         Assert.Same(@event, context.Message);
         Assert.Same(transport, context.Transport);

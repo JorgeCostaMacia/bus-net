@@ -12,8 +12,8 @@ public interface ITracedMessage : IMessage
     Guid AggregateCorrelationId { get; }
 
     /// <summary>
-    /// UTC timestamp of when the message was created — the event-time used for last-writer-wins
-    /// conflict resolution (so out-of-order or reprocessed messages never overwrite a newer one).
+    /// UTC timestamp of when the event occurred — what happened, and when. How a consumer orders or
+    /// reconciles messages with it, or with a version its own data carries, is the consumer's decision.
     /// </summary>
     DateTime AggregateOccurredAt { get; }
 }

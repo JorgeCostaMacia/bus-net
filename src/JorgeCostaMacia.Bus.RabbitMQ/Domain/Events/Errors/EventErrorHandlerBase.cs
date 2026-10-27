@@ -12,16 +12,21 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain.Events.Errors;
 /// and gets fully-typed access to the failed event, its envelope and the exception.
 /// </summary>
 /// <typeparam name="TEvent">The event type whose handling failures this handler manages.</typeparam>
-/// <typeparam name="TEventSubscriber">The subscriber this error handler is paired with — ties it to its event and subscriber, so each pairing is a distinct type resolvable on its own.</typeparam>
+/// <typeparam name="TEventSubscriber">The subscriber this error handler is paired with — ties it to its event and
+/// subscriber, so each pairing is a distinct type resolvable on its own.</typeparam>
 internal abstract class EventErrorHandlerBase<TEvent, TEventSubscriber> : IHandler<TEvent, EventErrorContext<TEvent>>
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    /// <summary>How the handler left the delivery — set as it runs, read by the consumer afterwards. Defaults to <see cref="ErrorResult.Unhandled"/>.</summary>
+    /// <summary>How the handler left the delivery — set as it runs, read by the consumer afterwards. Defaults to
+    /// <see cref="ErrorResult.Unhandled"/>.</summary>
     public ErrorResult Result { get; protected set; }
 
     /// <summary>Handles the terminal failure of an event delivery.</summary>
     /// <param name="context">The delivery's error context — the failed event, its envelope and the exception.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public abstract Task Handle(EventErrorContext<TEvent> context, CancellationToken cancellationToken = default);
+    public abstract Task Handle(
+        EventErrorContext<TEvent> context,
+        CancellationToken cancellationToken = default
+    );
 }

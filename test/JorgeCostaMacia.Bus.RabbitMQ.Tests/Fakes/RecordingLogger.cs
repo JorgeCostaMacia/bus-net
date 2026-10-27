@@ -19,6 +19,11 @@ internal sealed class RecordingLogger<T> : ILogger<T>
     public bool IsEnabled(LogLevel logLevel) => true;
 
     /// <inheritdoc />
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        => Logged.Add((logLevel, formatter(state, exception)));
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter
+    ) => Logged.Add((logLevel, formatter(state, exception)));
 }

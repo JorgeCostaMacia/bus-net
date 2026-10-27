@@ -7,14 +7,21 @@ using Microsoft.Extensions.Logging.Abstractions;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
-using ErrorHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Errors.CommandErrorHandlerBase<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
-using FaultHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults.CommandFaultHandlerBase<JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand, JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
+using ErrorHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Errors.CommandErrorHandlerBase<
+    JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand,
+    JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
+using FaultHandlerBase = JorgeCostaMacia.Bus.RabbitMQ.Domain.Commands.Faults.CommandFaultHandlerBase<
+    JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.TestCommand,
+    JorgeCostaMacia.Bus.RabbitMQ.Tests.Fakes.RecordingCommandHandler>;
 
 namespace JorgeCostaMacia.Bus.RabbitMQ.Tests.Infrastructure.Consumers.Commands;
 
 public class CommandWorkerTests
 {
-    private sealed class BrokerFailure() : RabbitMQClientException("broker down");
+    private sealed class BrokerFailure : RabbitMQClientException
+    {
+        public BrokerFailure() : base("broker down") { }
+    }
 
     private readonly ProducerFake _producer = new ProducerFake();
     private readonly RecordingCommandHandler _handler = new RecordingCommandHandler();
@@ -25,14 +32,27 @@ public class CommandWorkerTests
         RetrySchedulerFake? scheduler = null,
         ErrorHandlerBase? errorHandler = null,
         FaultHandlerBase? faultHandler = null,
-        ILogger<CommandWorker<TestCommand, RecordingCommandHandler>>? logger = null)
+        ILogger<CommandWorker<TestCommand, RecordingCommandHandler>>? logger = null
+    )
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_handler)
             .AddScoped<ErrorHandlerBase>(_ =>
-                errorHandler ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(_producer, scheduler, NullLogger.Instance, Deliveries.Exchange, Deliveries.Queue, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
+                errorHandler
+                    ?? new CommandErrorHandler<TestCommand, RecordingCommandHandler>(
+                        _producer,
+                        scheduler,
+                        NullLogger.Instance,
+                        Deliveries.Exchange,
+                        Deliveries.Queue,
+                        intervals ?? ImmutableList<TimeSpan>.Empty,
+                        ImmutableList<Type>.Empty))
             .AddScoped<FaultHandlerBase>(_ =>
-                faultHandler ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(_producer, NullLogger.Instance, Deliveries.Queue))
+                faultHandler
+                    ?? new CommandFaultHandler<TestCommand, RecordingCommandHandler>(
+                        _producer,
+                        NullLogger.Instance,
+                        Deliveries.Queue))
             .BuildServiceProvider();
 
         return new CommandWorker<TestCommand, RecordingCommandHandler>(
@@ -46,7 +66,8 @@ public class CommandWorkerTests
 
     private static async Task WaitUntil(Func<bool> condition)
     {
-        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(
+            TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(5));
 
         while (!condition())
@@ -55,7 +76,11 @@ public class CommandWorkerTests
         }
     }
 
-    private async Task Deliver(ConsumerChannelFake channel, CommandWorker<TestCommand, RecordingCommandHandler> worker, params BasicDeliverEventArgs[] deliveries)
+    private async Task Deliver(
+        ConsumerChannelFake channel,
+        CommandWorker<TestCommand, RecordingCommandHandler> worker,
+        params BasicDeliverEventArgs[] deliveries
+    )
     {
         await worker.StartAsync(TestContext.Current.CancellationToken);
 
@@ -103,7 +128,10 @@ public class CommandWorkerTests
         _handler.Failure = new InvalidOperationException("boom");
         ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel, errorHandler: new ThrowingCommandErrorHandler()), Deliveries.Delivery(new TestCommand("pepe")));
+        await Deliver(
+            channel,
+            Worker(channel, errorHandler: new ThrowingCommandErrorHandler()),
+            Deliveries.Delivery(new TestCommand("pepe")));
 
         Assert.Empty(channel.Acked);
         Assert.Empty(_producer.Produced);
@@ -175,7 +203,10 @@ public class CommandWorkerTests
         _handler.Failure = new InvalidOperationException("boom");
         ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel, ImmutableList.Create(TimeSpan.Zero)), Deliveries.Delivery(new TestCommand("pepe")));
+        await Deliver(
+            channel,
+            Worker(channel, ImmutableList.Create(TimeSpan.Zero)),
+            Deliveries.Delivery(new TestCommand("pepe")));
 
         (string exchange, string routingKey, _, _) = Assert.Single(_producer.Produced);
         Assert.Equal(Deliveries.Exchange, exchange);
@@ -192,7 +223,10 @@ public class CommandWorkerTests
         RetrySchedulerFake scheduler = new RetrySchedulerFake();
         ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel, ImmutableList.Create(TimeSpan.FromMinutes(5)), scheduler), Deliveries.Delivery(new TestCommand("pepe")));
+        await Deliver(
+            channel,
+            Worker(channel, ImmutableList.Create(TimeSpan.FromMinutes(5)), scheduler),
+            Deliveries.Delivery(new TestCommand("pepe")));
 
         Assert.Single(scheduler.Scheduled);
         Assert.Empty(_producer.Produced);
@@ -207,7 +241,10 @@ public class CommandWorkerTests
         _producer.Failure = new BrokerFailure();
         ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel, ImmutableList.Create(TimeSpan.Zero)), Deliveries.Delivery(new TestCommand("pepe")));
+        await Deliver(
+            channel,
+            Worker(channel, ImmutableList.Create(TimeSpan.Zero)),
+            Deliveries.Delivery(new TestCommand("pepe")));
 
         Assert.Empty(channel.Acked);
         (ulong deliveryTag, bool requeue) = Assert.Single(channel.Nacked);
@@ -246,7 +283,11 @@ public class CommandWorkerTests
     {
         ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestCommand("a"), 10), Deliveries.Delivery(new TestCommand("b"), 11));
+        await Deliver(
+            channel,
+            Worker(channel),
+            Deliveries.Delivery(new TestCommand("a"), 10),
+            Deliveries.Delivery(new TestCommand("b"), 11));
 
         Assert.Equal("b", _handler.Received?.Name);
         Assert.Equal(new ulong[] { 10ul, 11ul }, channel.Acked);
@@ -257,7 +298,10 @@ public class CommandWorkerTests
     {
         ConsumerChannelFake channel = new ConsumerChannelFake();
 
-        await Deliver(channel, Worker(channel), Deliveries.Delivery(new TestCommand("pepe"), consumers: "other.handler"));
+        await Deliver(
+            channel,
+            Worker(channel),
+            Deliveries.Delivery(new TestCommand("pepe"), consumers: "other.handler"));
 
         Assert.Equal("pepe", _handler.Received?.Name);
         Assert.Equal(10ul, Assert.Single(channel.Acked));
@@ -269,7 +313,8 @@ public class CommandWorkerTests
         // the broker closes the channel under the worker: visibility only — the death is logged as a
         // warning with the shutdown reason, nothing is torn down, and the worker still stops cleanly.
         ConsumerChannelFake channel = new ConsumerChannelFake();
-        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger
+            = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
@@ -292,7 +337,8 @@ public class CommandWorkerTests
         // Application initiator: not a death — no warning, no resurrection. Observed live: every
         // resurrection used to log its own funeral as a spurious "Channel closed." warning.
         ConsumerChannelFake channel = new ConsumerChannelFake();
-        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger
+            = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
         worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
@@ -312,7 +358,8 @@ public class CommandWorkerTests
         // the channel's own dispose raises the shutdown event on a clean stop: not a death — the
         // worker is already stopping and logs no warning.
         ConsumerChannelFake channel = new ConsumerChannelFake();
-        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger
+            = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
 
         await worker.StartAsync(TestContext.Current.CancellationToken);
@@ -330,7 +377,8 @@ public class CommandWorkerTests
         // the same handler, and disposes the dead one.
         ConsumerChannelFake replacement = new ConsumerChannelFake();
         ConsumerChannelFake channel = new ConsumerChannelFake() { Next = replacement };
-        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger
+            = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
         worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
@@ -396,7 +444,8 @@ public class CommandWorkerTests
         // Pinned live against the real broker: the open-channel check used to swallow this death.
         ConsumerChannelFake replacement = new ConsumerChannelFake();
         ConsumerChannelFake channel = new ConsumerChannelFake() { Next = replacement };
-        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger
+            = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
         worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 
@@ -423,7 +472,8 @@ public class CommandWorkerTests
         // with its consumer re-registered — the resurrection checks before acting and leaves it alone,
         // where a blind reopen would double-subscribe.
         ConsumerChannelFake channel = new ConsumerChannelFake();
-        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger
+            = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
         worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(50) };
 
@@ -446,7 +496,8 @@ public class CommandWorkerTests
         // the shutdown event racing a stop: the worker is already stopping — no warning, and no
         // resurrection either.
         ConsumerChannelFake channel = new ConsumerChannelFake();
-        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
+        RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>> logger
+            = new RecordingLogger<CommandWorker<TestCommand, RecordingCommandHandler>>();
         CommandWorker<TestCommand, RecordingCommandHandler> worker = Worker(channel, logger: logger);
         worker.ResurrectionBackoff = new TimeSpan[] { TimeSpan.FromMilliseconds(1) };
 

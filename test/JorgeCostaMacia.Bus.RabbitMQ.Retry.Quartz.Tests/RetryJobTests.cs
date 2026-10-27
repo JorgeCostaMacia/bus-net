@@ -12,9 +12,14 @@ public class RetryJobTests
     private readonly ProducerFake _producer = new ProducerFake();
 
     private static string EncodeHeaders(params (string Key, string Value)[] headers)
-        => JsonSerializer.Serialize(headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Value)));
+        => JsonSerializer.Serialize(
+            headers.Select(header => new KeyValuePair<string, string>(header.Key, header.Value)));
 
-    private static JobDataMap Data(string exchange = "orders", byte[]? body = null, string? headers = null)
+    private static JobDataMap Data(
+        string exchange = "orders",
+        byte[]? body = null,
+        string? headers = null
+    )
         => new JobDataMap()
         {
             [RetryJob.ExchangeKey] = exchange,
@@ -146,8 +151,15 @@ public class RetryJobTests
         await Execute(data, job, trigger, scheduler);
     }
 
-    private Task Execute(JobDataMap data, IJobDetail job, ITrigger trigger, IScheduler scheduler)
-        => new RetryJob(_producer).Execute(new JobExecutionContextFake(data, job, trigger, scheduler), CancellationToken.None).AsTask();
+    private Task Execute(
+        JobDataMap data,
+        IJobDetail job,
+        ITrigger trigger,
+        IScheduler scheduler
+    )
+        => new RetryJob(_producer).Execute(
+            new JobExecutionContextFake(data, job, trigger, scheduler),
+            CancellationToken.None).AsTask();
 
     /// <summary>
     /// A real in-memory scheduler (never started) seeded with the durable job — with its repeating

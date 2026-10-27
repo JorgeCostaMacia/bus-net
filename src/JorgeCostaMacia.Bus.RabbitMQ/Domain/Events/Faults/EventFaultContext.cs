@@ -28,7 +28,11 @@ public sealed record EventFaultContext :
     /// <param name="message">The delivered raw body as text.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
-    public EventFaultContext(string message, Transport transport, Exception exception)
+    public EventFaultContext(
+        string message,
+        Transport transport,
+        Exception exception
+    )
     {
         Message = message;
         Transport = transport;
@@ -40,6 +44,13 @@ public sealed record EventFaultContext :
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <returns>The context handed to the fault handler.</returns>
-    internal static EventFaultContext Create(ReadOnlyMemory<byte> body, Transport transport, Exception exception)
-        => new EventFaultContext(Encoding.UTF8.GetString(body.Span), transport, exception);
+    internal static EventFaultContext Create(
+        ReadOnlyMemory<byte> body,
+        Transport transport,
+        Exception exception
+    )
+        => new EventFaultContext(
+            Encoding.UTF8.GetString(body.Span),
+            transport,
+            exception);
 }

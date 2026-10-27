@@ -21,7 +21,10 @@ public sealed class ResurrectionCommandHandler : CommandHandler<ResurrectionComm
     /// <summary>Appends the delivered payload to the shared record.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<ResurrectionCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandContext<ResurrectionCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         _handled.Enqueue(context.Message.Payload);
 

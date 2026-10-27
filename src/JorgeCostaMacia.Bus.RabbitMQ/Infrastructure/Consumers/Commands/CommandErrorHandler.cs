@@ -20,7 +20,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers.Commands;
 /// </summary>
 /// <typeparam name="TCommand">The command type this handler manages the failures of.</typeparam>
 /// <typeparam name="TCommandHandler">The command handler it is paired with.</typeparam>
-internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandErrorHandlerBase<TCommand, TCommandHandler>
+internal sealed class CommandErrorHandler<TCommand, TCommandHandler> :
+    CommandErrorHandlerBase<TCommand, TCommandHandler>
     where TCommand : Command
     where TCommandHandler : CommandHandler<TCommand>
 {
@@ -34,15 +35,27 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandEr
     private readonly ImmutableList<TimeSpan> _retryIntervals;
     private readonly ImmutableList<Type> _retryExcludeExceptionTypes;
 
-    /// <summary>Creates the handler over the outbound gate, the optional retry scheduler, the logger and the consumer's contract.</summary>
+    /// <summary>Creates the handler over the outbound gate, the optional retry scheduler, the logger and the consumer's
+    /// contract.</summary>
     /// <param name="producer">The outbound gate — retries re-publish and parks go through it.</param>
-    /// <param name="retryScheduler">The scheduler parking delayed retries, or <see langword="null"/> when none is registered.</param>
+    /// <param name="retryScheduler">The scheduler parking delayed retries, or <see langword="null"/> when none is
+    /// registered.</param>
     /// <param name="logger">The consumer's logger.</param>
     /// <param name="exchange">The command's exchange — an immediate retry re-publishes to it.</param>
-    /// <param name="queue">The consumer queue — terminal failures park to its <c>.error</c>, and it is stamped on the parked error as the failing queue.</param>
-    /// <param name="retryIntervals">The retry ladder — one delay per attempt, <c>00:00</c> re-publishes immediately (empty means no retries).</param>
+    /// <param name="queue">The consumer queue — terminal failures park to its <c>.error</c>, and it is stamped on the
+    /// parked error as the failing queue.</param>
+    /// <param name="retryIntervals">The retry ladder — one delay per attempt, <c>00:00</c> re-publishes immediately
+    /// (empty means no retries).</param>
     /// <param name="retryExcludeExceptionTypes">Exception types excluded from retry (inheritance-aware).</param>
-    public CommandErrorHandler(IProducer producer, IRetryScheduler? retryScheduler, ILogger logger, string exchange, string queue, ImmutableList<TimeSpan> retryIntervals, ImmutableList<Type> retryExcludeExceptionTypes)
+    public CommandErrorHandler(
+        IProducer producer,
+        IRetryScheduler? retryScheduler,
+        ILogger logger,
+        string exchange,
+        string queue,
+        ImmutableList<TimeSpan> retryIntervals,
+        ImmutableList<Type> retryExcludeExceptionTypes
+    )
     {
         _producer = producer;
         _retryScheduler = retryScheduler;
@@ -54,7 +67,10 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandEr
     }
 
     /// <inheritdoc />
-    public override async Task Handle(CommandErrorContext<TCommand> context, CancellationToken cancellationToken = default)
+    public override async Task Handle(
+        CommandErrorContext<TCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -100,14 +116,19 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandEr
         }
     }
 
-    /// <summary>Whether the failed command is retried: a valid ladder position with entries left and an exception not excluded.</summary>
+    /// <summary>Whether the failed command is retried: a valid ladder position with entries left and an exception not
+    /// excluded.</summary>
     private bool Retryable(CommandErrorContext<TCommand> context)
         => context.RetryCount >= 0
             && context.RetryCount < _retryIntervals.Count
             && !_retryExcludeExceptionTypes.Any(type => type.IsInstanceOfType(context.Error));
 
-    /// <summary>Re-publishes the retry to the command's exchange, envelope cloned and retry count incremented.</summary>
-    private async Task<ErrorResult> Requeue(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
+    /// <summary>Re-publishes the retry to the command's exchange, envelope cloned and retry count
+    /// incremented.</summary>
+    private async Task<ErrorResult> Requeue(
+        CommandErrorContext<TCommand> context,
+        CancellationToken cancellationToken
+    )
     {
         await _producer.Produce(_exchange, string.Empty, Body(context), RetryHeaders(context), cancellationToken);
 
@@ -119,9 +140,13 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandEr
     /// <summary>
     /// Parks a delayed retry through the scheduler — produced back to the exchange at its time. With no
     /// scheduler registered the failure cannot be delayed, so it parks to the error queue as terminal;
-    /// a scheduler that fails reports <see cref="ErrorResult.Unhandled"/> — the delivery is nacked with requeue and redelivers.
+    /// a scheduler that fails reports <see cref="ErrorResult.Unhandled"/> — the delivery is nacked with requeue and
+    /// redelivers.
     /// </summary>
-    private async Task<ErrorResult> Schedule(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
+    private async Task<ErrorResult> Schedule(
+        CommandErrorContext<TCommand> context,
+        CancellationToken cancellationToken
+    )
     {
         if (_retryScheduler is null)
         {
@@ -139,7 +164,13 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandEr
 
         try
         {
-            await _retryScheduler.Schedule(_exchange, _queue, Body(context), RetryHeaders(context), scheduledAt, cancellationToken);
+            await _retryScheduler.Schedule(
+                _exchange,
+                _queue,
+                Body(context),
+                RetryHeaders(context),
+                scheduledAt,
+                cancellationToken);
 
             BusLogger.LogRetry(_logger, context.Error, context.RetryCount + 1, scheduledAt);
 
@@ -160,9 +191,21 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandEr
         }
     }
 
-    /// <summary>Parks the handler failure to the error queue: a <see cref="CommandError{TCommand}"/> built from the context, published via the default exchange to <c>{queue}.error</c>.</summary>
-    private Task ParkError(CommandErrorContext<TCommand> context, CancellationToken cancellationToken)
-        => _producer.Park(_queue + ErrorQueueSuffix, JsonSerializer.SerializeToUtf8Bytes(CommandError<TCommand>.Create(context, _queue), BusSerializer.Options), ErrorHeaders(context), cancellationToken);
+    /// <summary>Parks the handler failure to the error queue: a <see cref="CommandError{TCommand}"/> built from the
+    /// context, published via the default exchange to <c>{queue}.error</c>.</summary>
+    private Task ParkError(
+        CommandErrorContext<TCommand> context,
+        CancellationToken cancellationToken
+    )
+        => _producer.Park(
+            _queue + ErrorQueueSuffix,
+            JsonSerializer.SerializeToUtf8Bytes(
+                CommandError<TCommand>.Create(
+                    context,
+                    _queue),
+                BusSerializer.Options),
+            ErrorHeaders(context),
+            cancellationToken);
 
     /// <summary>The retry's body — the typed command re-serialized.</summary>
     private static byte[] Body(CommandErrorContext<TCommand> context)
@@ -173,12 +216,16 @@ internal sealed class CommandErrorHandler<TCommand, TCommandHandler> : CommandEr
     {
         Dictionary<string, string> headers = context.Transport.CloneHeaders();
 
-        TransportHeaders.Restamp(headers, TransportHeaders.RetryCount, TransportHeaders.ToHeader(context.RetryCount + 1));
+        TransportHeaders.Restamp(
+            headers,
+            TransportHeaders.RetryCount,
+            TransportHeaders.ToHeader(context.RetryCount + 1));
 
         return headers;
     }
 
-    /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing queue, the UTC time).</summary>
+    /// <summary>Clones the delivery's envelope and stamps the failure on top (exception type/message, the failing
+    /// queue, the UTC time).</summary>
     private Dictionary<string, string> ErrorHeaders(CommandErrorContext<TCommand> context)
     {
         Dictionary<string, string> headers = context.Transport.CloneHeaders();

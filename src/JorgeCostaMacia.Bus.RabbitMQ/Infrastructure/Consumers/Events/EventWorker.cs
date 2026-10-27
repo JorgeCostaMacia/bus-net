@@ -23,15 +23,22 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    /// <summary>Creates the event consumer over the channel factory, the scope factory, the logger and its topology.</summary>
+    /// <summary>Creates the event consumer over the channel factory, the scope factory, the logger and its
+    /// topology.</summary>
     /// <param name="channelFactory">The factory the worker opens its channel from on start.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
     /// <param name="exchange">The event's exchange.</param>
     /// <param name="queue">The queue this subscriber consumes.</param>
     /// <param name="prefetchCount">The maximum unacked messages the broker delivers before waiting for acks.</param>
-    public EventWorker(IConsumerChannelFactory channelFactory, IServiceScopeFactory scopeFactory, ILogger<EventWorker<TEvent, TEventSubscriber>> logger, string exchange, string queue, ushort prefetchCount)
-        : base(channelFactory, scopeFactory, logger, exchange, ExchangeType.Fanout, queue, prefetchCount)
+    public EventWorker(
+        IConsumerChannelFactory channelFactory,
+        IServiceScopeFactory scopeFactory,
+        ILogger<EventWorker<TEvent, TEventSubscriber>> logger,
+        string exchange,
+        string queue,
+        ushort prefetchCount
+    ) : base(channelFactory, scopeFactory, logger, exchange, ExchangeType.Fanout, queue, prefetchCount)
     {
     }
 
@@ -59,28 +66,57 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
 
     /// <inheritdoc />
     protected override EventContext<TEvent> CreateContext(BasicDeliverEventArgs args)
-        => new EventContext<TEvent>(JsonSerializer.Deserialize<TEvent>(args.Body.Span, BusSerializer.Options) ?? throw new JsonException("The event body deserialized to null."), Transport.Create(args));
+        => new EventContext<TEvent>(
+            JsonSerializer.Deserialize<TEvent>(args.Body.Span, BusSerializer.Options)
+                ?? throw new JsonException("The event body deserialized to null."),
+            Transport.Create(args));
 
     /// <inheritdoc />
-    protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
-        => handler.Handle(context, cancellationToken);
+    protected override Task Handle(
+        TEventSubscriber handler,
+        EventContext<TEvent> context,
+        CancellationToken cancellationToken
+    ) => handler.Handle(context, cancellationToken);
 
     /// <inheritdoc />
-    protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
+    protected override async Task<ErrorResult> HandleError(
+        IServiceProvider services,
+        EventContext<TEvent> context,
+        Exception exception,
+        CancellationToken cancellationToken
+    )
     {
-        EventErrorHandlerBase<TEvent, TEventSubscriber> handler = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
+        EventErrorHandlerBase<TEvent, TEventSubscriber> handler
+            = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
 
-        await handler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
+        await handler.Handle(
+            new EventErrorContext<TEvent>(
+                context.Message,
+                context.Transport,
+                exception),
+            cancellationToken);
 
         return handler.Result;
     }
 
     /// <inheritdoc />
-    protected override async Task<FaultResult> HandleFault(IServiceProvider services, ReadOnlyMemory<byte> body, Transport transport, Exception exception, CancellationToken cancellationToken)
+    protected override async Task<FaultResult> HandleFault(
+        IServiceProvider services,
+        ReadOnlyMemory<byte> body,
+        Transport transport,
+        Exception exception,
+        CancellationToken cancellationToken
+    )
     {
-        EventFaultHandlerBase<TEvent, TEventSubscriber> handler = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
+        EventFaultHandlerBase<TEvent, TEventSubscriber> handler
+            = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
 
-        await handler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
+        await handler.Handle(
+            EventFaultContext.Create(
+                body,
+                transport,
+                exception),
+            cancellationToken);
 
         return handler.Result;
     }

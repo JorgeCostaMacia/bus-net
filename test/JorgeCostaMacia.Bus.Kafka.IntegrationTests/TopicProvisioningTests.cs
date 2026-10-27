@@ -35,9 +35,11 @@ public sealed class TopicProvisioningTests : IClassFixture<KafkaFixture>
         string three = Topic();
         string one = Topic();
 
-        await Provision(_fixture.BuildConfiguration(), admin => admin
-            .AddCommand<IntegrationCommand>(three, 3)
-            .AddCommand<IntegrationCommand>(one, 1));
+        await Provision(
+            _fixture.BuildConfiguration(),
+            admin => admin
+                .AddCommand<IntegrationCommand>(three, 3)
+                .AddCommand<IntegrationCommand>(one, 1));
 
         IReadOnlyDictionary<string, int> topics = Broker.Topics(_fixture.BuildConfiguration());
 
@@ -96,9 +98,11 @@ public sealed class TopicProvisioningTests : IClassFixture<KafkaFixture>
         string first = Topic();
         string second = Topic();
 
-        await Provision(_fixture.BuildConfiguration(topicsBatchSize: 0), admin => admin
-            .AddCommand<IntegrationCommand>(first, 1)
-            .AddCommand<IntegrationCommand>(second, 1));
+        await Provision(
+            _fixture.BuildConfiguration(topicsBatchSize: 0),
+            admin => admin
+                .AddCommand<IntegrationCommand>(first, 1)
+                .AddCommand<IntegrationCommand>(second, 1));
 
         IReadOnlyDictionary<string, int> topics = Broker.Topics(_fixture.BuildConfiguration());
 
@@ -130,7 +134,10 @@ public sealed class TopicProvisioningTests : IClassFixture<KafkaFixture>
     /// </summary>
     /// <param name="configuration">The bus configuration to start against.</param>
     /// <param name="admin">The topic declarations.</param>
-    private static async Task Provision(IConfiguration configuration, Action<AdminConfigurator> admin)
+    private static async Task Provision(
+        IConfiguration configuration,
+        Action<AdminConfigurator> admin
+    )
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 

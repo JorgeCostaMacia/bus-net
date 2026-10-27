@@ -22,7 +22,8 @@ public sealed class AdminConfigurator
 
     /// <summary>Binds the topic configuration from the <c>Bus:Admin</c> section.</summary>
     /// <param name="configuration">The application configuration.</param>
-    /// <exception cref="InvalidOperationException">The <c>Bus:Admin</c> section or one of its required values is missing.</exception>
+    /// <exception cref="InvalidOperationException">The <c>Bus:Admin</c> section or one of its required values is
+    /// missing.</exception>
     internal AdminConfigurator(IConfiguration configuration)
     {
         _adminConfiguration = CreateAdminConfiguration(configuration);
@@ -40,18 +41,26 @@ public sealed class AdminConfigurator
     /// <summary>Declares a command's topic to create at startup.</summary>
     /// <typeparam name="TCommand">The command type — mirrors the producer mapping so both lists read alike.</typeparam>
     /// <param name="topic">The Kafka topic to create.</param>
-    /// <param name="partitions">The partition count; <c>-1</c> (the default) defers to the broker's default partition count.</param>
+    /// <param name="partitions">The partition count; <c>-1</c> (the default) defers to the broker's default partition
+    /// count.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public AdminConfigurator AddCommand<TCommand>(string topic, int partitions = -1)
+    public AdminConfigurator AddCommand<TCommand>(
+        string topic,
+        int partitions = -1
+    )
         where TCommand : Command
         => AddTopic(topic, partitions);
 
     /// <summary>Declares an event's topic to create at startup.</summary>
     /// <typeparam name="TEvent">The event type — mirrors the producer mapping so both lists read alike.</typeparam>
     /// <param name="topic">The Kafka topic to create.</param>
-    /// <param name="partitions">The partition count; <c>-1</c> (the default) defers to the broker's default partition count.</param>
+    /// <param name="partitions">The partition count; <c>-1</c> (the default) defers to the broker's default partition
+    /// count.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    public AdminConfigurator AddEvent<TEvent>(string topic, int partitions = -1)
+    public AdminConfigurator AddEvent<TEvent>(
+        string topic,
+        int partitions = -1
+    )
         where TEvent : Event
         => AddTopic(topic, partitions);
 
@@ -59,7 +68,10 @@ public sealed class AdminConfigurator
     /// <param name="topic">The Kafka topic to create.</param>
     /// <param name="partitions">The partition count (<c>-1</c> = the broker's default).</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
-    private AdminConfigurator AddTopic(string topic, int partitions)
+    private AdminConfigurator AddTopic(
+        string topic,
+        int partitions
+    )
     {
         if (!_topics.TryAdd(topic, partitions))
         {
@@ -83,7 +95,8 @@ public sealed class AdminConfigurator
 
         if (string.IsNullOrWhiteSpace(adminConfiguration.BootstrapServers))
         {
-            throw new InvalidOperationException($"'{AdminSection}:{nameof(adminConfiguration.BootstrapServers)}' is null.");
+            throw new InvalidOperationException(
+                $"'{AdminSection}:{nameof(adminConfiguration.BootstrapServers)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(adminConfiguration.SaslUsername))

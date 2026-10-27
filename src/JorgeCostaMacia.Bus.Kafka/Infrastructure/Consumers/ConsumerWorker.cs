@@ -37,7 +37,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <summary>The consumer group id — the consumer's identity for offsets and consumer-side filtering.</summary>
     protected string GroupId { get; }
 
-    /// <summary>Fallback timeout before a consumer releases its startup slot when it never joins its group (e.g. more replicas than partitions), so a stalled join does not hold the slot.</summary>
+    /// <summary>Fallback timeout before a consumer releases its startup slot when it never joins its group (e.g. more
+    /// replicas than partitions), so a stalled join does not hold the slot.</summary>
     private static readonly TimeSpan _startupReleaseTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IConsumer _consumer;
@@ -55,16 +56,22 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private CancellationTokenSource? _cancellation;
     private int _startupSlotReleased;
 
-    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker, the startup gate/signal and its contract.</summary>
-    /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
-    /// <param name="scopeFactory">The factory creating one service scope per delivered message — the handler and its error and fault handlers are resolved from it.</param>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker,
+    /// the startup gate/signal and its contract.</summary>
+    /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already
+    /// wired.</param>
+    /// <param name="scopeFactory">The factory creating one service scope per delivered message — the handler and its
+    /// error and fault handlers are resolved from it.</param>
     /// <param name="logger">The logger for the deliveries.</param>
-    /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
+    /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable
+    /// state.</param>
     /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
     /// <param name="startupGate">The shared gate bounding how many consumers connect at once at startup.</param>
-    /// <param name="startupSignal">This consumer's one-shot signal, raised by its partition-assignment callback when it joins its group.</param>
+    /// <param name="startupSignal">This consumer's one-shot signal, raised by its partition-assignment callback when it
+    /// joins its group.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
-    /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
+    /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side
+    /// filtering.</param>
     protected ConsumerWorker(
         IConsumer consumer,
         IServiceScopeFactory scopeFactory,
@@ -74,7 +81,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         StartupGate startupGate,
         StartupSignal startupSignal,
         string topic,
-        string groupId)
+        string groupId
+    )
     {
         _consumer = consumer;
         _scopeFactory = scopeFactory;
@@ -201,13 +209,20 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="result">The delivered message.</param>
     /// <param name="transport">The delivery's transport.</param>
     /// <returns>The context handed to the handler.</returns>
-    protected abstract TContext CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport);
+    protected abstract TContext CreateContext(
+        ConsumeResult<Ignore, byte[]> result,
+        Transport transport
+    );
 
     /// <summary>Invokes the concrete handler for a delivery.</summary>
     /// <param name="handler">The handler resolved from the delivery's service scope.</param>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    protected abstract Task Handle(THandler handler, TContext context, CancellationToken cancellationToken);
+    protected abstract Task Handle(
+        THandler handler,
+        TContext context,
+        CancellationToken cancellationToken
+    );
 
     /// <summary>
     /// Hands the failed delivery to the message's error handler — resolved from the delivery's service
@@ -219,7 +234,12 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="exception">The handling failure.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>How the error handler left the delivery.</returns>
-    protected abstract Task<ErrorResult> HandleError(IServiceProvider services, TContext context, Exception exception, CancellationToken cancellationToken);
+    protected abstract Task<ErrorResult> HandleError(
+        IServiceProvider services,
+        TContext context,
+        Exception exception,
+        CancellationToken cancellationToken
+    );
 
     /// <summary>
     /// Hands the broken (or relayed) delivery to the message's fault handler — resolved from the
@@ -228,12 +248,19 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// it left it.
     /// </summary>
     /// <param name="services">The delivery's service scope, the fault handler is resolved from.</param>
-    /// <param name="body">The delivered raw body — never deserialized, it is the thing that could not be trusted.</param>
+    /// <param name="body">The delivered raw body — never deserialized, it is the thing that could not be
+    /// trusted.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>How the fault handler left the delivery.</returns>
-    protected abstract Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken);
+    protected abstract Task<FaultResult> HandleFault(
+        IServiceProvider services,
+        byte[] body,
+        Transport transport,
+        Exception exception,
+        CancellationToken cancellationToken
+    );
 
     /// <summary>
     /// Consumer-side filtering — whether the delivery targets other consumers and is skipped (and
@@ -341,7 +368,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     /// <param name="result">The delivered message.</param>
     /// <param name="cancellationToken">The loop's cancellation token.</param>
-    private async Task Deliver(ConsumeResult<Ignore, byte[]> result, CancellationToken cancellationToken)
+    private async Task Deliver(
+        ConsumeResult<Ignore, byte[]> result,
+        CancellationToken cancellationToken
+    )
     {
         await using AsyncServiceScope services = _scopeFactory.CreateAsyncScope();
 
@@ -387,7 +417,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// unmanageable failure belongs to the fault lane, where the message stays available even when
     /// the retry lane's infrastructure is broken.
     /// </summary>
-    private async Task Error(IServiceProvider services, ConsumeResult<Ignore, byte[]> result, TContext? context, Exception exception, CancellationToken cancellationToken)
+    private async Task Error(
+        IServiceProvider services,
+        ConsumeResult<Ignore, byte[]> result,
+        TContext? context,
+        Exception exception,
+        CancellationToken cancellationToken
+    )
     {
         ErrorResult outcome;
 
@@ -432,11 +468,21 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// unacked rather than tearing down the loop; a shutdown cancellation is rethrown, unlogged, for
     /// the loop to exit through.
     /// </summary>
-    private async Task Fault(IServiceProvider services, ConsumeResult<Ignore, byte[]> result, Exception exception, CancellationToken cancellationToken)
+    private async Task Fault(
+        IServiceProvider services,
+        ConsumeResult<Ignore, byte[]> result,
+        Exception exception,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
-            FaultResult outcome = await HandleFault(services, result.Message.Value, Transport.Create(result), exception, cancellationToken);
+            FaultResult outcome = await HandleFault(
+                services,
+                result.Message.Value,
+                Transport.Create(result),
+                exception,
+                cancellationToken);
 
             if (outcome is FaultResult.Parked)
             {

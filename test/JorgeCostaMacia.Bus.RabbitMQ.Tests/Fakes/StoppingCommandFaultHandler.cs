@@ -16,7 +16,10 @@ internal sealed class StoppingCommandFaultHandler : CommandFaultHandlerBase<Test
     /// <summary>The in-flight stop the handler triggered, for the test to await.</summary>
     public Task? Stopping { get; private set; }
 
-    public override Task Handle(CommandFaultContext context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandFaultContext context,
+        CancellationToken cancellationToken = default
+    )
     {
         Stopping = Stop?.Invoke();
 

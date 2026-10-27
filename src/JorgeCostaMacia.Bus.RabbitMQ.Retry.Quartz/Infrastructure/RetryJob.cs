@@ -34,7 +34,10 @@ internal sealed class RetryJob : IJob
     }
 
     /// <inheritdoc />
-    public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
+    public async ValueTask Execute(
+        IJobExecutionContext context,
+        CancellationToken cancellationToken
+    )
     {
         string exchange = Exchange(context.MergedJobDataMap);
         byte[] body = Body(context.MergedJobDataMap);
@@ -84,7 +87,9 @@ internal sealed class RetryJob : IJob
 
         Dictionary<string, string> headers = new Dictionary<string, string>();
 
-        foreach (KeyValuePair<string, string> header in JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(value) ?? new List<KeyValuePair<string, string>>())
+        foreach (KeyValuePair<string, string> header
+            in JsonSerializer.Deserialize<List<KeyValuePair<string, string>>>(value)
+            ?? new List<KeyValuePair<string, string>>())
         {
             headers[header.Key] = header.Value;
         }

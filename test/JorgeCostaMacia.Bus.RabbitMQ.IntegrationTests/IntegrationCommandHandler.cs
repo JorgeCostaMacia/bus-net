@@ -21,7 +21,10 @@ public sealed class IntegrationCommandHandler : CommandHandler<IntegrationComman
     /// <summary>Signals the delivered command to the awaiting test.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<IntegrationCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandContext<IntegrationCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         _received.TrySetResult(context.Message);
 

@@ -1,4 +1,5 @@
-# Integration pipeline: build, test and verify packaging on develop and pull requests (no publish).
+# Integration pipeline: the explicit-types guard, build, the format check, test and a packaging check on develop and
+# pull requests (no publish).
 name: Develop
 
 on:
@@ -42,6 +43,8 @@ jobs:
             10.0.x
       - name: Build
         run: dotnet build ${{ env.SOLUTION }} -c ${{ env.CONFIGURATION }}
+      - name: Format
+        run: dotnet format ${{ env.SOLUTION }} --verify-no-changes --no-restore
       - name: Test
         run: dotnet test ${{ env.SOLUTION }} -c ${{ env.CONFIGURATION }} --no-build
       - name: Pack

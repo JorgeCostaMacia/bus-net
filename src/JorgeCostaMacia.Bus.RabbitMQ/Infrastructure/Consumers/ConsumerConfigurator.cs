@@ -18,7 +18,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Infrastructure.Consumers;
 /// <see cref="AddEventSubscriber{TEvent, TEventSubscriber}"/>) — each with its own hosted consumer and
 /// the framework's error and fault handlers wired in. The consumer binds its queue to the message's
 /// exchange (a command's <c>direct</c>, an event's <c>fanout</c>); its <c>.error</c> / <c>.fault</c>
-/// park queues are not declared up front — they are born lazily on the first park. It reads (never writes) the routing map the
+/// park queues are not declared up front — they are born lazily on the first park. It reads (never writes) the routing
+/// map the
 /// <see cref="Producers.ProducerConfigurator"/> owns to resolve each handler's exchange by type. The
 /// shared connection is bound once elsewhere.
 /// </summary>
@@ -32,25 +33,32 @@ public sealed class ConsumerConfigurator
     /// <summary>Takes the service collection and the routing map to resolve exchanges.</summary>
     /// <param name="services">The service collection.</param>
     /// <param name="messages">The type → exchange routing map the producer side owns.</param>
-    internal ConsumerConfigurator(IServiceCollection services, IReadOnlyDictionary<Type, string> messages)
+    internal ConsumerConfigurator(
+        IServiceCollection services,
+        IReadOnlyDictionary<Type, string> messages
+    )
     {
         _services = services;
         _messages = messages;
     }
 
-    /// <summary>Registers a command handler (scoped, one per delivery), its error and fault handlers, and its hosted consumer on the queue.</summary>
+    /// <summary>Registers a command handler (scoped, one per delivery), its error and fault handlers, and its hosted
+    /// consumer on the queue.</summary>
     /// <typeparam name="TCommand">The command type consumed.</typeparam>
     /// <typeparam name="TCommandHandler">The handler type.</typeparam>
     /// <param name="queue">The queue this handler consumes, bound to the command's exchange.</param>
-    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> re-publishes to the exchange immediately), or <see langword="null"/> for the default (none).</param>
-    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
+    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c>
+    /// re-publishes to the exchange immediately), or <see langword="null"/> for the default (none).</param>
+    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for
+    /// none.</param>
     /// <param name="prefetchCount">The maximum unacked messages delivered before waiting for acks.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public ConsumerConfigurator AddCommandHandler<TCommand, TCommandHandler>(
         string queue,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
-        ushort prefetchCount = DefaultPrefetchCount)
+        ushort prefetchCount = DefaultPrefetchCount
+    )
         where TCommand : Command
         where TCommandHandler : CommandHandler<TCommand>
     {
@@ -87,19 +95,23 @@ public sealed class ConsumerConfigurator
         return this;
     }
 
-    /// <summary>Registers an event subscriber (scoped, one per delivery), its error and fault handlers, and its hosted consumer on the queue.</summary>
+    /// <summary>Registers an event subscriber (scoped, one per delivery), its error and fault handlers, and its hosted
+    /// consumer on the queue.</summary>
     /// <typeparam name="TEvent">The event type consumed.</typeparam>
     /// <typeparam name="TEventSubscriber">The subscriber type.</typeparam>
     /// <param name="queue">The queue this subscriber consumes, bound to the event's exchange.</param>
-    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c> re-publishes to the exchange immediately), or <see langword="null"/> for the default (none).</param>
-    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for none.</param>
+    /// <param name="retryIntervals">Delays before each retry when handling fails (one entry per attempt, <c>00:00</c>
+    /// re-publishes to the exchange immediately), or <see langword="null"/> for the default (none).</param>
+    /// <param name="retryExcludeExceptionTypes">Exceptions excluded from retry, or <see langword="null"/> for
+    /// none.</param>
     /// <param name="prefetchCount">The maximum unacked messages delivered before waiting for acks.</param>
     /// <returns>The same configurator, to allow method chaining.</returns>
     public ConsumerConfigurator AddEventSubscriber<TEvent, TEventSubscriber>(
         string queue,
         ImmutableList<TimeSpan>? retryIntervals = null,
         ImmutableList<Type>? retryExcludeExceptionTypes = null,
-        ushort prefetchCount = DefaultPrefetchCount)
+        ushort prefetchCount = DefaultPrefetchCount
+    )
         where TEvent : Event
         where TEventSubscriber : EventSubscriber<TEvent>
     {
@@ -140,5 +152,6 @@ public sealed class ConsumerConfigurator
     private string Exchange<TMessage>()
         => _messages.TryGetValue(typeof(TMessage), out string? exchange)
             ? exchange
-            : throw new InvalidOperationException($"'{typeof(TMessage).FullName}' is not mapped to an exchange; map it with AddCommand/AddEvent first.");
+            : throw new InvalidOperationException(
+                $"'{typeof(TMessage).FullName}' is not mapped to an exchange; map it with AddCommand/AddEvent first.");
 }

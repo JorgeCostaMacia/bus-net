@@ -11,7 +11,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 /// </summary>
 public sealed record IsolationCommand : Command
 {
-    /// <summary>The payload — a <c>good-*</c> record the handler processes, or a <c>poison-*</c> record it fails.</summary>
+    /// <summary>The payload — a <c>good-*</c> record the handler processes, or a <c>poison-*</c> record it
+    /// fails.</summary>
     public string Payload { get; init; }
 
     /// <summary>Hydrating constructor used by the serializer on the consuming side.</summary>
@@ -21,8 +22,18 @@ public sealed record IsolationCommand : Command
     /// <param name="aggregateConsumers">The target consumers.</param>
     /// <param name="payload">The payload.</param>
     [JsonConstructor]
-    public IsolationCommand(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string payload)
-        : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
+    public IsolationCommand(
+        Guid aggregateId,
+        Guid aggregateCorrelationId,
+        DateTime aggregateOccurredAt,
+        ImmutableList<string> aggregateConsumers,
+        string payload
+    ) : base(
+        aggregateId,
+        aggregateCorrelationId,
+        aggregateOccurredAt,
+        aggregateConsumers
+    )
     {
         Payload = payload;
     }
@@ -30,7 +41,12 @@ public sealed record IsolationCommand : Command
     /// <summary>Convenience constructor used to send the command, defaulting the metadata.</summary>
     /// <param name="payload">The payload.</param>
     public IsolationCommand(string payload)
-        : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
+        : base(
+            aggregateId: null,
+            aggregateCorrelationId: null,
+            aggregateOccurredAt: null,
+            aggregateConsumers: null
+        )
     {
         Payload = payload;
     }

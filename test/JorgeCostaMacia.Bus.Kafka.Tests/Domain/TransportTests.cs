@@ -8,7 +8,13 @@ namespace JorgeCostaMacia.Bus.Kafka.Tests.Domain;
 public class TransportTests
 {
     private static Transport CreateSut(Headers headers)
-        => new Transport(headers.ToImmutableList(), "orders", new Partition(1), new Offset(10), null, new Timestamp(DateTime.UtcNow));
+        => new Transport(
+            headers.ToImmutableList(),
+            "orders",
+            new Partition(1),
+            new Offset(10),
+            null,
+            new Timestamp(DateTime.UtcNow));
 
     [Fact]
     public void Create_FromConsumeResult_MapsTheDelivery()
@@ -16,7 +22,11 @@ public class TransportTests
         ConsumeResult<Ignore, byte[]> result = new ConsumeResult<Ignore, byte[]>()
         {
             TopicPartitionOffset = new TopicPartitionOffset("orders", new Partition(3), new Offset(42)),
-            Message = new Message<Ignore, byte[]> { Value = Array.Empty<byte>(), Headers = new Headers { { "key", "value"u8.ToArray() } } }
+            Message = new Message<Ignore, byte[]>
+            {
+                Value = Array.Empty<byte>(),
+                Headers = new Headers { { "key", "value"u8.ToArray() } }
+            }
         };
 
         Transport transport = Transport.Create(result);
@@ -37,7 +47,8 @@ public class TransportTests
 
     [Fact]
     public void GetGuid_WrongLength_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut(new Headers { new Header("id", new byte[] { 1, 2, 3 }) }).GetHeaderGuid("id"));
+        => Assert.Throws<InvalidCastException>(
+            () => CreateSut(new Headers { new Header("id", new byte[] { 1, 2, 3 }) }).GetHeaderGuid("id"));
 
     [Fact]
     public void GetHeader_Missing_Throws()
@@ -45,7 +56,10 @@ public class TransportTests
 
     [Fact]
     public void GetHeader_DuplicateKey_LastWins()
-        => Assert.Equal("second", CreateSut(new Headers { new Header("key", "first"u8.ToArray()), new Header("key", "second"u8.ToArray()) }).GetHeaderString("key"));
+        => Assert.Equal(
+            "second",
+            CreateSut(new Headers { new Header("key", "first"u8.ToArray()), new Header("key", "second"u8.ToArray()) })
+                .GetHeaderString("key"));
 
     [Fact]
     public void GetStringOrDefault_Absent_ReturnsNull()
@@ -61,7 +75,8 @@ public class TransportTests
     {
         DateTime value = new DateTime(2026, 7, 3, 12, 30, 45, DateTimeKind.Utc);
 
-        DateTime parsed = CreateSut(new Headers { new Header("at", Encoding.UTF8.GetBytes(value.ToString("O"))) }).GetHeaderDateTime("at");
+        DateTime parsed = CreateSut(new Headers { new Header("at", Encoding.UTF8.GetBytes(value.ToString("O"))) })
+            .GetHeaderDateTime("at");
 
         Assert.Equal(value, parsed);
         Assert.Equal(DateTimeKind.Utc, parsed.Kind);
@@ -69,11 +84,14 @@ public class TransportTests
 
     [Fact]
     public void GetDateTime_Invalid_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut(new Headers { new Header("at", "nope"u8.ToArray()) }).GetHeaderDateTime("at"));
+        => Assert.Throws<InvalidCastException>(
+            () => CreateSut(new Headers { new Header("at", "nope"u8.ToArray()) }).GetHeaderDateTime("at"));
 
     [Fact]
     public void GetStringList_TrimsAndSkipsEmptyEntries()
-        => Assert.Equal(new string[] { "a", "b", "c" }, CreateSut(new Headers { new Header("list", " a, b ,,c "u8.ToArray()) }).GetHeaderStringList("list"));
+        => Assert.Equal(
+            new string[] { "a", "b", "c" },
+            CreateSut(new Headers { new Header("list", " a, b ,,c "u8.ToArray()) }).GetHeaderStringList("list"));
 
     [Fact]
     public void GetInt_Digits_Parses()
@@ -81,7 +99,8 @@ public class TransportTests
 
     [Fact]
     public void GetInt_Invalid_Throws()
-        => Assert.Throws<InvalidCastException>(() => CreateSut(new Headers { new Header("count", "nope"u8.ToArray()) }).GetHeaderInt("count"));
+        => Assert.Throws<InvalidCastException>(
+            () => CreateSut(new Headers { new Header("count", "nope"u8.ToArray()) }).GetHeaderInt("count"));
 
     [Fact]
     public void DecodeHeaders_RendersGuidsAsGuid_TextOtherwise_PreservingOrderAndDuplicates()

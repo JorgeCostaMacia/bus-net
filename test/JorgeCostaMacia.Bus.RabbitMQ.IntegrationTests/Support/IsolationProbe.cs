@@ -9,7 +9,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 /// </summary>
 public sealed class IsolationProbe
 {
-    private readonly TaskCompletionSource _allGoodHandled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _allGoodHandled = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
     private long _goodHandled;
     private long _goodExpected = long.MaxValue;
 

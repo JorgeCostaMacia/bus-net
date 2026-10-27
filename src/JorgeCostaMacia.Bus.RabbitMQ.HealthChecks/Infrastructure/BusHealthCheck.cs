@@ -22,8 +22,13 @@ internal sealed class BusHealthCheck : IHealthCheck
     }
 
     /// <inheritdoc />
-    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    public Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default
+    )
         => Task.FromResult(_connection.IsOpen
             ? HealthCheckResult.Healthy("The RabbitMQ connection is open.")
-            : new HealthCheckResult(context.Registration.FailureStatus, "The RabbitMQ connection is down; automatic recovery keeps retrying."));
+            : new HealthCheckResult(
+                context.Registration.FailureStatus,
+                "The RabbitMQ connection is down; automatic recovery keeps retrying."));
 }

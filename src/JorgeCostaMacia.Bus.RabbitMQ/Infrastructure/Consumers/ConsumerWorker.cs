@@ -28,7 +28,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     where TContext : IContext
     where THandler : IHandler
 {
-    private static readonly TimeSpan[] _defaultResurrectionBackoff = new TimeSpan[] { TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60) };
+    private static readonly TimeSpan[] _defaultResurrectionBackoff = new TimeSpan[]
+    {
+        TimeSpan.FromSeconds(5),
+        TimeSpan.FromSeconds(10),
+        TimeSpan.FromSeconds(30),
+        TimeSpan.FromSeconds(60)
+    };
 
     private readonly IConsumerChannelFactory _channelFactory;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -42,7 +48,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     private IConsumerChannel? _channel;
     private int _resurrecting;
 
-    /// <summary>Creates the consumer over the channel factory, the scope factory, the logger and its topology.</summary>
+    /// <summary>Creates the consumer over the channel factory, the scope factory, the logger and its
+    /// topology.</summary>
     /// <param name="channelFactory">The factory the worker opens its channel from on start.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
@@ -50,7 +57,15 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="exchangeType">The exchange type — <c>direct</c> for commands, <c>fanout</c> for events.</param>
     /// <param name="queue">The queue this handler consumes.</param>
     /// <param name="prefetchCount">The maximum unacked messages the broker delivers before waiting for acks.</param>
-    protected ConsumerWorker(IConsumerChannelFactory channelFactory, IServiceScopeFactory scopeFactory, ILogger logger, string exchange, string exchangeType, string queue, ushort prefetchCount)
+    protected ConsumerWorker(
+        IConsumerChannelFactory channelFactory,
+        IServiceScopeFactory scopeFactory,
+        ILogger logger,
+        string exchange,
+        string exchangeType,
+        string queue,
+        ushort prefetchCount
+    )
     {
         _channelFactory = channelFactory;
         _scopeFactory = scopeFactory;
@@ -61,7 +76,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         _prefetchCount = prefetchCount;
     }
 
-    /// <summary>The queue this worker consumes — the consumer identity used for targeted retries and filtering.</summary>
+    /// <summary>The queue this worker consumes — the consumer identity used for targeted retries and
+    /// filtering.</summary>
     protected string Queue => _queue;
 
     /// <summary>
@@ -88,24 +104,42 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="handler">The handler resolved from the delivery's scope.</param>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    protected abstract Task Handle(THandler handler, TContext context, CancellationToken cancellationToken);
+    protected abstract Task Handle(
+        THandler handler,
+        TContext context,
+        CancellationToken cancellationToken
+    );
 
-    /// <summary>Hands a handling failure to the error handler resolved from the delivery's scope, and reports its verdict.</summary>
+    /// <summary>Hands a handling failure to the error handler resolved from the delivery's scope, and reports its
+    /// verdict.</summary>
     /// <param name="services">The delivery's scoped service provider.</param>
     /// <param name="context">The delivery's context (the handler already ran).</param>
     /// <param name="exception">The failure the handler raised.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    protected abstract Task<ErrorResult> HandleError(IServiceProvider services, TContext context, Exception exception, CancellationToken cancellationToken);
+    protected abstract Task<ErrorResult> HandleError(
+        IServiceProvider services,
+        TContext context,
+        Exception exception,
+        CancellationToken cancellationToken
+    );
 
-    /// <summary>Hands a broken (or relayed) delivery to the fault handler resolved from the delivery's scope, and reports its verdict.</summary>
+    /// <summary>Hands a broken (or relayed) delivery to the fault handler resolved from the delivery's scope, and
+    /// reports its verdict.</summary>
     /// <param name="services">The delivery's scoped service provider.</param>
     /// <param name="body">The delivered raw body, never deserialized.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    protected abstract Task<FaultResult> HandleFault(IServiceProvider services, ReadOnlyMemory<byte> body, Transport transport, Exception exception, CancellationToken cancellationToken);
+    protected abstract Task<FaultResult> HandleFault(
+        IServiceProvider services,
+        ReadOnlyMemory<byte> body,
+        Transport transport,
+        Exception exception,
+        CancellationToken cancellationToken
+    );
 
-    /// <summary>Opens the channel, declares the topology (message exchange + queue bound to it), and starts consuming — the <c>.error</c> / <c>.fault</c> park queues are born lazily, on the first park.</summary>
+    /// <summary>Opens the channel, declares the topology (message exchange + queue bound to it), and starts consuming —
+    /// the <c>.error</c> / <c>.fault</c> park queues are born lazily, on the first park.</summary>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         IConsumerChannel channel = await _channelFactory.CreateAsync(cancellationToken);
@@ -120,7 +154,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// reason in the context, nothing is torn down, and a single resurrection is started — overlapping
     /// death events fold into the one already running. A clean stop stays silent and resurrects nothing.
     /// </summary>
-    /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer without one.</param>
+    /// <param name="reason">The shutdown reason, or <see langword="null"/> when the broker cancelled the consumer
+    /// without one.</param>
     private Task OnClosedAsync(ShutdownEventArgs? reason)
     {
         if (_stopping.IsCancellationRequested)
@@ -162,7 +197,8 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// same handler, the old one disposed. A failed attempt just waits for the next step, silently:
     /// the death already logged its warning, and per-attempt noise groups nothing.
     /// </summary>
-    /// <param name="consumerCancelled">Whether the death was the broker cancelling the consumer (no shutdown reason) — the channel stays open, so the recovery check is skipped.</param>
+    /// <param name="consumerCancelled">Whether the death was the broker cancelling the consumer (no shutdown reason) —
+    /// the channel stays open, so the recovery check is skipped.</param>
     private async Task ResurrectAsync(bool consumerCancelled)
     {
         try
@@ -171,7 +207,9 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
             {
                 try
                 {
-                    await Task.Delay(ResurrectionBackoff[Math.Min(attempt, ResurrectionBackoff.Count - 1)], _stopping.Token);
+                    await Task.Delay(
+                        ResurrectionBackoff[Math.Min(attempt, ResurrectionBackoff.Count - 1)],
+                        _stopping.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -193,7 +231,11 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
                     IConsumerChannel channel = await _channelFactory.CreateAsync(_stopping.Token);
 
                     await channel.DeclareAsync(_exchange, _exchangeType, _queue, _prefetchCount, _stopping.Token);
-                    await channel.ConsumeAsync(_queue, args => OnReceivedAsync(channel, args), OnClosedAsync, _stopping.Token);
+                    await channel.ConsumeAsync(
+                        _queue,
+                        args => OnReceivedAsync(channel, args),
+                        OnClosedAsync,
+                        _stopping.Token);
 
                     IConsumerChannel dead = _channel!;
                     _channel = channel;
@@ -236,7 +278,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     /// <param name="channel">The channel that delivered this message — the one every ack/nack targets.</param>
     /// <param name="args">The delivered message.</param>
-    private async Task OnReceivedAsync(IConsumerChannel channel, BasicDeliverEventArgs args)
+    private async Task OnReceivedAsync(
+        IConsumerChannel channel,
+        BasicDeliverEventArgs args
+    )
     {
         using IDisposable workerScope = BusLogger.WorkerContext(_exchange, _queue);
         using IDisposable deliveryScope = BusLogger.ConsumerContext(args);
@@ -294,7 +339,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     /// <param name="channel">The channel that delivered the message — the ack targets it, never the field.</param>
     /// <param name="args">The delivery to ack.</param>
-    private async Task AckQuietly(IConsumerChannel channel, BasicDeliverEventArgs args)
+    private async Task AckQuietly(
+        IConsumerChannel channel,
+        BasicDeliverEventArgs args
+    )
     {
         try
         {
@@ -321,7 +369,13 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="args"></param>
     /// <param name="context"></param>
     /// <param name="exception"></param>
-    private async Task Error(IConsumerChannel channel, IServiceProvider services, BasicDeliverEventArgs args, TContext? context, Exception exception)
+    private async Task Error(
+        IConsumerChannel channel,
+        IServiceProvider services,
+        BasicDeliverEventArgs args,
+        TContext? context,
+        Exception exception
+    )
     {
         ErrorResult outcome;
 
@@ -376,7 +430,12 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// <param name="services"></param>
     /// <param name="args"></param>
     /// <param name="exception"></param>
-    private async Task Fault(IConsumerChannel channel, IServiceProvider services, BasicDeliverEventArgs args, Exception exception)
+    private async Task Fault(
+        IConsumerChannel channel,
+        IServiceProvider services,
+        BasicDeliverEventArgs args,
+        Exception exception
+    )
     {
         FaultResult outcome;
 
@@ -413,11 +472,14 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
         }
     }
 
-    /// <summary>Acks the delivery on the channel that delivered it — it was dealt with; the delivering channel is targeted so a resurrection swap can't cross-ack.</summary>
+    /// <summary>Acks the delivery on the channel that delivered it — it was dealt with; the delivering channel is
+    /// targeted so a resurrection swap can't cross-ack.</summary>
     /// <param name="channel">The channel that delivered the message.</param>
     /// <param name="args">The delivery to ack.</param>
-    private async Task Ack(IConsumerChannel channel, BasicDeliverEventArgs args)
-        => await channel.AckAsync(args.DeliveryTag, _stopping.Token);
+    private async Task Ack(
+        IConsumerChannel channel,
+        BasicDeliverEventArgs args
+    ) => await channel.AckAsync(args.DeliveryTag, _stopping.Token);
 
     /// <summary>
     /// Nacks the delivery with requeue on the channel that delivered it — it was not dealt with and
@@ -430,7 +492,10 @@ internal abstract class ConsumerWorker<TContext, THandler> : IHostedService
     /// </summary>
     /// <param name="channel">The channel that delivered the message.</param>
     /// <param name="args">The delivery to nack.</param>
-    private async Task Nack(IConsumerChannel channel, BasicDeliverEventArgs args)
+    private async Task Nack(
+        IConsumerChannel channel,
+        BasicDeliverEventArgs args
+    )
     {
         if (!_stopping.IsCancellationRequested)
         {

@@ -13,7 +13,8 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.IntegrationTests.Support;
 public sealed class RecoveryProbe
 {
     private readonly ConcurrentDictionary<string, byte> _unique = new ConcurrentDictionary<string, byte>();
-    private readonly TaskCompletionSource _allUniqueHandled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _allUniqueHandled = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
     private long _total;
     private long _expected = long.MaxValue;
 
@@ -23,14 +24,17 @@ public sealed class RecoveryProbe
     /// <summary>The number of distinct records handled so far — never regresses on a redelivery.</summary>
     public int UniqueHandled => _unique.Count;
 
-    /// <summary>Every delivery counted, redeliveries included — the excess over <see cref="UniqueHandled"/> is the at-least-once redeliveries.</summary>
+    /// <summary>Every delivery counted, redeliveries included — the excess over <see cref="UniqueHandled"/> is the
+    /// at-least-once redeliveries.</summary>
     public long TotalHandled => Interlocked.Read(ref _total);
 
-    /// <summary>Arms the probe to complete once <paramref name="expected"/> distinct records have been handled.</summary>
+    /// <summary>Arms the probe to complete once <paramref name="expected"/> distinct records have been
+    /// handled.</summary>
     /// <param name="expected">The number of distinct records the batch carries.</param>
     public void Expect(long expected) => Interlocked.Exchange(ref _expected, expected);
 
-    /// <summary>Records one delivery of <paramref name="id"/>, completing the probe when every expected distinct record has been seen.</summary>
+    /// <summary>Records one delivery of <paramref name="id"/>, completing the probe when every expected distinct record
+    /// has been seen.</summary>
     /// <param name="id">The delivered record's stable identity.</param>
     public void Signal(string id)
     {

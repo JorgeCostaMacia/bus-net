@@ -16,10 +16,15 @@ public class BusTests
     private RabbitBus CreateSut(params (Type Type, string Exchange)[] messages)
         => new RabbitBus(_producer, messages.ToDictionary(e => e.Type, e => e.Exchange));
 
-    private static string? Header(IReadOnlyDictionary<string, string> headers, string key)
-        => headers.TryGetValue(key, out string? value) ? value : null;
+    private static string? Header(
+        IReadOnlyDictionary<string, string> headers,
+        string key
+    ) => headers.TryGetValue(key, out string? value) ? value : null;
 
-    private static Guid GuidHeader(IReadOnlyDictionary<string, string> headers, string key)
+    private static Guid GuidHeader(
+        IReadOnlyDictionary<string, string> headers,
+        string key
+    )
     {
         Assert.True(headers.TryGetValue(key, out string? value) && value is not null);
 
@@ -38,18 +43,23 @@ public class BusTests
     [Fact]
     public async Task Send_Fresh_BuildsANewEnvelope()
     {
-        TestCommand command = new TestCommand("pepe", aggregateConsumers: new string[] { "g1", "g2" });
+        TestCommand command = new TestCommand(
+            "pepe",
+            aggregateConsumers: new string[] { "g1", "g2" });
 
         await CreateSut((typeof(TestCommand), "orders")).Send(command, TestContext.Current.CancellationToken);
 
-        (string exchange, string routingKey, byte[] body, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
+        (string exchange, string routingKey, byte[] body, IReadOnlyDictionary<string, string> headers) = Assert.Single(
+            _producer.Produced);
         Assert.Equal("orders", exchange);
         Assert.Equal(string.Empty, routingKey);
         Assert.Equal(typeof(TestCommand).FullName, Header(headers, TransportHeaders.MessageType));
         Assert.Equal("orders", Header(headers, TransportHeaders.MessageDestinationAddress));
         Assert.Null(Header(headers, TransportHeaders.MessageOriginAddress));
         Assert.Equal("orders", Header(headers, TransportHeaders.ConversationAddress));
-        Assert.Equal(GuidHeader(headers, TransportHeaders.MessageId), GuidHeader(headers, TransportHeaders.ConversationId));
+        Assert.Equal(
+            GuidHeader(headers, TransportHeaders.MessageId),
+            GuidHeader(headers, TransportHeaders.ConversationId));
         Assert.Equal(command.AggregateId, GuidHeader(headers, TransportHeaders.AggregateId));
         Assert.Equal(command.AggregateCorrelationId, GuidHeader(headers, TransportHeaders.AggregateCorrelationId));
         Assert.Equal("g1,g2", Header(headers, TransportHeaders.AggregateConsumers));
@@ -79,10 +89,20 @@ public class BusTests
             [TransportHeaders.RetryCount] = "2"u8.ToArray()
         };
 
-        Transport transport = new Transport(inbound, "orders", string.Empty, deliveryTag: 10, redelivered: false);
-        TestEvent message = new TestEvent("pepe", aggregateConsumers: new string[] { "g1" });
+        Transport transport = new Transport(
+            inbound,
+            "orders",
+            string.Empty,
+            deliveryTag: 10,
+            redelivered: false);
+        TestEvent message = new TestEvent(
+            "pepe",
+            aggregateConsumers: new string[] { "g1" });
 
-        await CreateSut((typeof(TestEvent), "payments")).Publish(message, transport, TestContext.Current.CancellationToken);
+        await CreateSut((typeof(TestEvent), "payments")).Publish(
+            message,
+            transport,
+            TestContext.Current.CancellationToken);
 
         (string exchange, _, _, IReadOnlyDictionary<string, string> headers) = Assert.Single(_producer.Produced);
         Assert.Equal("payments", exchange);
@@ -110,12 +130,22 @@ public class BusTests
             [TransportHeaders.RetryCount] = "2"u8.ToArray()
         };
 
-        Transport transport = new Transport(inbound, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+        Transport transport = new Transport(
+            inbound,
+            "orders",
+            string.Empty,
+            deliveryTag: 10,
+            redelivered: false);
         TestEvent message = new TestEvent("pepe");
 
-        await CreateSut((typeof(TestEvent), "payments")).Publish(message, transport, TestContext.Current.CancellationToken);
+        await CreateSut((typeof(TestEvent), "payments")).Publish(
+            message,
+            transport,
+            TestContext.Current.CancellationToken);
 
-        Assert.Equal(string.Empty, Header(Assert.Single(_producer.Produced).Headers, TransportHeaders.AggregateConsumers));
+        Assert.Equal(
+            string.Empty,
+            Header(Assert.Single(_producer.Produced).Headers, TransportHeaders.AggregateConsumers));
     }
 
     [Fact]
@@ -124,7 +154,10 @@ public class BusTests
         // continuing over a transport from another bus is a wiring mistake: the failure names the
         // foreign type and the transport this bus needs, instead of an opaque cast error.
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => CreateSut((typeof(TestEvent), "payments")).Publish(new TestEvent("pepe"), new ForeignTransport(), TestContext.Current.CancellationToken));
+            () => CreateSut((typeof(TestEvent), "payments")).Publish(
+                new TestEvent("pepe"),
+                new ForeignTransport(),
+                TestContext.Current.CancellationToken));
 
         Assert.Contains(typeof(ForeignTransport).FullName!, exception.Message);
         Assert.Contains("RabbitMQ", exception.Message);
@@ -136,13 +169,17 @@ public class BusTests
         _producer.Failure = new InvalidOperationException("broker down");
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => CreateSut((typeof(TestCommand), "orders")).Send(new TestCommand("pepe"), TestContext.Current.CancellationToken));
+            () => CreateSut((typeof(TestCommand), "orders")).Send(
+                new TestCommand("pepe"),
+                TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task Send_SerializesTheRuntimeType()
     {
-        await CreateSut((typeof(TestCommand), "orders")).Send(new TestCommand("pepe"), TestContext.Current.CancellationToken);
+        await CreateSut((typeof(TestCommand), "orders")).Send(
+            new TestCommand("pepe"),
+            TestContext.Current.CancellationToken);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(Assert.Single(_producer.Produced).Body);
 
@@ -158,7 +195,10 @@ public class BusTests
 
         Assert.Equal(3, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced => Assert.Equal("orders.created", produced.Exchange));
-        Assert.Equal(new string[] { "a", "b", "c" }, _producer.Produced.Select(produced => JsonSerializer.Deserialize<JsonElement>(produced.Body).GetProperty("name").GetString()));
+        Assert.Equal(
+            new string[] { "a", "b", "c" },
+            _producer.Produced.Select(
+                produced => JsonSerializer.Deserialize<JsonElement>(produced.Body).GetProperty("name").GetString()));
     }
 
     [Fact]
@@ -191,10 +231,18 @@ public class BusTests
             [TransportHeaders.RetryCount] = "3"u8.ToArray()
         };
 
-        Transport transport = new Transport(inbound, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+        Transport transport = new Transport(
+            inbound,
+            "orders",
+            string.Empty,
+            deliveryTag: 10,
+            redelivered: false);
         TestCommand[] commands = new TestCommand[] { new TestCommand("x"), new TestCommand("y") };
 
-        await CreateSut((typeof(TestCommand), "payments")).Send(commands, transport, TestContext.Current.CancellationToken);
+        await CreateSut((typeof(TestCommand), "payments")).Send(
+            commands,
+            transport,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(2, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced =>
@@ -206,13 +254,20 @@ public class BusTests
             Assert.Equal("0", Header(produced.Headers, TransportHeaders.RetryCount));
         });
 
-        Assert.Equal(2, _producer.Produced.Select(produced => GuidHeader(produced.Headers, TransportHeaders.MessageId)).Distinct().Count());
+        Assert.Equal(
+            2,
+            _producer.Produced
+                .Select(produced => GuidHeader(produced.Headers, TransportHeaders.MessageId))
+                .Distinct()
+                .Count());
     }
 
     [Fact]
     public async Task Publish_EmptyBatch_ProducesNothing()
     {
-        await CreateSut((typeof(TestEvent), "orders.created")).Publish(Array.Empty<TestEvent>(), TestContext.Current.CancellationToken);
+        await CreateSut((typeof(TestEvent), "orders.created")).Publish(
+            Array.Empty<TestEvent>(),
+            TestContext.Current.CancellationToken);
 
         Assert.Empty(_producer.Produced);
     }
@@ -238,10 +293,18 @@ public class BusTests
             [TransportHeaders.RetryCount] = "3"u8.ToArray()
         };
 
-        Transport transport = new Transport(inbound, "orders", string.Empty, deliveryTag: 10, redelivered: false);
+        Transport transport = new Transport(
+            inbound,
+            "orders",
+            string.Empty,
+            deliveryTag: 10,
+            redelivered: false);
         TestEvent[] events = new TestEvent[] { new TestEvent("a"), new TestEvent("b") };
 
-        await CreateSut((typeof(TestEvent), "orders.created")).Publish(events, transport, TestContext.Current.CancellationToken);
+        await CreateSut((typeof(TestEvent), "orders.created")).Publish(
+            events,
+            transport,
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(2, _producer.Produced.Count);
         Assert.All(_producer.Produced, produced =>
@@ -253,6 +316,11 @@ public class BusTests
             Assert.Equal("0", Header(produced.Headers, TransportHeaders.RetryCount));
         });
 
-        Assert.Equal(2, _producer.Produced.Select(produced => GuidHeader(produced.Headers, TransportHeaders.MessageId)).Distinct().Count());
+        Assert.Equal(
+            2,
+            _producer.Produced
+                .Select(produced => GuidHeader(produced.Headers, TransportHeaders.MessageId))
+                .Distinct()
+                .Count());
     }
 }
