@@ -10,7 +10,7 @@ namespace JorgeCostaMacia.Bus.RabbitMQ.Domain.Events;
 /// Delivery is <b>at-least-once</b>: a subscriber may run more than once for the same event — an
 /// un-acked delivery is redelivered, and a retry re-publishes it — and the retry path carries no
 /// ordering guarantee. Subscribers must therefore be <b>idempotent</b> — deduplicate by the message's
-/// id or reconcile by its timestamp (last-writer-wins), never assume a once-only, in-order call.
+/// id or reconcile against a version the data carries, never assume a once-only, in-order call.
 /// </para>
 /// </summary>
 /// <typeparam name="TEvent">The event type this subscriber processes.</typeparam>
