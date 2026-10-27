@@ -40,7 +40,8 @@ internal static class TransportHeaders
     public const string HostBusVersion = Prefix + "host-bus-version";
     public const string HostOperatingSystemVersion = Prefix + "host-operating-system-version";
 
-    /// <summary>The keys whose canonical text is a dashed <see cref="Guid"/> — the reader materializes them back with <c>Guid.TryParse</c>.</summary>
+    /// <summary>The keys whose canonical text is a dashed <see cref="Guid"/> — the reader materializes them back with
+    /// <c>Guid.TryParse</c>.</summary>
     public static readonly ImmutableList<string> GuidHeaders = ImmutableList.Create(
         MessageId,
         ConversationId,
@@ -62,11 +63,16 @@ internal static class TransportHeaders
     /// <summary>Renders a string list to its header text (comma-joined).</summary>
     public static string ToHeader(IEnumerable<string> values) => string.Join(',', values);
 
-    /// <summary>Sets a header key to the given text on an outbound header table (replacing any existing entry).</summary>
+    /// <summary>Sets a header key to the given text on an outbound header table (replacing any existing
+    /// entry).</summary>
     /// <param name="headers">The outbound header table.</param>
     /// <param name="key">The header key.</param>
     /// <param name="value">The canonical header text.</param>
-    public static void Restamp(IDictionary<string, string> headers, string key, string value) => headers[key] = value;
+    public static void Restamp(
+        IDictionary<string, string> headers,
+        string key,
+        string value
+    ) => headers[key] = value;
 
     /// <summary>
     /// Stamps a failure onto the (already cloned) envelope — the exception type and message, the
@@ -76,7 +82,11 @@ internal static class TransportHeaders
     /// <param name="headers">The headers to stamp — typically a clone of the delivery's envelope.</param>
     /// <param name="error">The failure whose type and message are stamped.</param>
     /// <param name="groupId">The failing consumer queue.</param>
-    public static void StampError(IDictionary<string, string> headers, Exception error, string groupId)
+    public static void StampError(
+        IDictionary<string, string> headers,
+        Exception error,
+        string groupId
+    )
     {
         Type type = error.GetType();
 

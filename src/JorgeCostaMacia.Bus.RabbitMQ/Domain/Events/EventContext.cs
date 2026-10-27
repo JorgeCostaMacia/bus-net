@@ -53,7 +53,8 @@ public record EventContext<TEvent> :
     public DateTime ConversationOccurredAt => Transport.GetHeaderDateTime(TransportHeaders.ConversationOccurredAt);
 
     /// <summary>The consumers this event targets (e.g. consumer group ids); empty means no filtering.</summary>
-    public ImmutableList<string> AggregateConsumers => Transport.GetHeaderStringList(TransportHeaders.AggregateConsumers);
+    public ImmutableList<string> AggregateConsumers
+        => Transport.GetHeaderStringList(TransportHeaders.AggregateConsumers);
 
     /// <summary>Unique id of the inbound message (domain trace).</summary>
     public Guid AggregateId => Transport.GetHeaderGuid(TransportHeaders.AggregateId);
@@ -88,7 +89,10 @@ public record EventContext<TEvent> :
     /// <summary>Builds the context over the delivered event and its transport.</summary>
     /// <param name="message">The event payload.</param>
     /// <param name="transport">The RabbitMQ transport for this delivery.</param>
-    public EventContext(TEvent message, Transport transport)
+    public EventContext(
+        TEvent message,
+        Transport transport
+    )
     {
         Message = message;
         Transport = transport;

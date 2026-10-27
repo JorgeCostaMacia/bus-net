@@ -27,7 +27,10 @@ internal static class KafkaLogger
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="error">The Kafka error.</param>
-    public static void LogError(ILogger logger, Error error)
+    public static void LogError(
+        ILogger logger,
+        Error error
+    )
     {
         using (LogContext.Push(new PropertyEnricher("KafkaError", error, destructureObjects: true)))
         {
@@ -44,7 +47,10 @@ internal static class KafkaLogger
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="log">The Kafka log message.</param>
-    public static void Log(ILogger logger, LogMessage log)
+    public static void Log(
+        ILogger logger,
+        LogMessage log
+    )
     {
         using (LogContext.Push(
             new PropertyEnricher("KafkaName", log.Name),
@@ -65,10 +71,14 @@ internal static class KafkaLogger
         }
     }
 
-    /// <summary>Logs the client's statistics JSON — emitted only when <c>StatisticsIntervalMs</c> is configured.</summary>
+    /// <summary>Logs the client's statistics JSON — emitted only when <c>StatisticsIntervalMs</c> is
+    /// configured.</summary>
     /// <param name="logger">The logger.</param>
     /// <param name="statistics">The librdkafka statistics JSON.</param>
-    public static void LogStatistics(ILogger logger, string statistics)
+    public static void LogStatistics(
+        ILogger logger,
+        string statistics
+    )
     {
         using (LogContext.PushProperty("KafkaStatistics", statistics))
         {

@@ -33,7 +33,8 @@ public sealed class FaultParkingTests : IClassFixture<KafkaFixture>
         _fixture = fixture;
     }
 
-    /// <summary>A malformed body that cannot be deserialized breaks the delivery and is parked to the topic's <c>.fault</c>.</summary>
+    /// <summary>A malformed body that cannot be deserialized breaks the delivery and is parked to the topic's
+    /// <c>.fault</c>.</summary>
     [Fact]
     public async Task Deliver_aMalformedBodyThatCannotBeDeserialized_ParksTheDeliveryToTheFaultTopic()
     {
@@ -62,7 +63,11 @@ public sealed class FaultParkingTests : IClassFixture<KafkaFixture>
                 producer.Flush(cancellationToken);
             }
 
-            ConsumeResult<Ignore, byte[]>? parked = await Broker.WaitForParkedAsync(configuration, FaultTopic, TimeSpan.FromSeconds(120), cancellationToken);
+            ConsumeResult<Ignore, byte[]>? parked = await Broker.WaitForParkedAsync(
+                configuration,
+                FaultTopic,
+                TimeSpan.FromSeconds(120),
+                cancellationToken);
 
             Assert.True(parked is not null, $"Nothing was parked to '{FaultTopic}' within 120 seconds.");
             Assert.Equal(GroupId, Broker.Header(parked, ErrorGroupIdHeader));

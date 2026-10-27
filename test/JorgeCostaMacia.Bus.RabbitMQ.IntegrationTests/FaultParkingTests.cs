@@ -32,7 +32,8 @@ public sealed class FaultParkingTests : IClassFixture<RabbitMqFixture>
         _fixture = fixture;
     }
 
-    /// <summary>A malformed body that cannot be deserialized breaks the delivery and is parked to the queue's <c>.fault</c>.</summary>
+    /// <summary>A malformed body that cannot be deserialized breaks the delivery and is parked to the queue's
+    /// <c>.fault</c>.</summary>
     [Fact]
     public async Task Deliver_AMalformedBody_ParksToTheFaultQueue()
     {
@@ -59,10 +60,19 @@ public sealed class FaultParkingTests : IClassFixture<RabbitMqFixture>
             {
                 byte[] malformed = Encoding.UTF8.GetBytes("this-is-not-the-json-of-a-command");
 
-                await channel.BasicPublishAsync(Exchange, routingKey: string.Empty, mandatory: false, body: malformed, cancellationToken: cancellationToken);
+                await channel.BasicPublishAsync(
+                    Exchange,
+                    routingKey: string.Empty,
+                    mandatory: false,
+                    body: malformed,
+                    cancellationToken: cancellationToken);
             }
 
-            BasicGetResult? parked = await Broker.WaitForParkedAsync(connection, FaultQueue, TimeSpan.FromSeconds(45), cancellationToken);
+            BasicGetResult? parked = await Broker.WaitForParkedAsync(
+                connection,
+                FaultQueue,
+                TimeSpan.FromSeconds(45),
+                cancellationToken);
 
             Assert.True(parked is not null, $"Nothing was parked to '{FaultQueue}' within 45 seconds.");
             Assert.Equal(Queue, Broker.Header(parked, ErrorGroupIdHeader));

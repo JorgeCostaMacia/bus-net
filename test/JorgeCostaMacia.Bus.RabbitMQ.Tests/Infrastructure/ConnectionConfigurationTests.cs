@@ -8,7 +8,12 @@ public class ConnectionConfigurationTests
     [Fact]
     public void ConnectionFactory_UnsetValues_FallBackToTheDefaults()
     {
-        ConnectionFactory factory = new ConnectionConfiguration { HostName = "bus", UserName = "user", Password = "pass" }.ConnectionFactory;
+        ConnectionFactory factory = new ConnectionConfiguration
+        {
+            HostName = "bus",
+            UserName = "user",
+            Password = "pass"
+        }.ConnectionFactory;
 
         Assert.Equal("bus", factory.HostName);
         Assert.Equal("user", factory.UserName);
@@ -26,7 +31,13 @@ public class ConnectionConfigurationTests
     {
         // the plain 5672 is never a fallback: going plain is a fully explicit act — Ssl off AND the
         // port supplied; forgetting the port fails loudly against 5671 instead of silently degrading.
-        ConnectionFactory factory = new ConnectionConfiguration { HostName = "bus", UserName = "user", Password = "pass", Ssl = false }.ConnectionFactory;
+        ConnectionFactory factory = new ConnectionConfiguration
+        {
+            HostName = "bus",
+            UserName = "user",
+            Password = "pass",
+            Ssl = false
+        }.ConnectionFactory;
 
         Assert.False(factory.Ssl.Enabled);
         Assert.Equal(ConnectionConfigurationDefaults.Port, factory.Port);

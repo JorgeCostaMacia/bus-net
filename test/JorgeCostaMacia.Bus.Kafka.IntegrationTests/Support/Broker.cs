@@ -22,7 +22,8 @@ namespace JorgeCostaMacia.Bus.Kafka.IntegrationTests.Support;
 /// </summary>
 internal static class Broker
 {
-    /// <summary>The bare bootstrap the fixture mapped for the container (both bus sections carry the same authority).</summary>
+    /// <summary>The bare bootstrap the fixture mapped for the container (both bus sections carry the same
+    /// authority).</summary>
     /// <param name="configuration">The configuration the fixture built.</param>
     /// <returns>The <c>host:port</c> bootstrap list.</returns>
     public static string BootstrapServers(IConfiguration configuration)
@@ -40,7 +41,12 @@ internal static class Broker
     /// <param name="timeout">How long to wait for the lazily-born topic to hold a message.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The parked delivery, or <see langword="null"/> if none arrived in time.</returns>
-    public static async Task<ConsumeResult<Ignore, byte[]>?> WaitForParkedAsync(IConfiguration configuration, string topic, TimeSpan timeout, CancellationToken cancellationToken)
+    public static async Task<ConsumeResult<Ignore, byte[]>?> WaitForParkedAsync(
+        IConfiguration configuration,
+        string topic,
+        TimeSpan timeout,
+        CancellationToken cancellationToken
+    )
     {
         ConsumerConfig config = new ConsumerConfig()
         {
@@ -95,7 +101,8 @@ internal static class Broker
         }
     }
 
-    /// <summary>Builds a bare producer to inject bytes straight onto a topic, bypassing the bus (its envelope, its stamping) — the malformed body of the fault test.</summary>
+    /// <summary>Builds a bare producer to inject bytes straight onto a topic, bypassing the bus (its envelope, its
+    /// stamping) — the malformed body of the fault test.</summary>
     /// <param name="configuration">The bus configuration carrying the mapped bootstrap.</param>
     /// <returns>A bare producer the caller disposes.</returns>
     public static IProducer<Null, byte[]> Producer(IConfiguration configuration)
@@ -118,7 +125,12 @@ internal static class Broker
     /// <param name="topic">The topic to create.</param>
     /// <param name="maxMessageBytes">The per-topic message-size cap that makes the produce oversized.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public static async Task CreateCappedTopicAsync(IConfiguration configuration, string topic, int maxMessageBytes, CancellationToken cancellationToken)
+    public static async Task CreateCappedTopicAsync(
+        IConfiguration configuration,
+        string topic,
+        int maxMessageBytes,
+        CancellationToken cancellationToken
+    )
     {
         AdminClientConfig config = new AdminClientConfig()
         {
@@ -146,7 +158,10 @@ internal static class Broker
                     Name = topic,
                     NumPartitions = 1,
                     ReplicationFactor = 1,
-                    Configs = new Dictionary<string, string> { ["max.message.bytes"] = maxMessageBytes.ToString(CultureInfo.InvariantCulture) }
+                    Configs = new Dictionary<string, string>
+                    {
+                        ["max.message.bytes"] = maxMessageBytes.ToString(CultureInfo.InvariantCulture)
+                    }
                 }
             },
             options);
@@ -155,11 +170,15 @@ internal static class Broker
         cancellationToken.ThrowIfCancellationRequested();
     }
 
-    /// <summary>Reads a header's text from a parked delivery — the bus writes the <c>jcm-error-*</c> headers as UTF-8 bytes, so the last value under the key is decoded as UTF-8.</summary>
+    /// <summary>Reads a header's text from a parked delivery — the bus writes the <c>jcm-error-*</c> headers as UTF-8
+    /// bytes, so the last value under the key is decoded as UTF-8.</summary>
     /// <param name="result">The parked delivery.</param>
     /// <param name="key">The header key.</param>
     /// <returns>The header text, or <see langword="null"/> when the header is absent.</returns>
-    public static string? Header(ConsumeResult<Ignore, byte[]> result, string key)
+    public static string? Header(
+        ConsumeResult<Ignore, byte[]> result,
+        string key
+    )
     {
         if (!result.Message.Headers.TryGetLastBytes(key, out byte[] bytes))
         {

@@ -20,7 +20,8 @@ internal interface IConsumer : IDisposable
     /// <returns>The delivered message.</returns>
     ConsumeResult<Ignore, byte[]> Consume(CancellationToken cancellationToken);
 
-    /// <summary>Stores the delivery's offset — the ack; the client commits it in the background without blocking.</summary>
+    /// <summary>Stores the delivery's offset — the ack; the client commits it in the background without
+    /// blocking.</summary>
     /// <param name="result">The delivery whose offset is stored.</param>
     void StoreOffset(ConsumeResult<Ignore, byte[]> result);
 

@@ -7,7 +7,8 @@ namespace JorgeCostaMacia.Bus.Domain.Messages;
 /// </summary>
 public interface IErrorMessage : IMessage
 {
-    /// <summary>The failure, modeled with its whole inner-exception chain — type, message, source, stack trace and inner error.</summary>
+    /// <summary>The failure, modeled with its whole inner-exception chain — type, message, source, stack trace and
+    /// inner error.</summary>
     ErrorInfo Error { get; }
 
     /// <summary>UTC time the failure was parked.</summary>

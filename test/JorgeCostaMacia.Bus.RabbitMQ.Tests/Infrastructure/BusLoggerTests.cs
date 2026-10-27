@@ -30,7 +30,8 @@ public class BusLoggerTests
             [TransportHeaders.MessageType] = "PlaceOrder"
         };
 
-        LogEvent captured = Capture(() => BusLogger.ProducerContext("orders", "orders.handler", Body("payload"), headers));
+        LogEvent captured = Capture(
+            () => BusLogger.ProducerContext("orders", "orders.handler", Body("payload"), headers));
 
         Assert.Equal(aggregateId, CapturingSink.Scalar(captured, TransportHeaders.AggregateId));
         Assert.Equal(2, CapturingSink.Scalar(captured, TransportHeaders.RetryCount));
@@ -47,7 +48,8 @@ public class BusLoggerTests
             [TransportHeaders.AggregateId] = "not-a-guid"
         };
 
-        LogEvent captured = Capture(() => BusLogger.ProducerContext("orders", "orders.handler", Body("payload"), headers));
+        LogEvent captured = Capture(
+            () => BusLogger.ProducerContext("orders", "orders.handler", Body("payload"), headers));
 
         Assert.Equal("not-a-guid", CapturingSink.Scalar(captured, TransportHeaders.AggregateId));
     }
@@ -60,7 +62,8 @@ public class BusLoggerTests
             [TransportHeaders.RetryCount] = "many"
         };
 
-        LogEvent captured = Capture(() => BusLogger.ProducerContext("orders", "orders.handler", Body("payload"), headers));
+        LogEvent captured = Capture(
+            () => BusLogger.ProducerContext("orders", "orders.handler", Body("payload"), headers));
 
         Assert.Equal("many", CapturingSink.Scalar(captured, TransportHeaders.RetryCount));
     }
@@ -70,7 +73,12 @@ public class BusLoggerTests
     {
         // an empty body reads as absent rather than as an empty string, so a log query for a missing
         // payload finds it.
-        LogEvent captured = Capture(() => BusLogger.ProducerContext("orders", "orders.handler", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>()));
+        LogEvent captured = Capture(
+            () => BusLogger.ProducerContext(
+                "orders",
+                "orders.handler",
+                ReadOnlyMemory<byte>.Empty,
+                new Dictionary<string, string>()));
 
         Assert.Equal("orders", CapturingSink.Scalar(captured, "Exchange"));
         Assert.Null(CapturingSink.Scalar(captured, "Body"));
@@ -88,7 +96,8 @@ public class BusLoggerTests
             [TransportHeaders.RetryCount] = Encoding.UTF8.GetBytes("4")
         };
 
-        LogEvent captured = Capture(() => BusLogger.ConsumerContext(Deliveries.Args(Encoding.UTF8.GetBytes("payload"), headers)));
+        LogEvent captured = Capture(
+            () => BusLogger.ConsumerContext(Deliveries.Args(Encoding.UTF8.GetBytes("payload"), headers)));
 
         Assert.Equal(aggregateId, CapturingSink.Scalar(captured, TransportHeaders.AggregateId));
         Assert.Equal(4, CapturingSink.Scalar(captured, TransportHeaders.RetryCount));
@@ -97,7 +106,8 @@ public class BusLoggerTests
     [Fact]
     public void ConsumerContext_WithAnEmptyBody_RecordsANullBody()
     {
-        LogEvent captured = Capture(() => BusLogger.ConsumerContext(Deliveries.Args(Array.Empty<byte>(), new Dictionary<string, object?>())));
+        LogEvent captured = Capture(
+            () => BusLogger.ConsumerContext(Deliveries.Args(Array.Empty<byte>(), new Dictionary<string, object?>())));
 
         Assert.Null(CapturingSink.Scalar(captured, "Body"));
         Assert.Equal(10UL, CapturingSink.Scalar(captured, "DeliveryTag"));

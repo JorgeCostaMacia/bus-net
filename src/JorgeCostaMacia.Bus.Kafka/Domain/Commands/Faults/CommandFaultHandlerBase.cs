@@ -27,5 +27,8 @@ internal abstract class CommandFaultHandlerBase<TCommand, TCommandHandler> : IHa
     /// <summary>Handles a broken command delivery.</summary>
     /// <param name="context">The fault context — the raw body as text, the transport and the failure.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public abstract Task Handle(CommandFaultContext context, CancellationToken cancellationToken = default);
+    public abstract Task Handle(
+        CommandFaultContext context,
+        CancellationToken cancellationToken = default
+    );
 }

@@ -8,7 +8,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Consumers;
 /// </summary>
 public static class ConsumerConfigurationDefaults
 {
-    /// <summary>Security protocol. Default: <c>SaslSsl</c> — the SASL credentials this configuration requires are only sent under a SASL protocol (and it matches the producer default).</summary>
+    /// <summary>Security protocol. Default: <c>SaslSsl</c> — the SASL credentials this configuration requires are only
+    /// sent under a SASL protocol (and it matches the producer default).</summary>
     public const SecurityProtocol SecurityProtocol = SecurityProtocol.SaslSsl;
 
     /// <summary>SASL mechanism. Default: <c>ScramSha512</c>.</summary>
@@ -52,7 +53,8 @@ public static class ConsumerConfigurationDefaults
     /// scaling instances in or out moves only the partitions that must move, instead of the eager
     /// stop-the-world revoke of the whole group.
     /// </summary>
-    public const PartitionAssignmentStrategy PartitionAssignmentStrategy = PartitionAssignmentStrategy.CooperativeSticky;
+    public const PartitionAssignmentStrategy PartitionAssignmentStrategy
+        = PartitionAssignmentStrategy.CooperativeSticky;
 
     /// <summary>Socket timeout (ms). Default: <c>90000</c>.</summary>
     public const int SocketTimeoutMs = 90_000;

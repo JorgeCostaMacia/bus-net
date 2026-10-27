@@ -33,7 +33,8 @@ public sealed class FailureIsolationTests : IClassFixture<KafkaFixture>
         _fixture = fixture;
     }
 
-    /// <summary>Every good record in a batch is handled and each poison record is parked, without a failure stalling the batch.</summary>
+    /// <summary>Every good record in a batch is handled and each poison record is parked, without a failure stalling
+    /// the batch.</summary>
     [Fact]
     public async Task Send_aBatchMixingGoodAndPoisonRecords_HandlesEveryGoodOneAndIsolatesThePoisonWithoutStalling()
     {
@@ -48,7 +49,9 @@ public sealed class FailureIsolationTests : IClassFixture<KafkaFixture>
             producer => producer.AddCommand<IsolationCommand>(Topic),
             // A single 00:00 rung: a poison record fails, is re-produced immediately, fails again, and
             // parks to .error — its retries ride at the tail of the log without blocking the good records.
-            consumer => consumer.AddCommandHandler<IsolationCommand, IsolationCommandHandler>(GroupId, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
+            consumer => consumer.AddCommandHandler<IsolationCommand, IsolationCommandHandler>(
+                GroupId,
+                retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);
@@ -75,11 +78,19 @@ public sealed class FailureIsolationTests : IClassFixture<KafkaFixture>
             }
 
             // The invariant: every good record is handled even though poison records fail mid-batch.
-            Task completed = await Task.WhenAny(probe.AllGoodHandled, Task.Delay(TimeSpan.FromSeconds(180), cancellationToken));
-            Assert.True(completed == probe.AllGoodHandled, $"Only {probe.GoodHandled} of {Good} good records were handled within 180 seconds — a poison record stalled or dropped the batch.");
+            Task completed = await Task.WhenAny(
+                probe.AllGoodHandled,
+                Task.Delay(TimeSpan.FromSeconds(180), cancellationToken));
+            Assert.True(
+                completed == probe.AllGoodHandled,
+                $"Only {probe.GoodHandled} of {Good} good records were handled within 180 seconds — a poison record stalled or dropped the batch.");
 
             // And the poison is isolated, not silently lost: at least one landed on the error lane.
-            ConsumeResult<Ignore, byte[]>? parked = await Broker.WaitForParkedAsync(configuration, ErrorTopic, TimeSpan.FromSeconds(180), cancellationToken);
+            ConsumeResult<Ignore, byte[]>? parked = await Broker.WaitForParkedAsync(
+                configuration,
+                ErrorTopic,
+                TimeSpan.FromSeconds(180),
+                cancellationToken);
             Assert.True(parked is not null, $"No poison record was parked to '{ErrorTopic}'.");
         }
         finally

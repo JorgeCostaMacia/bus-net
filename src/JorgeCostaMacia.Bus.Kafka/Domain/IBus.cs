@@ -12,4 +12,9 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// per-message configuration is held and managed inside it. The consume side lives in the worker,
 /// hosted in the application lifecycle — nothing to start or stop by hand.
 /// </summary>
-public interface IBus : ISenderBus<Command>, ISenderBatchBus<Command>, IPublisherBus<Event>, IPublisherBatchBus<Event> { }
+public interface IBus :
+    ISenderBus<Command>,
+    ISenderBatchBus<Command>,
+    IPublisherBus<Event>,
+    IPublisherBatchBus<Event>
+{ }

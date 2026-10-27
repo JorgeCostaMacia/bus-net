@@ -18,14 +18,28 @@ public class EventWorkerTests
     private readonly BusHealth _health = new BusHealth();
     private readonly RecordingEventSubscriber _subscriber = new RecordingEventSubscriber();
 
-    private EventWorker<TestEvent, RecordingEventSubscriber> Worker(ConsumerFake consumer, ImmutableList<TimeSpan>? intervals = null)
+    private EventWorker<TestEvent, RecordingEventSubscriber> Worker(
+        ConsumerFake consumer,
+        ImmutableList<TimeSpan>? intervals = null
+    )
     {
         IServiceProvider provider = new ServiceCollection()
             .AddSingleton(_subscriber)
             .AddScoped<EventErrorHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
-                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(_producer, _scheduler, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, ImmutableList<Type>.Empty))
+                new EventErrorHandler<TestEvent, RecordingEventSubscriber>(
+                    _producer,
+                    _scheduler,
+                    NullLogger.Instance,
+                    Deliveries.Topic,
+                    Deliveries.GroupId,
+                    intervals ?? ImmutableList<TimeSpan>.Empty,
+                    ImmutableList<Type>.Empty))
             .AddScoped<EventFaultHandlerBase<TestEvent, RecordingEventSubscriber>>(_ =>
-                new EventFaultHandler<TestEvent, RecordingEventSubscriber>(_producer, NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId))
+                new EventFaultHandler<TestEvent, RecordingEventSubscriber>(
+                    _producer,
+                    NullLogger.Instance,
+                    Deliveries.Topic,
+                    Deliveries.GroupId))
             .BuildServiceProvider();
 
         return new EventWorker<TestEvent, RecordingEventSubscriber>(
@@ -40,7 +54,10 @@ public class EventWorkerTests
             Deliveries.GroupId);
     }
 
-    private async Task Drive(EventWorker<TestEvent, RecordingEventSubscriber> worker, ConsumerFake consumer)
+    private async Task Drive(
+        EventWorker<TestEvent, RecordingEventSubscriber> worker,
+        ConsumerFake consumer
+    )
     {
         await worker.StartAsync(TestContext.Current.CancellationToken);
         await consumer.Drained.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -62,7 +79,8 @@ public class EventWorkerTests
     [Fact]
     public async Task TargetsOtherConsumers_SkipsAndStores_WithoutRunningTheSubscriber()
     {
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe"), consumers: "billing.on.orders.subscriber"));
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestEvent("pepe"), consumers: "billing.on.orders.subscriber"));
 
         await Drive(Worker(consumer), consumer);
 
@@ -74,7 +92,8 @@ public class EventWorkerTests
     [Fact]
     public async Task TargetsItsGroup_Runs()
     {
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber,{Deliveries.GroupId}"));
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestEvent("pepe"), consumers: $"other.subscriber,{Deliveries.GroupId}"));
 
         await Drive(Worker(consumer), consumer);
 
@@ -137,7 +156,9 @@ public class EventWorkerTests
     [Fact]
     public async Task MultipleDeliveries_ProcessedInOrder_EachStored()
     {
-        ConsumerFake consumer = new ConsumerFake(Deliveries.Delivery(new TestEvent("a"), 10), Deliveries.Delivery(new TestEvent("b"), 11));
+        ConsumerFake consumer = new ConsumerFake(
+            Deliveries.Delivery(new TestEvent("a"), 10),
+            Deliveries.Delivery(new TestEvent("b"), 11));
 
         await Drive(Worker(consumer), consumer);
 

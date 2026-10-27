@@ -9,7 +9,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Infrastructure.Producers;
 /// </summary>
 public static class ProducerConfigurationDefaults
 {
-    /// <summary>Security protocol used to communicate with the brokers. Default: <c>SaslSsl</c> — SASL authentication over a TLS transport.</summary>
+    /// <summary>Security protocol used to communicate with the brokers. Default: <c>SaslSsl</c> — SASL authentication
+    /// over a TLS transport.</summary>
     public const SecurityProtocol SecurityProtocol = SecurityProtocol.SaslSsl;
 
     /// <summary>SASL authentication mechanism. Default: <c>ScramSha512</c>.</summary>
@@ -27,7 +28,9 @@ public static class ProducerConfigurationDefaults
     /// <summary>Enables idempotent message delivery. Default: <c>true</c>.</summary>
     public const bool EnableIdempotence = true;
 
-    /// <summary>Compression type for producer messages. Default: <c>Lz4</c> — fast, the de-facto modern default; applied per batch over the serialized byte payloads (effective on text-like data, near-neutral on already-compressed bytes).</summary>
+    /// <summary>Compression type for producer messages. Default: <c>Lz4</c> — fast, the de-facto modern default;
+    /// applied per batch over the serialized byte payloads (effective on text-like data, near-neutral on
+    /// already-compressed bytes).</summary>
     public const CompressionType CompressionType = CompressionType.Lz4;
 
     /// <summary>
@@ -87,6 +90,7 @@ public static class ProducerConfigurationDefaults
     /// </summary>
     public const bool SocketKeepaliveEnable = true;
 
-    /// <summary>Delivery report fields marshalled back on each result. Default: <c>all</c> (the client rejects <see langword="null"/>, so the default is set explicitly).</summary>
+    /// <summary>Delivery report fields marshalled back on each result. Default: <c>all</c> (the client rejects
+    /// <see langword="null"/>, so the default is set explicitly).</summary>
     public const string DeliveryReportFields = "all";
 }

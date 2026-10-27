@@ -6,7 +6,8 @@ namespace JorgeCostaMacia.Bus.Domain.Buses;
 /// is the efficient way to dispatch many at once (e.g. an orchestrator that computes N units of work
 /// and fans out one command per unit).
 /// </summary>
-/// <typeparam name="TMessage">The message family this bus accepts (e.g. the transport's <c>Command</c> base).</typeparam>
+/// <typeparam name="TMessage">The message family this bus accepts (e.g. the transport's <c>Command</c>
+/// base).</typeparam>
 public interface ISenderBatchBus<TMessage> : IBus
     where TMessage : IMessage
 {
@@ -14,7 +15,10 @@ public interface ISenderBatchBus<TMessage> : IBus
     /// <typeparam name="T">The concrete message type.</typeparam>
     /// <param name="messages">The messages to send.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Send<T>(IEnumerable<T> messages, CancellationToken cancellationToken = default)
+    Task Send<T>(
+        IEnumerable<T> messages,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 
     /// <summary>
@@ -26,6 +30,10 @@ public interface ISenderBatchBus<TMessage> : IBus
     /// <param name="messages">The messages to send.</param>
     /// <param name="transport">The inbound message's transport, whose envelope headers are propagated.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    Task Send<T>(IEnumerable<T> messages, ITransport transport, CancellationToken cancellationToken = default)
+    Task Send<T>(
+        IEnumerable<T> messages,
+        ITransport transport,
+        CancellationToken cancellationToken = default
+    )
         where T : TMessage;
 }

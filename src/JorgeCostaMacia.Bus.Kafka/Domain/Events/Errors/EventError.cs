@@ -65,7 +65,19 @@ public sealed record EventError<TEvent> : IErrorMessage
     /// <param name="timestamp">UTC time Kafka assigned to the message.</param>
     /// <param name="headers">The delivery's headers as browsable text.</param>
     /// <param name="message">The original event, fully typed.</param>
-    public EventError(ErrorInfo error, DateTime errorOccurredAt, int retryCount, string groupId, string machineName, string topic, int partition, long offset, DateTime timestamp, ImmutableList<KeyValuePair<string, string>> headers, TEvent message)
+    public EventError(
+        ErrorInfo error,
+        DateTime errorOccurredAt,
+        int retryCount,
+        string groupId,
+        string machineName,
+        string topic,
+        int partition,
+        long offset,
+        DateTime timestamp,
+        ImmutableList<KeyValuePair<string, string>> headers,
+        TEvent message
+    )
     {
         Error = error;
         ErrorOccurredAt = errorOccurredAt;
@@ -89,7 +101,10 @@ public sealed record EventError<TEvent> : IErrorMessage
     /// <param name="context">The failed delivery's error context.</param>
     /// <param name="groupId">The consumer group whose subscriber failed.</param>
     /// <returns>The body parked to the error topic.</returns>
-    internal static EventError<TEvent> Create(EventErrorContext<TEvent> context, string groupId)
+    internal static EventError<TEvent> Create(
+        EventErrorContext<TEvent> context,
+        string groupId
+    )
         => new EventError<TEvent>(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,

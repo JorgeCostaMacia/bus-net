@@ -17,17 +17,20 @@ public class BusLoggerDescriptionsTests
         ["ParkedToErrorTopic"] = "Parked to the error topic.",
         ["ParkedToFaultTopic"] = "Parked to the fault topic.",
         ["DeliveryNotAcked"] = "The delivery is not acked.",
-        ["DeliveryBuried"] = "The delivery is not parked and not acked; the next commit on its partition buries it — restart before that for a redelivery, or re-inject from the topic.",
+        ["DeliveryBuried"]
+            = "The delivery is not parked and not acked; the next commit on its partition buries it — restart before that for a redelivery, or re-inject from the topic.",
         ["ScheduleFailed"] = "The scheduling failed; the delivery is not acked.",
         ["RetrySchedulerMissing"] = "No retry scheduler is registered; parked to the error topic as terminal.",
         ["HandedToFaultHandler"] = "The envelope is unreadable; handed to the fault handler.",
         ["EscalatedToFaultHandler"] = "The error handler failed; escalated to the fault handler.",
         ["SendFaulted"] = "The send faulted.",
-        ["ProducerQueueFull"] = "The producer's local queue is full; back-pressure upstream or raise QueueBufferingMaxMessages.",
+        ["ProducerQueueFull"]
+            = "The producer's local queue is full; back-pressure upstream or raise QueueBufferingMaxMessages.",
         ["ConsumeRetried"] = "The consume is retried.",
         ["ConsumeLoopFailed"] = "An unexpected failure in the consume loop; backing off before the next consume.",
         ["WorkerStopped"] = "The worker stopped.",
-        ["WorkerAbandoned"] = "The stop grace period expired; the consumer leaves the group by session timeout and is reclaimed at process exit.",
+        ["WorkerAbandoned"]
+            = "The stop grace period expired; the consumer leaves the group by session timeout and is reclaimed at process exit.",
         ["RedeliveredToNewOwner"] = "Lost in a rebalance; the new owner will handle the message again.",
         ["RedeliveryWindowWidened"] = "The stored offsets were not committed; the crash-redelivery window widened.",
         ["ApplicationStopped"] = "The client is unrecoverable; the application stops to restart clean.",
@@ -44,7 +47,9 @@ public class BusLoggerDescriptionsTests
 
         foreach ((string name, string text) in actual)
         {
-            Assert.True(_expected.TryGetValue(name, out string? expected), $"Unpinned description '{name}' — add it to the pinned set (and update any Loki/Grafana query that keys on it).");
+            Assert.True(
+                _expected.TryGetValue(name, out string? expected),
+                $"Unpinned description '{name}' — add it to the pinned set (and update any Loki/Grafana query that keys on it).");
             Assert.Equal(expected, text);
         }
     }

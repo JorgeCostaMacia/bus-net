@@ -21,7 +21,10 @@ public sealed class SecondFanoutSubscriber : EventSubscriber<FanoutEvent>
     /// <summary>Signals the delivered event's payload to the awaiting test.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(EventContext<FanoutEvent> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        EventContext<FanoutEvent> context,
+        CancellationToken cancellationToken = default
+    )
     {
         _probe.SignalSecond(context.Message.Payload);
 

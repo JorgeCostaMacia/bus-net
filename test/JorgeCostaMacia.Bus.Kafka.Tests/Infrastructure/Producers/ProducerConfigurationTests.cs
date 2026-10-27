@@ -9,7 +9,12 @@ public class ProducerConfigurationTests
     [Fact]
     public void ProducerConfig_UnsetValues_FallBackToTheDefaults()
     {
-        ProducerConfig config = new ProducerConfiguration { BootstrapServers = "bus:9092", SaslUsername = "user", SaslPassword = "pass" }.ProducerConfig;
+        ProducerConfig config = new ProducerConfiguration
+        {
+            BootstrapServers = "bus:9092",
+            SaslUsername = "user",
+            SaslPassword = "pass"
+        }.ProducerConfig;
 
         Assert.Equal("bus:9092", config.BootstrapServers);
         Assert.Equal(SecurityProtocol.SaslSsl, config.SecurityProtocol);
@@ -30,7 +35,8 @@ public class ProducerConfigurationTests
     // instead of failing the delivery into the bus's retry. Seen in production with both at 5 minutes.
     [Fact]
     public void Defaults_TheDeliveryTimeoutStaysBelowTheConsumersPollInterval()
-        => Assert.True(ProducerConfigurationDefaults.MessageTimeoutMs < ConsumerConfigurationDefaults.MaxPollIntervalMs);
+        => Assert.True(
+            ProducerConfigurationDefaults.MessageTimeoutMs < ConsumerConfigurationDefaults.MaxPollIntervalMs);
 
     [Fact]
     public void ProducerConfig_SuppliedValues_Win()

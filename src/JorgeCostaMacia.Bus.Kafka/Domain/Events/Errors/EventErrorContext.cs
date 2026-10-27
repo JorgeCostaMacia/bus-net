@@ -21,8 +21,14 @@ public sealed record EventErrorContext<TEvent> :
     /// <param name="message">The event payload.</param>
     /// <param name="transport">The Kafka transport for this delivery.</param>
     /// <param name="error">The failure that exhausted the delivery.</param>
-    public EventErrorContext(TEvent message, Transport transport, Exception error)
-        : base(message, transport)
+    public EventErrorContext(
+        TEvent message,
+        Transport transport,
+        Exception error
+    ) : base(
+        message,
+        transport
+    )
     {
         Error = error;
     }

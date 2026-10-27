@@ -22,7 +22,8 @@ public sealed class ProducerConfigurator
 
     /// <summary>Binds the producer configuration from the <c>Bus:Producer</c> section.</summary>
     /// <param name="configuration">The application configuration.</param>
-    /// <exception cref="InvalidOperationException">The <c>Bus:Producer</c> section or one of its required values is missing.</exception>
+    /// <exception cref="InvalidOperationException">The <c>Bus:Producer</c> section or one of its required values is
+    /// missing.</exception>
     internal ProducerConfigurator(IConfiguration configuration)
     {
         _producerConfiguration = CreateProducerConfiguration(configuration);
@@ -73,22 +74,26 @@ public sealed class ProducerConfigurator
     /// <exception cref="InvalidOperationException">The section or one of its required values is missing.</exception>
     private static ProducerConfiguration CreateProducerConfiguration(IConfiguration configuration)
     {
-        ProducerConfiguration producerConfiguration = configuration.GetSection(ProducerSection).Get<ProducerConfiguration>()
+        ProducerConfiguration producerConfiguration
+            = configuration.GetSection(ProducerSection).Get<ProducerConfiguration>()
             ?? throw new InvalidOperationException($"'{ProducerSection}' is null.");
 
         if (string.IsNullOrWhiteSpace(producerConfiguration.BootstrapServers))
         {
-            throw new InvalidOperationException($"'{ProducerSection}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ProducerSection}:{nameof(producerConfiguration.BootstrapServers)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(producerConfiguration.SaslUsername))
         {
-            throw new InvalidOperationException($"'{ProducerSection}:{nameof(producerConfiguration.SaslUsername)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ProducerSection}:{nameof(producerConfiguration.SaslUsername)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(producerConfiguration.SaslPassword))
         {
-            throw new InvalidOperationException($"'{ProducerSection}:{nameof(producerConfiguration.SaslPassword)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ProducerSection}:{nameof(producerConfiguration.SaslPassword)}' is null.");
         }
 
         return producerConfiguration;

@@ -24,17 +24,17 @@ public sealed class RetryQuartzFixture : IAsyncLifetime
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(PostgresImage)
         .Build();
 
-    /// <summary>The Npgsql connection string of the running Postgres container — the Quartz store points here.</summary>
+    /// <summary>The Npgsql connection string of the running Postgres container — the Quartz store points
+    /// here.</summary>
     public string PostgresConnectionString => _postgres.GetConnectionString();
 
-    /// <summary>Starts both containers, pulling the images on first use. The Quartz schema is provisioned by the store itself — see the test's <c>ProvisionSchema</c>.</summary>
+    /// <summary>Starts both containers, pulling the images on first use. The Quartz schema is provisioned by the store
+    /// itself — see the test's <c>ProvisionSchema</c>.</summary>
     public async ValueTask InitializeAsync()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-        await Task.WhenAll(
-            _rabbitMq.StartAsync(cancellationToken),
-            _postgres.StartAsync(cancellationToken));
+        await Task.WhenAll(_rabbitMq.StartAsync(cancellationToken), _postgres.StartAsync(cancellationToken));
     }
 
     /// <summary>Stops and removes both containers.</summary>
@@ -70,7 +70,8 @@ public sealed class RetryQuartzFixture : IAsyncLifetime
             .Build();
     }
 
-    /// <summary>Counts the durable jobs parked in the Quartz store — a positive count is a retry parked in Postgres.</summary>
+    /// <summary>Counts the durable jobs parked in the Quartz store — a positive count is a retry parked in
+    /// Postgres.</summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>The number of rows in <c>qrtz_job_details</c>.</returns>
     public async Task<long> CountParkedJobs(CancellationToken cancellationToken)

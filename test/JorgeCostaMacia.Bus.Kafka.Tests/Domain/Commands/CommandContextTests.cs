@@ -38,10 +38,18 @@ public class CommandContextTests
             new Header(TransportHeaders.HostOperatingSystemVersion, TransportHeaders.ToHeader("Unix 6.8"))
         };
 
-        return new Transport(headers.ToImmutableList(), "orders", new Partition(0), new Offset(10), null, new Timestamp(_occurredAt));
+        return new Transport(
+            headers.ToImmutableList(),
+            "orders",
+            new Partition(0),
+            new Offset(10),
+            null,
+            new Timestamp(_occurredAt));
     }
 
-    private static CommandContext<TestCommand> CreateSut() => new CommandContext<TestCommand>(new TestCommand("pepe"), Transport());
+    private static CommandContext<TestCommand> CreateSut() => new CommandContext<TestCommand>(
+        new TestCommand("pepe"),
+        Transport());
 
     [Fact]
     public void MessageAndTransport_AreTheDeliveredPair()
@@ -49,7 +57,9 @@ public class CommandContextTests
         TestCommand command = new TestCommand("pepe");
         Transport transport = Transport();
 
-        CommandContext<TestCommand> context = new CommandContext<TestCommand>(command, transport);
+        CommandContext<TestCommand> context = new CommandContext<TestCommand>(
+            command,
+            transport);
 
         Assert.Same(command, context.Message);
         Assert.Same(transport, context.Transport);

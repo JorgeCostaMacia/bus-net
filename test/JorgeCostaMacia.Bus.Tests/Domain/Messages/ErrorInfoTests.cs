@@ -21,7 +21,11 @@ public class ErrorInfoTests
     [Fact]
     public void Create_RecursesTheInnerExceptionChain()
     {
-        InvalidOperationException outer = new InvalidOperationException("outer", new ArgumentException("middle", new FormatException("deepest")));
+        InvalidOperationException outer = new InvalidOperationException(
+            "outer",
+            new ArgumentException(
+                "middle",
+                new FormatException("deepest")));
 
         ErrorInfo error = ErrorInfo.Create(outer);
 
@@ -87,11 +91,15 @@ public class ErrorInfoTests
     {
         // the parked failure travels serialized through both failure lanes and tooling reads it back
         // with the Web options — Type/Message/Source/StackTrace and the whole inner-cause chain survive.
-        Exception thrown = Throw(new InvalidOperationException("outer", new FormatException("inner")));
+        Exception thrown = Throw(new InvalidOperationException(
+            "outer",
+            new FormatException("inner")));
         ErrorInfo error = ErrorInfo.Create(thrown);
         JsonSerializerOptions options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
-        ErrorInfo roundTripped = JsonSerializer.Deserialize<ErrorInfo>(JsonSerializer.Serialize(error, options), options)!;
+        ErrorInfo roundTripped = JsonSerializer.Deserialize<ErrorInfo>(
+            JsonSerializer.Serialize(error, options),
+            options)!;
 
         Assert.Equal(error.Type, roundTripped.Type);
         Assert.Equal(error.Message, roundTripped.Message);

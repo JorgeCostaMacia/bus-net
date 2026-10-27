@@ -8,8 +8,14 @@ public class BusHealthCheckTests
 {
     private readonly ConnectionFake _connection = new ConnectionFake();
 
-    private static HealthCheckContext Context(IHealthCheck check, HealthStatus? failureStatus = null)
-        => new HealthCheckContext() { Registration = new HealthCheckRegistration("bus-rabbitmq", check, failureStatus, tags: null) };
+    private static HealthCheckContext Context(
+        IHealthCheck check,
+        HealthStatus? failureStatus = null
+    )
+        => new HealthCheckContext()
+        {
+            Registration = new HealthCheckRegistration("bus-rabbitmq", check, failureStatus, tags: null)
+        };
 
     [Fact]
     public async Task CheckHealthAsync_ConnectionOpen_ReportsHealthy()
@@ -40,7 +46,9 @@ public class BusHealthCheckTests
         _connection.IsOpen = false;
         BusHealthCheck check = new BusHealthCheck(_connection);
 
-        HealthCheckResult result = await check.CheckHealthAsync(Context(check, HealthStatus.Degraded), TestContext.Current.CancellationToken);
+        HealthCheckResult result = await check.CheckHealthAsync(
+            Context(check, HealthStatus.Degraded),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HealthStatus.Degraded, result.Status);
     }

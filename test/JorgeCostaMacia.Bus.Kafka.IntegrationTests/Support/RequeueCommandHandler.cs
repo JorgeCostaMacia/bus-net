@@ -18,16 +18,21 @@ public sealed class RequeueCommandHandler : CommandHandler<RequeueCommand>
         _probe = probe;
     }
 
-    /// <summary>Fails the first delivery to force an immediate requeue; records and succeeds on the redelivery.</summary>
+    /// <summary>Fails the first delivery to force an immediate requeue; records and succeeds on the
+    /// redelivery.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<RequeueCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandContext<RequeueCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         int attempt = _probe.Record();
 
         if (attempt == 1)
         {
-            throw new InvalidOperationException("Failing the first delivery on purpose so the retry is re-produced immediately for an instant redelivery.");
+            throw new InvalidOperationException(
+                "Failing the first delivery on purpose so the retry is re-produced immediately for an instant redelivery.");
         }
 
         return Task.CompletedTask;

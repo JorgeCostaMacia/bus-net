@@ -24,9 +24,15 @@ internal static class BusInfrastructureContext
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The application configuration carrying the <c>Bus:Connection</c> section.</param>
     /// <param name="producer">Maps the messages this service sends/publishes to their exchanges.</param>
-    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a send-only service.</param>
+    /// <param name="consumer">Registers this service's handlers and subscribers, or <see langword="null"/> for a
+    /// send-only service.</param>
     /// <returns>The same service collection, to allow method chaining.</returns>
-    internal static IServiceCollection AddBusInfrastructureContext(this IServiceCollection services, IConfiguration configuration, Action<ProducerConfigurator> producer, Action<ConsumerConfigurator>? consumer = null)
+    internal static IServiceCollection AddBusInfrastructureContext(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Action<ProducerConfigurator> producer,
+        Action<ConsumerConfigurator>? consumer = null
+    )
     {
         ConnectionConfiguration connectionConfiguration = CreateConnectionConfiguration(configuration);
 
@@ -34,18 +40,26 @@ internal static class BusInfrastructureContext
 
         producer(producerConfigurator);
 
-        services.AddSingleton<IConnection>(provider => new Connection(connectionConfiguration.ConnectionFactory, provider.GetRequiredService<ILoggerFactory>().CreateLogger(RabbitLogger.Category)));
-        services.AddSingleton<IConsumerChannelFactory>(provider => new Consumers.ConsumerChannelFactory(provider.GetRequiredService<IConnection>()));
+        services.AddSingleton<IConnection>(
+            provider => new Connection(
+                connectionConfiguration.ConnectionFactory,
+                provider.GetRequiredService<ILoggerFactory>().CreateLogger(RabbitLogger.Category)));
+        services.AddSingleton<IConsumerChannelFactory>(
+            provider => new Consumers.ConsumerChannelFactory(provider.GetRequiredService<IConnection>()));
         services.AddSingleton<IProducer, Producer>();
-        services.AddScoped<IBus>(provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
+        services.AddScoped<IBus>(
+            provider => new Bus(provider.GetRequiredService<IProducer>(), producerConfigurator.Messages));
 
         // registered before the consumers so the producer's exchanges exist before anything binds
         // to them — and a send-only service creates its own topology with no consumer involved.
-        services.AddHostedService(provider => new TopologyWorker(provider.GetRequiredService<IConnection>(), producerConfigurator.Exchanges));
+        services.AddHostedService(
+            provider => new TopologyWorker(provider.GetRequiredService<IConnection>(), producerConfigurator.Exchanges));
 
         if (consumer is not null)
         {
-            ConsumerConfigurator consumerConfigurator = new ConsumerConfigurator(services, producerConfigurator.Messages);
+            ConsumerConfigurator consumerConfigurator = new ConsumerConfigurator(
+                services,
+                producerConfigurator.Messages);
 
             consumer(consumerConfigurator);
         }
@@ -53,25 +67,30 @@ internal static class BusInfrastructureContext
         return services;
     }
 
-    /// <summary>Binds and validates the <c>Bus:Connection</c> section onto a <see cref="ConnectionConfiguration"/>.</summary>
+    /// <summary>Binds and validates the <c>Bus:Connection</c> section onto a
+    /// <see cref="ConnectionConfiguration"/>.</summary>
     private static ConnectionConfiguration CreateConnectionConfiguration(IConfiguration configuration)
     {
-        ConnectionConfiguration connectionConfiguration = configuration.GetSection(ConnectionSection).Get<ConnectionConfiguration>()
+        ConnectionConfiguration connectionConfiguration
+            = configuration.GetSection(ConnectionSection).Get<ConnectionConfiguration>()
             ?? throw new InvalidOperationException($"'{ConnectionSection}' is null.");
 
         if (string.IsNullOrWhiteSpace(connectionConfiguration.HostName))
         {
-            throw new InvalidOperationException($"'{ConnectionSection}:{nameof(connectionConfiguration.HostName)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ConnectionSection}:{nameof(connectionConfiguration.HostName)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(connectionConfiguration.UserName))
         {
-            throw new InvalidOperationException($"'{ConnectionSection}:{nameof(connectionConfiguration.UserName)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ConnectionSection}:{nameof(connectionConfiguration.UserName)}' is null.");
         }
 
         if (string.IsNullOrWhiteSpace(connectionConfiguration.Password))
         {
-            throw new InvalidOperationException($"'{ConnectionSection}:{nameof(connectionConfiguration.Password)}' is null.");
+            throw new InvalidOperationException(
+                $"'{ConnectionSection}:{nameof(connectionConfiguration.Password)}' is null.");
         }
 
         return connectionConfiguration;

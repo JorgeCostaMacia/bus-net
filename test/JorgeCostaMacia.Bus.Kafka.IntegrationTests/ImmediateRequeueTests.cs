@@ -37,7 +37,8 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
         _fixture = fixture;
     }
 
-    /// <summary>A command handler that fails once, with a <c>00:00</c> retry step, is redelivered immediately and succeeds — invoked exactly twice.</summary>
+    /// <summary>A command handler that fails once, with a <c>00:00</c> retry step, is redelivered immediately and
+    /// succeeds — invoked exactly twice.</summary>
     [Fact]
     public async Task Send_toAHandlerThatFailsOnceWithAnImmediateRetryStep_IsRedeliveredAndSucceedsExactlyTwice()
     {
@@ -51,7 +52,9 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
             producer => producer.AddCommand<RequeueCommand>(CommandTopic),
             // A single 00:00 rung: the first failure re-produces to the topic immediately for an
             // instant redelivery — the immediate-requeue path, no scheduler involved.
-            consumer => consumer.AddCommandHandler<RequeueCommand, RequeueCommandHandler>(CommandGroupId, retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
+            consumer => consumer.AddCommandHandler<RequeueCommand, RequeueCommandHandler>(
+                CommandGroupId,
+                retryIntervals: ImmutableList.Create(TimeSpan.Zero)));
 
         using IHost host = builder.Build();
         await host.StartAsync(cancellationToken);
@@ -64,7 +67,9 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
                 await bus.Send(new RequeueCommand("hello-immediate-requeue"), cancellationToken);
             }
 
-            Task completed = await Task.WhenAny(probe.Succeeded, Task.Delay(TimeSpan.FromSeconds(120), cancellationToken));
+            Task completed = await Task.WhenAny(
+                probe.Succeeded,
+                Task.Delay(TimeSpan.FromSeconds(120), cancellationToken));
             Assert.True(completed == probe.Succeeded, "The immediate retry did not succeed within 120 seconds.");
 
             // Settle: give any spurious third delivery a window to show up, then assert exactly-once
@@ -79,7 +84,8 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
         }
     }
 
-    /// <summary>An event subscriber that fails once has its immediate retry re-targeted to its own group only — the failing group runs twice, the other group (which handled the original) runs exactly once.</summary>
+    /// <summary>An event subscriber that fails once has its immediate retry re-targeted to its own group only — the
+    /// failing group runs twice, the other group (which handled the original) runs exactly once.</summary>
     [Fact]
     public async Task Publish_toTwoGroupsWhereOneFailsOnce_ReTargetsTheImmediateRetryToTheFailingGroupOnly()
     {
@@ -94,7 +100,9 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
             consumer => consumer
                 // The failing group carries a 00:00 rung, so its first failure re-produces the event
                 // immediately, re-targeted (via AggregateConsumers) to this group only.
-                .AddEventSubscriber<RequeueEvent, RetargetFailingSubscriber>(FailingGroupId, retryIntervals: ImmutableList.Create(TimeSpan.Zero))
+                .AddEventSubscriber<RequeueEvent, RetargetFailingSubscriber>(
+                    FailingGroupId,
+                    retryIntervals: ImmutableList.Create(TimeSpan.Zero))
                 .AddEventSubscriber<RequeueEvent, RetargetOtherSubscriber>(OtherGroupId));
 
         using IHost host = builder.Build();
@@ -112,7 +120,9 @@ public sealed class ImmediateRequeueTests : IClassFixture<KafkaFixture>
             // group received the original — so a still-zero "other" count would be a real miss, not a race.
             Task both = Task.WhenAll(probe.FailingSucceeded, probe.OtherReceived);
             Task completed = await Task.WhenAny(both, Task.Delay(TimeSpan.FromSeconds(120), cancellationToken));
-            Assert.True(completed == both, "The failing group's retry and the other group's original did not both arrive within 120 seconds.");
+            Assert.True(
+                completed == both,
+                "The failing group's retry and the other group's original did not both arrive within 120 seconds.");
 
             // Settle: give the re-targeted retry a window to (wrongly) reach the other group, proving
             // the AggregateConsumers filter kept it out.

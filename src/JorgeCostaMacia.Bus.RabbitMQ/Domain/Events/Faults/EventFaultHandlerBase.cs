@@ -16,11 +16,15 @@ internal abstract class EventFaultHandlerBase<TEvent, TEventSubscriber> : IHandl
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    /// <summary>How the handler left the delivery — set as it runs, read by the consumer afterwards. Defaults to <see cref="FaultResult.Unhandled"/>.</summary>
+    /// <summary>How the handler left the delivery — set as it runs, read by the consumer afterwards. Defaults to
+    /// <see cref="FaultResult.Unhandled"/>.</summary>
     public FaultResult Result { get; protected set; }
 
     /// <summary>Handles a broken event delivery.</summary>
     /// <param name="context">The fault context — the raw body as text, the transport and the failure.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public abstract Task Handle(EventFaultContext context, CancellationToken cancellationToken = default);
+    public abstract Task Handle(
+        EventFaultContext context,
+        CancellationToken cancellationToken = default
+    );
 }

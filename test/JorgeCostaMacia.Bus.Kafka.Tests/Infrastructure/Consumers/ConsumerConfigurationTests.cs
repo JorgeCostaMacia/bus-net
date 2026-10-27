@@ -8,7 +8,12 @@ public class ConsumerConfigurationTests
     [Fact]
     public void ConsumerConfig_ComposesTheGroupAndTheDefaults()
     {
-        ConsumerConfig config = new ConsumerConfiguration { BootstrapServers = "bus:9092", SaslUsername = "user", SaslPassword = "pass" }.ConsumerConfig("orders.handler");
+        ConsumerConfig config = new ConsumerConfiguration
+        {
+            BootstrapServers = "bus:9092",
+            SaslUsername = "user",
+            SaslPassword = "pass"
+        }.ConsumerConfig("orders.handler");
 
         Assert.Equal("orders.handler", config.GroupId);
         Assert.Equal("bus:9092", config.BootstrapServers);

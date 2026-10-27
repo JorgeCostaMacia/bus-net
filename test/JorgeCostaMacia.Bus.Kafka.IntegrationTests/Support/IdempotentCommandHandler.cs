@@ -22,7 +22,10 @@ public sealed class IdempotentCommandHandler : CommandHandler<ChaosCommand>
     /// <summary>Records the delivery on the probe, which applies the effect only once per id.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<ChaosCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandContext<ChaosCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         _probe.Record(context.Message.Payload);
 

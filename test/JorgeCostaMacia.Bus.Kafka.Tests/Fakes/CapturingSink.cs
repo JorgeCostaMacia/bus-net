@@ -26,7 +26,10 @@ internal sealed class CapturingSink : ILogEventSink
     /// <param name="logEvent">The captured event.</param>
     /// <param name="name">The property name.</param>
     /// <returns>The property's value, or <see langword="null"/>.</returns>
-    public static object? Scalar(LogEvent logEvent, string name)
+    public static object? Scalar(
+        LogEvent logEvent,
+        string name
+    )
         => logEvent.Properties.TryGetValue(name, out LogEventPropertyValue? value) && value is ScalarValue scalar
             ? scalar.Value
             : null;

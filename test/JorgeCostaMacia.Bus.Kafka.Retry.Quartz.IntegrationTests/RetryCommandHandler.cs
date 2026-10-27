@@ -23,13 +23,17 @@ public sealed class RetryCommandHandler : CommandHandler<RetryCommand>
     /// <summary>Fails the first delivery to force a scheduled retry; records and succeeds on the redelivery.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<RetryCommand> context, CancellationToken cancellationToken = default)
+    public override Task Handle(
+        CommandContext<RetryCommand> context,
+        CancellationToken cancellationToken = default
+    )
     {
         int attempt = _probe.Record();
 
         if (attempt == 1)
         {
-            throw new InvalidOperationException("Failing the first delivery on purpose so the retry is parked as a delayed Quartz job.");
+            throw new InvalidOperationException(
+                "Failing the first delivery on purpose so the retry is parked as a delayed Quartz job.");
         }
 
         return Task.CompletedTask;

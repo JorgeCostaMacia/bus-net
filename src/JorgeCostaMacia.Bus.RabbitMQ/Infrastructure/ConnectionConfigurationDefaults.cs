@@ -21,9 +21,11 @@ public static class ConnectionConfigurationDefaults
     /// <summary>Virtual host. Default: <c>/</c>.</summary>
     public const string VirtualHost = "/";
 
-    /// <summary>Automatic connection/topology recovery. Default: <c>true</c> — the connection self-heals after a drop.</summary>
+    /// <summary>Automatic connection/topology recovery. Default: <c>true</c> — the connection self-heals after a
+    /// drop.</summary>
     public const bool AutomaticRecoveryEnabled = true;
 
-    /// <summary>Client-provided connection name (shown in the RabbitMQ management UI). Default: the machine name.</summary>
+    /// <summary>Client-provided connection name (shown in the RabbitMQ management UI). Default: the machine
+    /// name.</summary>
     public static string ClientProvidedName => Environment.MachineName;
 }

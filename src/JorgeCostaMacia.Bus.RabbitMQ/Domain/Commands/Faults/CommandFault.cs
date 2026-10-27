@@ -37,14 +37,26 @@ public sealed record CommandFault : IErrorMessage
     /// <summary>Whether the broken message had been redelivered.</summary>
     public bool Redelivered { get; init; }
 
-    /// <summary>The delivery's headers as best-effort text — the envelope's binary GUID headers render as GUIDs.</summary>
+    /// <summary>The delivery's headers as best-effort text — the envelope's binary GUID headers render as
+    /// GUIDs.</summary>
     public ImmutableList<KeyValuePair<string, string>> Headers { get; init; }
 
     /// <summary>The delivered raw body as text — never deserialized.</summary>
     public string Message { get; init; }
 
     /// <summary>Creates the parked body over the failure's details and the broken delivery.</summary>
-    public CommandFault(ErrorInfo error, DateTime errorOccurredAt, string queue, string machineName, string exchange, string routingKey, ulong deliveryTag, bool redelivered, ImmutableList<KeyValuePair<string, string>> headers, string message)
+    public CommandFault(
+        ErrorInfo error,
+        DateTime errorOccurredAt,
+        string queue,
+        string machineName,
+        string exchange,
+        string routingKey,
+        ulong deliveryTag,
+        bool redelivered,
+        ImmutableList<KeyValuePair<string, string>> headers,
+        string message
+    )
     {
         Error = error;
         ErrorOccurredAt = errorOccurredAt;
@@ -58,11 +70,15 @@ public sealed record CommandFault : IErrorMessage
         Message = message;
     }
 
-    /// <summary>Builds the parked body from the fault context the consumer already built — the raw body, the transport details and the failure — stamping the failing queue.</summary>
+    /// <summary>Builds the parked body from the fault context the consumer already built — the raw body, the transport
+    /// details and the failure — stamping the failing queue.</summary>
     /// <param name="context">The broken delivery's fault context.</param>
     /// <param name="queue">The queue whose delivery broke.</param>
     /// <returns>The body parked to the fault queue.</returns>
-    internal static CommandFault Create(CommandFaultContext context, string queue)
+    internal static CommandFault Create(
+        CommandFaultContext context,
+        string queue
+    )
         => new CommandFault(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,

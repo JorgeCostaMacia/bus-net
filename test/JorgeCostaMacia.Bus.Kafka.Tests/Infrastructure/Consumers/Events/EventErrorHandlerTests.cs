@@ -20,15 +20,30 @@ public class EventErrorHandlerTests
     private readonly ProducerFake _producer = new ProducerFake();
     private readonly RetrySchedulerFake _scheduler = new RetrySchedulerFake();
 
-    private EventErrorHandler<TestEvent, TestEventSubscriber> EventError(ImmutableList<TimeSpan>? intervals = null, ImmutableList<Type>? excludes = null, bool scheduler = true, ILogger? logger = null)
-        => new EventErrorHandler<TestEvent, TestEventSubscriber>(_producer, scheduler ? _scheduler : null, logger ?? NullLogger.Instance, Deliveries.Topic, Deliveries.GroupId, intervals ?? ImmutableList<TimeSpan>.Empty, excludes ?? ImmutableList<Type>.Empty);
+    private EventErrorHandler<TestEvent, TestEventSubscriber> EventError(
+        ImmutableList<TimeSpan>? intervals = null,
+        ImmutableList<Type>? excludes = null,
+        bool scheduler = true,
+        ILogger? logger = null
+    )
+        => new EventErrorHandler<TestEvent, TestEventSubscriber>(
+            _producer,
+            scheduler ? _scheduler : null,
+            logger ?? NullLogger.Instance,
+            Deliveries.Topic,
+            Deliveries.GroupId,
+            intervals ?? ImmutableList<TimeSpan>.Empty,
+            excludes ?? ImmutableList<Type>.Empty);
 
     [Fact]
     public async Task MissingRetryCountHeader_ReportsFaulted()
     {
         // an envelope whose retry count cannot be read is unreadable for the ladder: the handler
         // reports Faulted so the worker relays the delivery to the fault lane instead of retrying.
-        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.BareTransport(), new InvalidOperationException("boom"));
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(
+            new TestEvent("pepe"),
+            Deliveries.BareTransport(),
+            new InvalidOperationException("boom"));
 
         EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -40,7 +55,10 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task NoLadder_ParksToErrorTopic()
     {
-        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException("boom"));
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(
+            new TestEvent("pepe"),
+            Deliveries.Transport(),
+            new InvalidOperationException("boom"));
 
         EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError();
         await sut.Handle(context, TestContext.Current.CancellationToken);
@@ -50,7 +68,9 @@ public class EventErrorHandlerTests
         Assert.Equal($"{Deliveries.Topic}.error", topic);
 
         JsonElement body = JsonSerializer.Deserialize<JsonElement>(message.Value);
-        Assert.Equal(typeof(InvalidOperationException).FullName, body.GetProperty("error").GetProperty("type").GetString());
+        Assert.Equal(
+            typeof(InvalidOperationException).FullName,
+            body.GetProperty("error").GetProperty("type").GetString());
         Assert.Equal("boom", body.GetProperty("error").GetProperty("message").GetString());
         Assert.Equal(Deliveries.GroupId, body.GetProperty("groupId").GetString());
         Assert.Equal(Deliveries.Topic, body.GetProperty("topic").GetString());
@@ -58,7 +78,9 @@ public class EventErrorHandlerTests
         Assert.Equal(10, body.GetProperty("offset").GetInt64());
         Assert.Equal("pepe", body.GetProperty("message").GetProperty("name").GetString());
 
-        Assert.Equal(typeof(InvalidOperationException).FullName, Deliveries.Header(message, TransportHeaders.ErrorType));
+        Assert.Equal(
+            typeof(InvalidOperationException).FullName,
+            Deliveries.Header(message, TransportHeaders.ErrorType));
         Assert.Equal(Deliveries.GroupId, Deliveries.Header(message, TransportHeaders.ErrorGroupId));
     }
 
@@ -67,21 +89,33 @@ public class EventErrorHandlerTests
     {
         Guid aggregateId = Guid.NewGuid();
         Guid aggregateCorrelationId = Guid.NewGuid();
-        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId), new InvalidOperationException());
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(
+            new TestEvent("pepe"),
+            Deliveries.Transport(aggregateId: aggregateId, aggregateCorrelationId: aggregateCorrelationId),
+            new InvalidOperationException());
 
         await EventError().Handle(context, TestContext.Current.CancellationToken);
 
         Message<Null, byte[]> message = Assert.Single(_producer.Produced).Message;
-        Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateId, out byte[] id) && new Guid(id) == aggregateId);
-        Assert.True(message.Headers.TryGetLastBytes(TransportHeaders.AggregateCorrelationId, out byte[] correlation) && new Guid(correlation) == aggregateCorrelationId);
+        Assert.True(
+            message.Headers.TryGetLastBytes(TransportHeaders.AggregateId, out byte[] id)
+                && new Guid(id) == aggregateId);
+        Assert.True(
+            message.Headers.TryGetLastBytes(TransportHeaders.AggregateCorrelationId, out byte[] correlation)
+                && new Guid(correlation) == aggregateCorrelationId);
     }
 
     [Fact]
     public async Task ParkedBody_CarriesTheFullExceptionChain_AndTheHost()
     {
-        Exception failure = new InvalidOperationException("outer", new FormatException("the real cause"));
+        Exception failure = new InvalidOperationException(
+            "outer",
+            new FormatException("the real cause"));
         failure.Data["field"] = "required";
-        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), failure);
+        EventErrorContext<TestEvent> context = new EventErrorContext<TestEvent>(
+            new TestEvent("pepe"),
+            Deliveries.Transport(),
+            failure);
 
         await EventError().Handle(context, TestContext.Current.CancellationToken);
 
@@ -98,7 +132,12 @@ public class EventErrorHandlerTests
     {
         EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero));
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
         (string topic, Message<Null, byte[]> message) = Assert.Single(_producer.Produced);
@@ -111,25 +150,41 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_ParksThroughScheduler_RetargetedToItsGroup()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)));
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)));
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Scheduled, sut.Result);
         Assert.Empty(_producer.Produced);
         (string topic, string groupId, _, Headers headers, _) = Assert.Single(_scheduler.Scheduled);
         Assert.Equal(Deliveries.Topic, topic);
         Assert.Equal(Deliveries.GroupId, groupId);
-        Assert.True(headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry) && Encoding.UTF8.GetString(retry) == "1");
-        Assert.True(headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] consumers) && Encoding.UTF8.GetString(consumers) == Deliveries.GroupId);
+        Assert.True(
+            headers.TryGetLastBytes(TransportHeaders.RetryCount, out byte[] retry)
+                && Encoding.UTF8.GetString(retry) == "1");
+        Assert.True(
+            headers.TryGetLastBytes(TransportHeaders.AggregateConsumers, out byte[] consumers)
+                && Encoding.UTF8.GetString(consumers) == Deliveries.GroupId);
     }
 
     [Fact]
     public async Task LadderExhausted_Parks()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero));
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(
+            ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero));
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(retryCount: 2), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(retryCount: 2),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
@@ -138,9 +193,16 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task ExcludedException_Parks_InheritanceAware()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero), ImmutableList.Create(typeof(BaseFailure)));
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(
+            ImmutableList.Create(TimeSpan.Zero),
+            ImmutableList.Create(typeof(BaseFailure)));
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new DerivedFailure()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new DerivedFailure()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
@@ -149,9 +211,16 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task PositiveInterval_WithoutScheduler_ParksAsTerminal()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)), scheduler: false);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)),
+            scheduler: false);
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Parked, sut.Result);
         Assert.Equal($"{Deliveries.Topic}.error", Assert.Single(_producer.Produced).Topic);
@@ -162,9 +231,15 @@ public class EventErrorHandlerTests
     public async Task SchedulerFails_LeavesUnhandled()
     {
         _scheduler.Failure = new InvalidOperationException("scheduler down");
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)));
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)));
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
         Assert.Empty(_producer.Produced);
@@ -173,10 +248,17 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task RequeueProduceFails_LeavesUnhandled()
     {
-        _producer.Failure = new ProduceException<Null, byte[]>(new Error(ErrorCode.Local_MsgTimedOut), new DeliveryResult<Null, byte[]>());
+        _producer.Failure = new ProduceException<Null, byte[]>(
+            new Error(ErrorCode.Local_MsgTimedOut),
+            new DeliveryResult<Null, byte[]>());
         EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero));
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
     }
@@ -184,9 +266,15 @@ public class EventErrorHandlerTests
     [Fact]
     public async Task SecondRetry_ContinuesTheCumulativeCount()
     {
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero));
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(
+            ImmutableList.Create(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero));
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(retryCount: 1), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(retryCount: 1),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Retried, sut.Result);
         Assert.Equal("2", Deliveries.Header(Assert.Single(_producer.Produced).Message, TransportHeaders.RetryCount));
@@ -202,7 +290,12 @@ public class EventErrorHandlerTests
         _producer.Failure = new OperationCanceledException();
         EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(logger: logger);
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
         Assert.DoesNotContain(logger.Logged, entry => entry.Level >= LogLevel.Error);
@@ -214,9 +307,16 @@ public class EventErrorHandlerTests
         // same during a delayed retry: cancelling the schedule must not read as a scheduler outage.
         RecordingLogger<TestEvent> logger = new RecordingLogger<TestEvent>();
         _scheduler.Failure = new OperationCanceledException();
-        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(ImmutableList.Create(TimeSpan.FromMinutes(5)), logger: logger);
+        EventErrorHandler<TestEvent, TestEventSubscriber> sut = EventError(
+            ImmutableList.Create(TimeSpan.FromMinutes(5)),
+            logger: logger);
 
-        await sut.Handle(new EventErrorContext<TestEvent>(new TestEvent("pepe"), Deliveries.Transport(), new InvalidOperationException()), TestContext.Current.CancellationToken);
+        await sut.Handle(
+            new EventErrorContext<TestEvent>(
+                new TestEvent("pepe"),
+                Deliveries.Transport(),
+                new InvalidOperationException()),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(ErrorResult.Unhandled, sut.Result);
         Assert.Empty(_producer.Produced);

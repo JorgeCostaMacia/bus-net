@@ -12,6 +12,10 @@ public sealed class ParkingCommandHandler : CommandHandler<ParkingCommand>
     /// <summary>Always throws so the retry ladder exhausts to a terminal park.</summary>
     /// <param name="context">The delivery's context.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    public override Task Handle(CommandContext<ParkingCommand> context, CancellationToken cancellationToken = default)
-        => throw new InvalidOperationException("Failing every delivery on purpose so the retry ladder exhausts and the failure is parked to the error topic.");
+    public override Task Handle(
+        CommandContext<ParkingCommand> context,
+        CancellationToken cancellationToken = default
+    )
+        => throw new InvalidOperationException(
+            "Failing every delivery on purpose so the retry ladder exhausts and the failure is parked to the error topic.");
 }

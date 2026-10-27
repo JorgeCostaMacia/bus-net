@@ -24,8 +24,14 @@ internal sealed class BusHealthCheck : IHealthCheck
     }
 
     /// <inheritdoc />
-    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    public Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default
+    )
         => Task.FromResult(_health.IsUp
             ? HealthCheckResult.Healthy("The bus reaches the Kafka brokers.")
-            : new HealthCheckResult(context.Registration.FailureStatus, "All Kafka brokers are unreachable.", data: new Dictionary<string, object> { ["changedAt"] = _health.ChangedAt }));
+            : new HealthCheckResult(
+                context.Registration.FailureStatus,
+                "All Kafka brokers are unreachable.",
+                data: new Dictionary<string, object> { ["changedAt"] = _health.ChangedAt }));
 }

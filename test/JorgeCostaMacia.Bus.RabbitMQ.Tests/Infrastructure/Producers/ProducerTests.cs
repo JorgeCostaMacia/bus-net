@@ -59,7 +59,12 @@ public class ProducerTests
         RabbitProducer sut = Sut();
 
         await sut.Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
-        await sut.Produce("orders.created", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken);
+        await sut.Produce(
+            "orders.created",
+            string.Empty,
+            "{}"u8.ToArray(),
+            Headers(),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(2, _connection.Created);
     }
@@ -126,7 +131,13 @@ public class ProducerTests
     {
         _channel.PublishFailure = new InvalidOperationException("broker down");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => Sut().Produce(
+                "orders",
+                string.Empty,
+                "{}"u8.ToArray(),
+                Headers(),
+                TestContext.Current.CancellationToken));
 
         (LogLevel level, string message) = Assert.Single(_logger.Logged);
         Assert.Equal(LogLevel.Error, level);
@@ -155,7 +166,9 @@ public class ProducerTests
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
 
-        Assert.Equal(Environment.MachineName, Header(Assert.Single(_channel.Published).Headers!, TransportHeaders.HostMachineName));
+        Assert.Equal(
+            Environment.MachineName,
+            Header(Assert.Single(_channel.Published).Headers!, TransportHeaders.HostMachineName));
     }
 
     [Fact]
@@ -169,7 +182,9 @@ public class ProducerTests
 
         await Sut().Produce("orders", string.Empty, "{}"u8.ToArray(), headers, TestContext.Current.CancellationToken);
 
-        Assert.Equal(messageId.ToString(), (string)Assert.Single(_channel.Published).Headers![TransportHeaders.MessageId]!);
+        Assert.Equal(
+            messageId.ToString(),
+            (string)Assert.Single(_channel.Published).Headers![TransportHeaders.MessageId]!);
     }
 
     [Fact]
@@ -224,7 +239,14 @@ public class ProducerTests
         string[] exchanges = new string[] { "orders", "orders.created", "billing", "shipping" };
 
         Task[] produces = Enumerable.Range(0, 200).Select(i =>
-            Task.Run(() => sut.Produce(exchanges[i % exchanges.Length], string.Empty, "{}"u8.ToArray(), Headers(), TestContext.Current.CancellationToken), TestContext.Current.CancellationToken)).ToArray();
+            Task.Run(
+                () => sut.Produce(
+                    exchanges[i % exchanges.Length],
+                    string.Empty,
+                    "{}"u8.ToArray(),
+                    Headers(),
+                    TestContext.Current.CancellationToken),
+                TestContext.Current.CancellationToken)).ToArray();
 
         await Task.WhenAll(produces);
 
@@ -233,6 +255,8 @@ public class ProducerTests
 
     // the client's header table is object?-typed at the AMQP edge, but the producer copies the
     // envelope's canonical text straight in, so each value arrives as a string (encoded longstr).
-    private static string? Header(IReadOnlyDictionary<string, object?> headers, string key)
-        => headers.TryGetValue(key, out object? value) && value is string text ? text : null;
+    private static string? Header(
+        IReadOnlyDictionary<string, object?> headers,
+        string key
+    ) => headers.TryGetValue(key, out object? value) && value is string text ? text : null;
 }

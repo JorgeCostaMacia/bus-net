@@ -22,8 +22,18 @@ public sealed record RetryCommand : Command
     /// <param name="aggregateConsumers">The target consumers.</param>
     /// <param name="payload">The payload.</param>
     [JsonConstructor]
-    public RetryCommand(Guid aggregateId, Guid aggregateCorrelationId, DateTime aggregateOccurredAt, ImmutableList<string> aggregateConsumers, string payload)
-        : base(aggregateId, aggregateCorrelationId, aggregateOccurredAt, aggregateConsumers)
+    public RetryCommand(
+        Guid aggregateId,
+        Guid aggregateCorrelationId,
+        DateTime aggregateOccurredAt,
+        ImmutableList<string> aggregateConsumers,
+        string payload
+    ) : base(
+        aggregateId,
+        aggregateCorrelationId,
+        aggregateOccurredAt,
+        aggregateConsumers
+    )
     {
         Payload = payload;
     }
@@ -31,7 +41,12 @@ public sealed record RetryCommand : Command
     /// <summary>Convenience constructor used to send the command, defaulting the metadata.</summary>
     /// <param name="payload">The payload.</param>
     public RetryCommand(string payload)
-        : base(aggregateId: null, aggregateCorrelationId: null, aggregateOccurredAt: null, aggregateConsumers: null)
+        : base(
+            aggregateId: null,
+            aggregateCorrelationId: null,
+            aggregateOccurredAt: null,
+            aggregateConsumers: null
+        )
     {
         Payload = payload;
     }

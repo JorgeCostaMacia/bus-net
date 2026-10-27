@@ -65,7 +65,19 @@ public sealed record CommandError<TCommand> : IErrorMessage
     /// <param name="timestamp">UTC time Kafka assigned to the message.</param>
     /// <param name="headers">The delivery's headers as browsable text.</param>
     /// <param name="message">The original command, fully typed.</param>
-    public CommandError(ErrorInfo error, DateTime errorOccurredAt, int retryCount, string groupId, string machineName, string topic, int partition, long offset, DateTime timestamp, ImmutableList<KeyValuePair<string, string>> headers, TCommand message)
+    public CommandError(
+        ErrorInfo error,
+        DateTime errorOccurredAt,
+        int retryCount,
+        string groupId,
+        string machineName,
+        string topic,
+        int partition,
+        long offset,
+        DateTime timestamp,
+        ImmutableList<KeyValuePair<string, string>> headers,
+        TCommand message
+    )
     {
         Error = error;
         ErrorOccurredAt = errorOccurredAt;
@@ -89,7 +101,10 @@ public sealed record CommandError<TCommand> : IErrorMessage
     /// <param name="context">The failed delivery's error context.</param>
     /// <param name="groupId">The consumer group whose handler failed.</param>
     /// <returns>The body parked to the error topic.</returns>
-    internal static CommandError<TCommand> Create(CommandErrorContext<TCommand> context, string groupId)
+    internal static CommandError<TCommand> Create(
+        CommandErrorContext<TCommand> context,
+        string groupId
+    )
         => new CommandError<TCommand>(
             ErrorInfo.Create(context.Error),
             DateTime.UtcNow,

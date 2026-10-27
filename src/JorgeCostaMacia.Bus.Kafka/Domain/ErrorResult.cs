@@ -9,7 +9,8 @@ namespace JorgeCostaMacia.Bus.Kafka.Domain;
 /// </summary>
 internal enum ErrorResult
 {
-    /// <summary>The handler could not cope (a failed produce, a transient fault) — the worker escalates the delivery to the fault handler: an unmanageable failure belongs to the fault lane.</summary>
+    /// <summary>The handler could not cope (a failed produce, a transient fault) — the worker escalates the delivery to
+    /// the fault handler: an unmanageable failure belongs to the fault lane.</summary>
     Unhandled,
 
     /// <summary>Requeued to the topic's tail for an immediate retry.</summary>

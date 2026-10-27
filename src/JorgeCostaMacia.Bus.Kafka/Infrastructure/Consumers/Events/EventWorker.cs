@@ -25,16 +25,22 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
     where TEvent : Event
     where TEventSubscriber : EventSubscriber<TEvent>
 {
-    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker and its contract — the subscriber and its error and fault handlers are resolved per delivery from the scope.</summary>
-    /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already wired.</param>
+    /// <summary>Creates the consumer over its inbound gate, the scope factory, the logger, the reachability tracker and
+    /// its contract — the subscriber and its error and fault handlers are resolved per delivery from the
+    /// scope.</summary>
+    /// <param name="consumer">The inbound gate over the Kafka client — its settings and logging handlers already
+    /// wired.</param>
     /// <param name="scopeFactory">The factory creating one service scope per delivered message.</param>
     /// <param name="logger">The logger for the deliveries.</param>
-    /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable state.</param>
+    /// <param name="lifetime">The application lifetime — stopped when the client reports an unrecoverable
+    /// state.</param>
     /// <param name="health">The broker-reachability tracker — every consumed delivery reports the brokers up.</param>
     /// <param name="startupGate">The shared gate bounding how many consumers connect at once at startup.</param>
-    /// <param name="startupSignal">This consumer's one-shot signal, raised by its partition-assignment callback when it joins its group.</param>
+    /// <param name="startupSignal">This consumer's one-shot signal, raised by its partition-assignment callback when it
+    /// joins its group.</param>
     /// <param name="topic">The Kafka topic the consumer subscribes to.</param>
-    /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side filtering.</param>
+    /// <param name="groupId">The consumer group id — the consumer's identity for offsets and consumer-side
+    /// filtering.</param>
     public EventWorker(
         IConsumer consumer,
         IServiceScopeFactory scopeFactory,
@@ -44,35 +50,67 @@ internal sealed class EventWorker<TEvent, TEventSubscriber> : ConsumerWorker<Eve
         StartupGate startupGate,
         StartupSignal startupSignal,
         string topic,
-        string groupId)
-        : base(consumer, scopeFactory, logger, lifetime, health, startupGate, startupSignal, topic, groupId)
+        string groupId
+    ) : base(consumer, scopeFactory, logger, lifetime, health, startupGate, startupSignal, topic, groupId)
     {
     }
 
     /// <inheritdoc />
-    protected override EventContext<TEvent> CreateContext(ConsumeResult<Ignore, byte[]> result, Transport transport)
-        => new EventContext<TEvent>(JsonSerializer.Deserialize<TEvent>(result.Message.Value, BusSerializer.Options) ?? throw new JsonException("The event body deserialized to null."), transport);
+    protected override EventContext<TEvent> CreateContext(
+        ConsumeResult<Ignore, byte[]> result,
+        Transport transport
+    )
+        => new EventContext<TEvent>(
+            JsonSerializer.Deserialize<TEvent>(result.Message.Value, BusSerializer.Options)
+                ?? throw new JsonException("The event body deserialized to null."),
+            transport);
 
     /// <inheritdoc />
-    protected override Task Handle(TEventSubscriber handler, EventContext<TEvent> context, CancellationToken cancellationToken)
-        => handler.Handle(context, cancellationToken);
+    protected override Task Handle(
+        TEventSubscriber handler,
+        EventContext<TEvent> context,
+        CancellationToken cancellationToken
+    ) => handler.Handle(context, cancellationToken);
 
     /// <inheritdoc />
-    protected override async Task<ErrorResult> HandleError(IServiceProvider services, EventContext<TEvent> context, Exception exception, CancellationToken cancellationToken)
+    protected override async Task<ErrorResult> HandleError(
+        IServiceProvider services,
+        EventContext<TEvent> context,
+        Exception exception,
+        CancellationToken cancellationToken
+    )
     {
-        EventErrorHandlerBase<TEvent, TEventSubscriber> errorHandler = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
+        EventErrorHandlerBase<TEvent, TEventSubscriber> errorHandler
+            = services.GetRequiredService<EventErrorHandlerBase<TEvent, TEventSubscriber>>();
 
-        await errorHandler.Handle(new EventErrorContext<TEvent>(context.Message, context.Transport, exception), cancellationToken);
+        await errorHandler.Handle(
+            new EventErrorContext<TEvent>(
+                context.Message,
+                context.Transport,
+                exception),
+            cancellationToken);
 
         return errorHandler.Result;
     }
 
     /// <inheritdoc />
-    protected override async Task<FaultResult> HandleFault(IServiceProvider services, byte[] body, Transport transport, Exception exception, CancellationToken cancellationToken)
+    protected override async Task<FaultResult> HandleFault(
+        IServiceProvider services,
+        byte[] body,
+        Transport transport,
+        Exception exception,
+        CancellationToken cancellationToken
+    )
     {
-        EventFaultHandlerBase<TEvent, TEventSubscriber> faultHandler = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
+        EventFaultHandlerBase<TEvent, TEventSubscriber> faultHandler
+            = services.GetRequiredService<EventFaultHandlerBase<TEvent, TEventSubscriber>>();
 
-        await faultHandler.Handle(EventFaultContext.Create(body, transport, exception), cancellationToken);
+        await faultHandler.Handle(
+            EventFaultContext.Create(
+                body,
+                transport,
+                exception),
+            cancellationToken);
 
         return faultHandler.Result;
     }

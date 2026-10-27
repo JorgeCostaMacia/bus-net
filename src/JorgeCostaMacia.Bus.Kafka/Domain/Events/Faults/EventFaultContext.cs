@@ -30,7 +30,11 @@ public sealed record EventFaultContext :
     /// <param name="message">The delivered raw body as text.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
-    public EventFaultContext(string message, Transport transport, Exception exception)
+    public EventFaultContext(
+        string message,
+        Transport transport,
+        Exception exception
+    )
     {
         Message = message;
         Transport = transport;
@@ -38,10 +42,18 @@ public sealed record EventFaultContext :
     }
 
     /// <summary>Builds the context for a broken delivery, decoding the raw body as UTF-8 text.</summary>
-    /// <param name="body">The delivered message's raw body — <see langword="null"/> for a tombstone, kept as an empty body.</param>
+    /// <param name="body">The delivered message's raw body — <see langword="null"/> for a tombstone, kept as an empty
+    /// body.</param>
     /// <param name="transport">The broken delivery's transport.</param>
     /// <param name="exception">The failure that broke the delivery.</param>
     /// <returns>The context handed to the fault handler.</returns>
-    internal static EventFaultContext Create(byte[]? body, Transport transport, Exception exception)
-        => new EventFaultContext(body is null ? string.Empty : Encoding.UTF8.GetString(body), transport, exception);
+    internal static EventFaultContext Create(
+        byte[]? body,
+        Transport transport,
+        Exception exception
+    )
+        => new EventFaultContext(
+            body is null ? string.Empty : Encoding.UTF8.GetString(body),
+            transport,
+            exception);
 }

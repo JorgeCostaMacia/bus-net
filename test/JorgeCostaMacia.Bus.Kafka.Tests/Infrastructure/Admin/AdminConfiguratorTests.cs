@@ -64,7 +64,9 @@ public class AdminConfiguratorTests
     [Fact]
     public void Constructor_MissingTopicsSection_Throws()
     {
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .Build();
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
             () => new AdminConfigurator(configuration));
