@@ -5,10 +5,13 @@ namespace JorgeCostaMacia.Bus.Domain.Messages;
 /// </summary>
 public interface ITracedMessage : IMessage
 {
-    /// <summary>Unique identifier of this message instance.</summary>
+    /// <summary>Unique identifier of this message instance — what a consumer deduplicates a redelivery by.</summary>
     Guid AggregateId { get; }
 
-    /// <summary>Identifier shared by every message in the same workflow, used for correlation.</summary>
+    /// <summary>
+    /// Identifier shared by every message in the same workflow: the thread a trace follows across services,
+    /// and the key a saga or process manager can correlate its steps by.
+    /// </summary>
     Guid AggregateCorrelationId { get; }
 
     /// <summary>
