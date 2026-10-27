@@ -71,6 +71,8 @@ Use the **`gitflow` skill** for any branch/release work.
 
 Skills that apply to this repo — let them trigger, or invoke explicitly. The first group is from `jorgecostamacia-agent-skills` (each `-net` skill brings the generic one it realizes); the rest from `dotnet-agent-skills` (the `dotnet/skills` marketplace).
 
+A skill listed here but missing on this machine is one command away: `claude plugin marketplace add JorgeCostaMacia/skills` (or `dotnet/skills`) once, then `claude plugin install <skill>@<marketplace>`.
+
 - **`bus-net`** (with **`messaging`**) — how services use this library: the `Command`/`Event` records and their two constructors, thin handlers and subscribers, `Send`/`Publish` with the incoming transport, the retry ladder with `ValidationException` excluded, retries parked in Quartz and run by a separate jobs worker, the route and handler naming, the producer/admin/consumer maps. `messaging` is the why — duplicates and disorder, the version travelling with the data. A change here is a change in what that skill describes: keep the two in step.
 - **`bus-kafka-net`** — the decisions on top of the Kafka transport: the topic is the route with the contracts' major, partitions per service, no message key on purpose, the consumer group named after the handler, parked messages in `.error`.
 - **`logging-net`** (with **`logging`**) — the logging style the bus's `BusLogger` and description-context pattern follow: fixed messages, every variable value through the log context, correlation in every scope.
