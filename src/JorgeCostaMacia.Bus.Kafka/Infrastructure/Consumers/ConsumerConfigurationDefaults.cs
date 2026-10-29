@@ -78,6 +78,24 @@ public static class ConsumerConfigurationDefaults
     /// <summary>Maximum retry backoff (ms). Default: <c>10000</c>.</summary>
     public const int RetryBackoffMaxMs = 10_000;
 
+    /// <summary>
+    /// Messages below which the client fetches again for a partition. Default: <c>5000</c>, against librdkafka's
+    /// 100000 — a handler is sequential, so the queue only has to hold the next message ready; 5000 keeps tens of
+    /// seconds of handling waiting, a cushion should the broker stall for a moment. The bytes cap,
+    /// <see cref="QueuedMaxMessagesKbytes"/>, is the one that bounds memory.
+    /// </summary>
+    public const int QueuedMinMessages = 5_000;
+
+    /// <summary>
+    /// Kilobytes of prefetched messages the consumer's queue holds at most. Default: <c>8192</c> (8 MB), against
+    /// librdkafka's 65536. librdkafka sizes its defaults for one client per process, and here every handler is
+    /// its own consumer, so a service hosts hundreds: at 64 MB each, a reload — or a start or a rebalance with a
+    /// backlog, when every consumer fills its queue at once — took a worker to several GB. The cap does not shrink
+    /// the fetches (<c>fetch.message.max.bytes</c>, 1 MB per partition, sets those), so 8 MB still keeps several
+    /// batches waiting; it may be overshot by one fetch, and a message larger than it is still delivered.
+    /// </summary>
+    public const int QueuedMaxMessagesKbytes = 8_192;
+
     /// <summary>Kafka client identifier. Default: <see cref="Environment.MachineName"/>.</summary>
     public static string ClientId => Environment.MachineName;
 

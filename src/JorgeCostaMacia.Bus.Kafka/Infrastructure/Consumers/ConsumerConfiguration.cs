@@ -71,12 +71,12 @@ public sealed record ConsumerConfiguration
     /// <summary>Static group instance id, or <see langword="null"/> for the default (machine name).</summary>
     public string? GroupInstanceId { get; init; }
 
-    /// <summary>Minimum messages the client prefetches per partition, or <see langword="null"/> for the client default
-    /// (100000).</summary>
+    /// <summary>Minimum messages the client prefetches per partition, or <see langword="null"/> for the default
+    /// (5000).</summary>
     public int? QueuedMinMessages { get; init; }
 
-    /// <summary>Maximum kbytes the client prefetches per partition — dominates the consumer's memory footprint when a
-    /// process hosts many workers — or <see langword="null"/> for the client default (65536).</summary>
+    /// <summary>Maximum kbytes of prefetched messages in the consumer's queue — dominates the consumer's memory
+    /// footprint when a process hosts many workers — or <see langword="null"/> for the default (8192).</summary>
     public int? QueuedMaxMessagesKbytes { get; init; }
 
     /// <summary>Interval (ms) between statistics emissions (logged at Debug under the Kafka category), or
@@ -129,8 +129,8 @@ public sealed record ConsumerConfiguration
             ClientId = ClientId ?? ConsumerConfigurationDefaults.ClientId,
             GroupId = groupId,
             GroupInstanceId = GroupInstanceId ?? ConsumerConfigurationDefaults.GroupInstanceId,
-            QueuedMinMessages = QueuedMinMessages,
-            QueuedMaxMessagesKbytes = QueuedMaxMessagesKbytes,
+            QueuedMinMessages = QueuedMinMessages ?? ConsumerConfigurationDefaults.QueuedMinMessages,
+            QueuedMaxMessagesKbytes = QueuedMaxMessagesKbytes ?? ConsumerConfigurationDefaults.QueuedMaxMessagesKbytes,
             StatisticsIntervalMs = StatisticsIntervalMs,
             Debug = Debug,
             LogConnectionClose = LogConnectionClose
